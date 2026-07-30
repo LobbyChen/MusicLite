@@ -23,7 +23,7 @@ const lyricsContentEl = document.getElementById('lyricsContent');
 const lyricsWrapperEl = document.getElementById('lyricsWrapper');
 const lyricsPreviewEl = document.getElementById('lyricsPreview');
 const backBtn = document.getElementById('backBtn');
-
+const nextBtn = document.getElementById('nextBtn');
 // 模式切换按钮
 const expandFullscreenBtn = document.getElementById('expandFullscreenBtn');
 const collapseCardBtn = document.getElementById('collapseCardBtn');
@@ -448,6 +448,7 @@ audio.addEventListener('loadedmetadata', () => {
 	if (overlay.classList.contains('active')) updateProgress();
 });
 audio.addEventListener('play', syncPlayState);
+nextBtn.addEventListener('click', playNextTrack);
 audio.addEventListener('pause', syncPlayState);
 audio.addEventListener('error', (e) => {
 	console.error("Audio Load Error:", e);
