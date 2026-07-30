@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>player module</title>
+</head>
+
+<body>
+
+    <div class="background-layer" id="bgLayer"></div>
+
+    <div class="player-container">
+        <div class="album-art-wrapper">
+            <img src="" alt="Album Art" class="album-art" id="coverImg" onerror="this.style.display='none'">
+        </div>
+
+        <div class="info-and-controls">
+            <div class="track-info">
+                <div class="track-name" id="trackName">加载中</div>
+                <div class="artist-name" id="artistName">--</div>
+            </div>
+
+            <!-- 歌词区域 -->
+            <div class="lyrics-area" id="lyricsArea">
+                <div class="lyrics-collapsed" id="lyricsToggle">
+                    <div class="lyrics-preview" id="lyricsPreview">暂无歌词</div>
+                </div>
+
+                <div class="lyrics-card" id="lyricsCard">
+                    <div class="lyrics-wrapper" id="lyricsWrapper">
+                        <div class="lyrics-content" id="lyricsContent">
+                            <div class="no-lyrics">暂无歌词</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-area">
+                <span class="time-current" id="currentTime">0:00</span>
+                <div class="slider-container">
+                    <div class="track-bg"></div>
+                    <div class="progress-fill" id="seekProgress"></div>
+                    <input type="range" min="0" max="100" value="0" class="seek_slider" id="seekSlider" disabled>
+                </div>
+                <span class="time-duration" id="totalDuration">0:00</span>
+            </div>
+
+            <div class="controls-area">
+                <div class="main-controls">
+                    <button class="btn btn-play" id="playBtn">
+                        <svg viewBox="0 0 24 24" id="playIcon">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                        <svg viewBox="0 0 24 24" id="pauseIcon">
+                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="volume-control">
+                    <div class="volume-icon" id="volIcon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+                        </svg>
+                    </div>
+                    <div class="slider-container volume-slider-container">
+                        <div class="track-bg"></div>
+                        <div class="progress-fill" id="volProgress"></div>
+                        <input type="range" min="0" max="100" value="70" class="volume_slider" id="volSlider">
+                    </div>
+                </div>
+
+                <button class="btn btn-back" id="backBtn" title="返回上一页">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <audio id="audioPlayer" preload="metadata"></audio>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="stylesheet" type="text/css" href="/src/css/libraries.css" />
+        <script src="/src/js/libraries.js" type="module"></script>
+        <title>lib module</title>
+    </head>
+    <body>
+        <!-- Header -->
+        <header>
+            <h1>Home</h1>
+            <button class="btn-open" id="openFileBtn">
+                <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <path
+                        d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+                    ></path>
+                </svg>
+                导入文件
+            </button>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <h2>Medias 媒体</h2>
+            <div id="media-container" class="media-grid"></div>
+
+            <div id="empty-state" class="empty-state">
+                <h2>Music Library</h2>
+                <p>
+                    Library is empty. Drag and drop files or click Open to
+                    import.
+                </p>
+            </div>
+        </main>
+
+        <!-- Drag Overlay (Image 2 Style) -->
+        <div id="drag-overlay">
+            <svg class="drag-icon" viewBox="0 0 24 24">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+            </svg>
+            <div class="drag-text">拖放导入歌曲</div>
+        </div>
+
+        <!-- Modal 1: Ask for Lyrics -->
+        <div id="modal-lyrics-ask" class="modal-backdrop">
+            <div class="modal">
+                <h3>导入音频文件</h3>
+                <p>是否为此文件关联歌词文件？</p>
+                <div class="modal-buttons">
+                    <button
+                        class="btn btn-secondary"
+                        onclick="handleLyricsChoice(false)"
+                    >
+                        不使用
+                    </button>
+                    <button
+                        class="btn btn-primary"
+                        onclick="handleLyricsChoice(true)"
+                    >
+                        使用歌词
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hidden Inputs -->
+        <input type="file" id="file-input" accept="audio/*" />
+        <input type="file" id="lyrics-input" accept=".lrc,.txt" />
+    </body>
+</html>

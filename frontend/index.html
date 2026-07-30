@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+        <title>MusicLite 播放器</title>
+    </head>
+
+    <body></body>
+    <script type="module">
+        function load_start() {
+            window.location.href = "/src/html/libraries.html";
+        }
+        function on_index_load() {
+            setInterval(() => {
+                load_start();
+            }, 100);
+        }
+        document.addEventListener("DOMContentLoaded", async function () {
+            on_index_load();
+        });
+    </script>
+</html>
