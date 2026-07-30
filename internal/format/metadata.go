@@ -2,65 +2,70 @@ package format
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/dhowden/tag"
 )
 
-// AudioMetadata 存储提取的结果
-type AudioMetadata struct {
-	CoverURI string // 封面的 URI,解析字符串
-	Lyrics   string // 内嵌歌词文本
-	Author   string // 作曲家
-	Title    string // 标题
+// RawMetadata 存储从音频文件中提取的原始元数据（封面为原始字节，非 base64）
+type RawMetadata struct {
+	Title     string
+	Artist    string
+	Lyrics    string
+	CoverData []byte
+	CoverMIME string
+	Format    NormalMscFormat
 }
 
-// ExtractCoverAndLyrics 从音频文件中提取封面(Base64)和歌词
-func ExtractCoverAndLyrics(filePath string) (AudioMetadata, error) {
-	nullaudio := AudioMetadata{}
-	// 1. 读取文件内容
+// FormatFromExt 根据文件扩展名推断音频格式
+func FormatFromExt(path string) NormalMscFormat {
+	ext := strings.ToLower(filepath.Ext(path))
+	switch ext {
+	case ".mp3":
+		return Mp3
+	case ".flac":
+		return Flac
+	case ".ogg":
+		return Ogg
+	case ".wav":
+		return Wav
+	case ".ape":
+		return APE
+	default:
+		return Mp3
+	}
+}
+
+// ExtractMetadata 从音频文件中提取标题、艺术家、歌词和封面（原始字节）
+func ExtractMetadata(filePath string) (RawMetadata, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		return nullaudio, fmt.Errorf("failed to read file: %w", err)
+		return RawMetadata{}, fmt.Errorf("failed to read file: %w", err)
 	}
 
-	// 解析元数据
 	m, err := tag.ReadFrom(bytes.NewReader(data))
 	if err != nil {
-		return nullaudio, fmt.Errorf("failed to parse tags: %w", err)
+		return RawMetadata{}, fmt.Errorf("failed to parse tags: %w", err)
 	}
 
-	meta := AudioMetadata{}
-
-	// 提取封面图片并转换为 Base64
-	picture := m.Picture()
-	if picture != nil {
-		// 编码为 Base64
-		base64Data := base64.StdEncoding.EncodeToString(picture.Data)
-		meta.CoverURI = fmt.Sprintf("data:%s;base64,%s", picture.MIMEType, base64Data)
-	} else {
-		meta.CoverURI = ""
+	meta := RawMetadata{
+		Title:  m.Title(),
+		Artist: m.Artist(),
+		Lyrics: m.Lyrics(),
+		Format: FormatFromExt(filePath),
 	}
 
-	lyrics := m.Lyrics()
-	if lyrics != "" {
-		meta.Lyrics = lyrics
-	} else {
-		meta.Lyrics = ""
+	// 标题为空时用文件名兜底
+	if meta.Title == "" {
+		meta.Title = strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath))
 	}
-	title := m.Title()
-	if title != "" {
-		meta.Title = title
-	} else {
-		meta.Title = ""
-	}
-	artist := m.Artist()
-	if artist != "" {
-		meta.Author = artist
-	} else {
-		meta.Author = ""
+
+	if pic := m.Picture(); pic != nil {
+		meta.CoverData = pic.Data
+		meta.CoverMIME = pic.MIMEType
 	}
 
 	return meta, nil

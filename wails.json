@@ -6,8 +6,9 @@
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
+  "icon": "frontend/src/assets/icon.png",
   "author": {
     "name": "LobbyChen",
-    "email": "3307734574@qq.com"
+    "email": "LobbyChen@lobbychen.top"
   }
 }

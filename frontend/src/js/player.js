@@ -1,3 +1,9 @@
+import { GetTrack, LoadSettings } from '../../wailsjs/go/main/App.js';
+
+// ============ 标题栏窗口控制 ============
+document.getElementById('minimizeBtn')?.addEventListener('click', () => window.runtime?.WindowMinimise());
+document.getElementById('closeBtn')?.addEventListener('click', () => window.runtime?.Quit());
+
 // 全局变量用于存储当前歌曲数据
 let currentTrackData = null;
 let isPlaying = false;
@@ -6,7 +12,7 @@ let parsedLyrics = [];
 let currentLyricIndex = -1;
 let lyricsExpanded = false;
 
-const audio = document.getElementById('audioPlayer');
+const audioPlayerEl = document.getElementById('audioPlayer');
 const playBtn = document.getElementById('playBtn');
 const playIcon = document.getElementById('playIcon');
 const pauseIcon = document.getElementById('pauseIcon');
@@ -27,6 +33,9 @@ const lyricsWrapperEl = document.getElementById('lyricsWrapper');
 const lyricsPreviewEl = document.getElementById('lyricsPreview');
 
 const backBtn = document.getElementById('backBtn');
+
+// 使用全局音频管理器（与库页面共享同一个音频实例）
+const audio = window.audioManager ? window.audioManager.audio : audioPlayerEl;
 
 // ============ LRC 解析 ============
 function parseLyrics(lrcText) {
@@ -55,7 +64,7 @@ function parseLyrics(lrcText) {
 // ============ 渲染歌词 ============
 function renderLyrics(lyricsArray) {
     if (!lyricsArray || lyricsArray.length === 0) {
-        lyricsContentEl.innerHTML = '<div class="no-lyrics">♪ 暂无歌词 ♪</div>';
+        lyricsContentEl.innerHTML = '<div class="no-lyrics">暂无歌词</div>';
         lyricsPreviewEl.textContent = '暂无歌词';
         lyricsPreviewEl.classList.remove('active');
         parsedLyrics = [];
@@ -82,7 +91,7 @@ function renderLyrics(lyricsArray) {
     });
 
     currentLyricIndex = -1;
-    updateLyricsScroll(0);
+    updateLyricsScroll(audio.currentTime || 0);
 }
 
 function escapeHtml(text) {
@@ -179,15 +188,35 @@ function loadTrack(data) {
 
     // 更新图片 (Cover 和 Background)
     const imgUrl = data.cover || "";
-    coverImgEl.src = imgUrl;
-    coverImgEl.style.display = 'block'; // 重置可能的隐藏状态
+    if (imgUrl) {
+        coverImgEl.innerHTML = `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
+    } else {
+        coverImgEl.innerHTML = '<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"></path></svg></div>';
+    }
+    coverImgEl.style.display = 'flex';
 
     // 设置背景：使用同一张图片，CSS中已设置为 contain 和 blur
     bgLayerEl.style.backgroundImage = imgUrl ? `url('${imgUrl}')` : 'none';
 
-    // 加载音频
-    audio.src = data.src;
-    audio.load();
+    // 使用全局 audioManager 加载曲目（仅在曲目变化时重新加载）
+    if (window.audioManager) {
+        // 检查 localStorage 中是否已有该曲目（说明其他页面已加载过）
+        const savedTrackJson = localStorage.getItem('currentTrack');
+        const savedTrack = savedTrackJson ? JSON.parse(savedTrackJson) : null;
+        const isAlreadyLoaded = savedTrack && savedTrack.id === data.id;
+
+        if (!isAlreadyLoaded) {
+            // 不同曲目：正常加载（会重置播放位置）
+            window.audioManager.loadTrack(data);
+        } else {
+            // 同一首曲目：调用 restore() 从上次位置自动续播
+            window.audioManager.currentTrack = data;
+            window.audioManager.restore();
+        }
+    } else {
+        audio.src = data.src;
+        audio.load();
+    }
 
     // 解析并渲染歌词
     renderLyrics(parseLyrics(data.lyrics));
@@ -195,52 +224,16 @@ function loadTrack(data) {
     // 重置状态
     toggleLyrics(false);
     seekSlider.value = 0;
-    seekSlider.disabled = true;
     currentTimeEl.textContent = "0:00";
     totalDurationEl.textContent = "0:00";
     updateProgressFill('seekProgress', 0);
-    updateProgressFill('volProgress', volSlider.value);
 
-    // 如果之前是播放状态，尝试继续播放新歌曲
-    if (isPlaying) {
-        playAudio();
-    }
-}
-
-// ============ 异步加载文件数据 ============
-async function loadFile() {
-    try {
-        // 这里假设有一个 API 端点返回 JSON 数据
-        // 实际使用时，请替换为你真实的 JSON 文件路径或 API 地址
-        // 例如: '/data/current-song.json' 或 '/api/music-info'
-        const response = await fetch('/api/music-info');
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        // 数据结构映射:
-        // Go Struct: Name, Author, AudioURI, CoverURI, Lyrics
-        // JS Object expects: name, artist, src, cover, lyrics
-
-        return {
-            name: data.Name || data.name,
-            artist: data.Author || data.artist,
-            src: data.AudioURI || data.src,
-            cover: data.CoverURI || data.cover,
-            lyrics: data.Lyrics || data.lyrics
-        };
-
-    } catch (error) {
-        return {
-            name: "error",
-            artist:"error",
-            src: "",
-            cover: "",
-            lyrics: ""
-        };
+    // 同步当前播放状态到 UI
+    syncPlayState();
+    if (audio.duration && !isNaN(audio.duration)) {
+        seekSlider.disabled = false;
+        totalDurationEl.textContent = formatTime(audio.duration);
+        updateProgress();
     }
 }
 
@@ -260,6 +253,21 @@ function updateProgressFill(elementId, percent) {
     fillEl.style.width = `${percent}%`;
 }
 
+// 同步 audio 实际播放状态到 UI
+function syncPlayState() {
+    if (!audio.paused && audio.src) {
+        isPlaying = true;
+        playIcon.style.display = 'none';
+        pauseIcon.style.display = 'block';
+        playBtn.classList.add('btn-pause');
+    } else {
+        isPlaying = false;
+        playIcon.style.display = 'block';
+        pauseIcon.style.display = 'none';
+        playBtn.classList.remove('btn-pause');
+    }
+}
+
 function playAudio() {
     const playPromise = audio.play();
     if (playPromise !== undefined) {
@@ -267,13 +275,16 @@ function playAudio() {
             isPlaying = true;
             playIcon.style.display = 'none';
             pauseIcon.style.display = 'block';
-            pauseIcon.parentElement.classList.add('btn-pause');
+            playBtn.classList.add('btn-pause');
         }).catch(error => {
-            console.error("Playback failed:", error);
+            // AbortError: play() 被新的 load() 或 pause() 中断，通常无害
+            if (error.name !== 'AbortError') {
+                console.error("Playback failed:", error);
+            }
             isPlaying = false;
             playIcon.style.display = 'block';
             pauseIcon.style.display = 'none';
-            alert("音频加载失败，请检查网络或控制台。");
+            playBtn.classList.remove('btn-pause');
         });
     }
 }
@@ -286,7 +297,7 @@ function togglePlay() {
         isPlaying = false;
         playIcon.style.display = 'block';
         pauseIcon.style.display = 'none';
-        pauseIcon.parentElement.classList.remove('btn-pause');
+        playBtn.classList.remove('btn-pause');
     }
 }
 
@@ -310,6 +321,10 @@ function setProgress() {
 function setVolume() {
     audio.volume = volSlider.value / 100;
     updateProgressFill('volProgress', volSlider.value);
+    // 保存到全局管理器
+    if (window.audioManager) {
+        localStorage.setItem('volume', audio.volume.toString());
+    }
 }
 
 // Event Listeners
@@ -321,12 +336,13 @@ audio.addEventListener('loadedmetadata', () => {
     totalDurationEl.textContent = formatTime(audio.duration);
     if (!audio.paused) seekSlider.disabled = false;
 });
+audio.addEventListener('play', syncPlayState);
+audio.addEventListener('pause', syncPlayState);
 audio.addEventListener('error', (e) => {
     console.error("Audio Load Error:", e);
     trackNameEl.textContent = "Load Error";
     seekSlider.disabled = true;
 });
-// 单曲播放结束后，不再自动切歌，可以重置或停止
 audio.addEventListener('ended', () => {
     isPlaying = false;
     playIcon.style.display = 'block';
@@ -364,7 +380,42 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-document.addEventListener("DOMContentLoaded", async function() {
-    const data = await loadFile(); // 等待异步请求完成
-    loadTrack(data);               // 传入解析后的数据对象
+// ============ 初始化：从 URL 取 id，调 Go 绑定加载曲目 ============
+document.addEventListener("DOMContentLoaded", async function () {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+
+    // 应用保存的音量
+    try {
+        const settings = await LoadSettings();
+        const savedVolume = localStorage.getItem('volume');
+        if (savedVolume !== null) {
+            audio.volume = parseFloat(savedVolume);
+            volSlider.value = parseFloat(savedVolume) * 100;
+        } else {
+            audio.volume = (settings.volume || 70) / 100;
+            volSlider.value = settings.volume || 70;
+        }
+        updateProgressFill('volProgress', volSlider.value);
+    } catch (e) {
+        console.warn('Failed to load settings:', e);
+    }
+
+    if (!id) {
+        trackNameEl.textContent = "未指定曲目";
+        artistNameEl.textContent = "";
+        return;
+    }
+
+    try {
+        const track = await GetTrack(Number(id));
+        // loadTrack 内部会判断是否同一曲目：
+        // - 同一首：调用 restore() 从上次位置自动续播
+        // - 不同曲目：重新加载（重置播放位置）
+        loadTrack(track);
+    } catch (err) {
+        console.error("加载曲目失败:", err);
+        trackNameEl.textContent = "加载失败";
+        artistNameEl.textContent = String(err);
+    }
 });

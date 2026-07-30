@@ -384,3 +384,156 @@ func (self *Database) Close() {
 		self.database.Close()
 	}
 }
+
+// ============ Tracks 表专用方法 ============
+
+// TrackRecord 表示 tracks 表的一行记录
+type TrackRecord struct {
+	ID         int64
+	Title      string
+	Artist     string
+	FilePath   string
+	CoverData  []byte
+	CoverMIME  string
+	Lyrics     string
+	Format     string
+	ImportedAt int64
+}
+
+// EnsureTracksTable 创建 tracks 表（如果不存在）
+func (self Database) EnsureTracksTable() error {
+	sqlCommand := `CREATE TABLE IF NOT EXISTS "tracks" (
+		"id"         INTEGER PRIMARY KEY AUTOINCREMENT,
+		"title"      TEXT NOT NULL,
+		"artist"     TEXT,
+		"file_path"  TEXT NOT NULL,
+		"cover_data" BLOB,
+		"cover_mime" TEXT,
+		"lyrics"     TEXT,
+		"format"     TEXT,
+		"imported_at" INTEGER
+	);`
+	_, err := self.database.Exec(sqlCommand)
+	return err
+}
+
+// InsertTrack 插入一条曲目记录，返回新记录 ID
+func (self Database) InsertTrack(rec TrackRecord) (int64, error) {
+	result, err := self.database.Exec(
+		`INSERT INTO tracks (title, artist, file_path, cover_data, cover_mime, lyrics, format, imported_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		rec.Title, rec.Artist, rec.FilePath, rec.CoverData, rec.CoverMIME,
+		rec.Lyrics, rec.Format, rec.ImportedAt,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("insert track failed: %w", err)
+	}
+	return result.LastInsertId()
+}
+
+// GetAllTrackRecords 返回所有曲目（含 lyrics，列表展示和歌词编辑回显用）
+func (self Database) GetAllTrackRecords() ([]TrackRecord, error) {
+	rows, err := self.database.Query(
+		`SELECT id, title, artist, file_path, cover_mime, lyrics, format, imported_at FROM tracks ORDER BY imported_at DESC`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query tracks failed: %w", err)
+	}
+	defer rows.Close()
+
+	var results []TrackRecord
+	for rows.Next() {
+		var r TrackRecord
+		var coverMIME, lyrics, format sql.NullString
+		if err := rows.Scan(&r.ID, &r.Title, &r.Artist, &r.FilePath, &coverMIME, &lyrics, &format, &r.ImportedAt); err != nil {
+			return nil, fmt.Errorf("scan track failed: %w", err)
+		}
+		r.CoverMIME = coverMIME.String
+		r.Lyrics = lyrics.String
+		r.Format = format.String
+		results = append(results, r)
+	}
+	return results, nil
+}
+
+// GetTrackByID 返回单首曲目的完整记录（含歌词，播放器页用）
+func (self Database) GetTrackByID(id int64) (*TrackRecord, error) {
+	var r TrackRecord
+	var artist, coverMIME, lyrics, format sql.NullString
+	err := self.database.QueryRow(
+		`SELECT id, title, artist, file_path, cover_mime, lyrics, format, imported_at
+		 FROM tracks WHERE id = ?`, id,
+	).Scan(&r.ID, &r.Title, &artist, &r.FilePath, &coverMIME, &lyrics, &format, &r.ImportedAt)
+	if err != nil {
+		return nil, fmt.Errorf("query track %d failed: %w", id, err)
+	}
+	r.Artist = artist.String
+	r.CoverMIME = coverMIME.String
+	r.Lyrics = lyrics.String
+	r.Format = format.String
+	return &r, nil
+}
+
+// GetTrackFilePath 仅返回曲目磁盘路径（音频流 Handler 用）
+func (self Database) GetTrackFilePath(id string) (string, error) {
+	var filePath string
+	err := self.database.QueryRow(`SELECT file_path FROM tracks WHERE id = ?`, id).Scan(&filePath)
+	if err != nil {
+		return "", err
+	}
+	return filePath, nil
+}
+
+// GetTrackCover 返回封面二进制和 MIME 类型（封面流 Handler 用）
+func (self Database) GetTrackCover(id string) ([]byte, string, error) {
+	var data []byte
+	var mime sql.NullString
+	err := self.database.QueryRow(`SELECT cover_data, cover_mime FROM tracks WHERE id = ?`, id).Scan(&data, &mime)
+	if err != nil {
+		return nil, "", err
+	}
+	return data, mime.String, nil
+}
+
+// HasCover 返回该曲目是否有封面
+func (self Database) HasCover(id int64) (bool, error) {
+	var data []byte
+	err := self.database.QueryRow(`SELECT cover_data FROM tracks WHERE id = ?`, id).Scan(&data)
+	if err != nil {
+		return false, err
+	}
+	return len(data) > 0, nil
+}
+
+// UpdateTrack 更新曲目基本信息（标题、艺术家、歌词）
+func (self Database) UpdateTrack(id int64, title, artist, lyrics string) error {
+	_, err := self.database.Exec(
+		`UPDATE tracks SET title = ?, artist = ?, lyrics = ? WHERE id = ?`,
+		title, artist, lyrics, id,
+	)
+	if err != nil {
+		return fmt.Errorf("update track %d failed: %w", id, err)
+	}
+	return nil
+}
+
+// UpdateTrackCover 更新曲目封面
+func (self Database) UpdateTrackCover(id int64, coverData []byte, coverMIME string) error {
+	_, err := self.database.Exec(
+		`UPDATE tracks SET cover_data = ?, cover_mime = ? WHERE id = ?`,
+		coverData, coverMIME, id,
+	)
+	if err != nil {
+		return fmt.Errorf("update track cover %d failed: %w", id, err)
+	}
+	return nil
+}
+
+// DeleteTrack 删除一条曲目记录
+func (self Database) DeleteTrack(id int64) error {
+	_, err := self.database.Exec(`DELETE FROM tracks WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("delete track %d failed: %w", id, err)
+	}
+	return nil
+}

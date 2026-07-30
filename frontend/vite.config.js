@@ -7,6 +7,8 @@ export default defineConfig({
             input: {
                 main: path.resolve(__dirname, 'index.html'),
                 libs: path.resolve(__dirname, './src/html/libraries.html'),
+                player: path.resolve(__dirname, './src/html/player.html'),
+                settings: path.resolve(__dirname, './src/html/settings.html'),
             },
         },
     },

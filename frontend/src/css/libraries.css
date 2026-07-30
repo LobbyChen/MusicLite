@@ -1,12 +1,34 @@
+/* Dark theme (default) */
 :root {
     --bg-color: #121212;
     --card-bg: #1e1e1e;
     --text-primary: #ffffff;
     --text-secondary: #b3b3b3;
     --accent-color: #1db954;
-    /* Spotify-like green or generic blue */
     --border-color: #333;
     --hover-color: #2a2a2a;
+}
+
+/* Light theme */
+[data-theme="light"] {
+    --bg-color: #fafafa;
+    --card-bg: #ffffff;
+    --text-primary: #121212;
+    --text-secondary: #666666;
+    --accent-color: #1db954;
+    --border-color: #e0e0e0;
+    --hover-color: #f5f5f5;
+}
+
+/* Accent theme (green) */
+[data-theme="accent"] {
+    --bg-color: #0a1f0a;
+    --card-bg: #142814;
+    --text-primary: #e0ffe0;
+    --text-secondary: #a0d0a0;
+    --accent-color: #2ecc71;
+    --border-color: #1a3a1a;
+    --hover-color: #1a3a1a;
 }
 
 * {
@@ -23,6 +45,81 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    padding-top: 36px;
+}
+body::-webkit-scrollbar {
+    display: none;
+}
+
+/* ============ 自定义标题栏（无边框窗口） ============ */
+.titlebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 36px;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 0 14px;
+    --wails-draggable: drag;
+    user-select: none;
+    z-index: 1000;
+}
+
+.titlebar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.titlebar-icon {
+    width: 16px;
+    height: 16px;
+    fill: var(--accent-color);
+}
+
+.titlebar-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+}
+
+.titlebar-controls {
+    display: flex;
+    gap: 2px;
+    --wails-draggable: no-drag;
+}
+
+.titlebar-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+}
+
+.titlebar-btn:hover {
+    background: var(--hover-color);
+    color: var(--text-primary);
+}
+
+.titlebar-btn svg {
+    fill: currentColor;
+}
+
+.titlebar-close:hover {
+    background: #e74c3c;
+    color: white;
 }
 
 /* Header */
@@ -36,6 +133,11 @@ header {
 h1 {
     font-size: 2.5rem;
     font-weight: 700;
+}
+
+.header-actions {
+    display: flex;
+    gap: 12px;
 }
 
 .btn-open {
@@ -61,6 +163,9 @@ main {
     padding: 0 40px 40px 40px;
     overflow-y: auto;
 }
+main::-webkit-scrollbar {
+    display: none;
+}
 
 h2 {
     margin-bottom: 20px;
@@ -79,16 +184,36 @@ h2 {
     background-color: var(--card-bg);
     padding: 16px;
     border-radius: 8px;
-    transition: background-color 0.3s ease;
     cursor: pointer;
     display: flex;
     flex-direction: column;
     gap: 10px;
     position: relative;
+    /* 入场动画 + hover 过渡 */
+    animation: cardFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+    transition: background-color 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
 }
 
 .media-card:hover {
     background-color: var(--hover-color);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+}
+
+.media-card:hover .card-actions {
+    opacity: 1;
+}
+
+/* 卡片逐个入场动画 */
+@keyframes cardFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .card-icon {
@@ -109,6 +234,15 @@ h2 {
     fill: currentColor;
 }
 
+.card-cover {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    background-color: #282828;
+}
+
 .card-title {
     font-weight: 600;
     font-size: 0.95rem;
@@ -124,39 +258,86 @@ h2 {
     color: var(--text-secondary);
 }
 
-/* Drag Overlay (Similar to Image 2) */
-#drag-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.85);
-    z-index: 100;
-    display: none;
-    /* Hidden by default */
-    flex-direction: column;
+/* Card Actions (hover buttons) */
+.card-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.card-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    cursor: pointer;
+    display: flex;
     align-items: center;
     justify-content: center;
-    border: 4px dashed var(--text-secondary);
-    margin: 10px;
-    border-radius: 10px;
+    transition: background 0.2s;
 }
 
-#drag-overlay.active {
+.card-btn:hover {
+    background: rgba(0, 0, 0, 0.9);
+}
+
+.card-btn svg {
+    fill: currentColor;
+}
+
+.card-btn.delete-btn:hover {
+    background: #e74c3c;
+}
+
+/* Context Menu */
+.context-menu {
+    position: fixed;
+    z-index: 500;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 4px 0;
+    min-width: 160px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    font-size: 0.9rem;
+}
+
+.context-item {
+    padding: 8px 16px;
+    cursor: pointer;
     display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.15s;
 }
 
-.drag-icon {
-    width: 80px;
-    height: 80px;
-    margin-bottom: 20px;
-    fill: var(--text-primary);
+.context-item:hover {
+    background: var(--hover-color);
 }
 
-.drag-text {
-    font-size: 1.5rem;
-    font-weight: 500;
+.context-item.danger {
+    color: #e74c3c;
+}
+
+.context-item.danger:hover {
+    background: rgba(231, 76, 60, 0.15);
+}
+
+.context-icon {
+    width: 20px;
+    text-align: center;
+}
+
+.context-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 4px 0;
 }
 
 /* Modal Styles */
@@ -171,6 +352,13 @@ h2 {
     justify-content: center;
     align-items: center;
     z-index: 200;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.modal-backdrop.active {
+    display: flex;
+    opacity: 1;
 }
 
 .modal {
@@ -180,11 +368,91 @@ h2 {
     width: 400px;
     text-align: center;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    /* 模态框入场动画 */
+    animation: modalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.modal-large {
+    width: 520px;
+    max-height: 85vh;
+    overflow-y: auto;
+    text-align: left;
+}
+
+/* 模态框入场/退场动画 */
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.92) translateY(10px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .modal h3 {
     margin-bottom: 20px;
     font-size: 1.2rem;
+    text-align: center;
+}
+
+.modal p {
+    color: var(--text-secondary);
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 140px;
+    font-family: "Consolas", "Monaco", monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.form-file {
+    width: 100%;
+    padding: 8px;
+    background: var(--bg-color);
+    border: 1px dashed var(--border-color);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.form-file::-webkit-file-upload-button {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 8px;
 }
 
 .modal-buttons {
@@ -200,7 +468,11 @@ h2 {
     border-radius: 20px;
     cursor: pointer;
     font-weight: 600;
-    transition: transform 0.1s;
+    transition: transform 0.12s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
 }
 
 .btn:active {
@@ -208,8 +480,13 @@ h2 {
 }
 
 .btn-primary {
-    background-color: var(--text-primary);
-    color: var(--bg-color);
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #1ed760;
+    box-shadow: 0 4px 14px rgba(29, 185, 84, 0.4);
 }
 
 .btn-secondary {
@@ -218,18 +495,158 @@ h2 {
     color: var(--text-primary);
 }
 
+.btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.btn-danger {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+    box-shadow: 0 4px 14px rgba(231, 76, 60, 0.4);
+}
+
 .btn-cancel {
     background-color: #333;
     color: white;
 }
 
-/* Hidden File Input */
-#file-input,
-#lyrics-input {
-    display: none;
+.btn-settings {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s;
 }
 
-/* Empty State (Similar to Image 1 but for music) */
+.btn-settings:hover {
+    background-color: var(--hover-color);
+    color: var(--text-primary);
+}
+
+/* Mini Player */
+.mini-player {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 72px;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 100;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.mini-player-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.mini-cover {
+    width: 48px;
+    height: 48px;
+    border-radius: 4px;
+    object-fit: cover;
+    background: #282828;
+    overflow: hidden;
+}
+
+/* 迷你播放器中的默认封面（覆盖 .card-icon 的默认样式以适配小尺寸容器） */
+.mini-cover .card-icon {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    margin-bottom: 0;
+    border-radius: inherit;
+}
+
+.mini-cover .card-icon svg {
+    width: 60%;
+    height: 60%;
+}
+
+.mini-info {
+    min-width: 0;
+}
+
+.mini-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mini-artist {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mini-player-center {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mini-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s, background-color 0.2s;
+}
+
+.mini-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.mini-btn svg {
+    fill: currentColor;
+}
+
+.mini-play-btn {
+    width: 40px;
+    height: 40px;
+    background: var(--accent-color);
+    color: white;
+}
+
+.mini-play-btn:hover {
+    background: #1ed760;
+    color: white;
+}
+
+.mini-player-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Empty State */
 .empty-state {
     display: none;
     flex-direction: column;
@@ -239,10 +656,19 @@ h2 {
     color: var(--text-secondary);
 }
 
+.empty-state svg {
+    margin-bottom: 20px;
+    color: var(--border-color);
+}
+
 .empty-state h2 {
-    font-size: 3rem;
+    font-size: 2rem;
     color: var(--text-primary);
-    margin-bottom: 10px;
+    margin-bottom: 8px;
+}
+
+.empty-state p {
+    font-size: 0.95rem;
 }
 
 .empty-state.display {
@@ -252,4 +678,112 @@ h2 {
     justify-content: center;
     height: 60vh;
     color: var(--text-secondary);
+    animation: fadeIn 0.4s ease both;
+}
+
+/* 空状态淡入 */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ============ 确认对话框 ============ */
+.modal-confirm {
+    width: 360px;
+    text-align: center;
+    padding: 36px 30px 28px;
+}
+
+.confirm-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 16px;
+    background: rgba(231, 76, 60, 0.12);
+    color: #e74c3c;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: confirmIconPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes confirmIconPop {
+    0%   { opacity: 0; transform: scale(0.5); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.modal-confirm h3 {
+    margin-bottom: 8px;
+    font-size: 1.15rem;
+}
+
+.modal-confirm p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 4px;
+}
+
+/* ============ Toast 通知 ============ */
+.toast-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    min-width: 240px;
+    max-width: 360px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    pointer-events: auto;
+    animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.toast.toast-out {
+    animation: toastOut 0.25s ease forwards;
+}
+
+.toast-success { border-left-color: var(--accent-color); }
+.toast-error   { border-left-color: #e74c3c; }
+.toast-warning { border-left-color: #f39c12; }
+.toast-info    { border-left-color: #3498db; }
+
+.toast-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.toast-success .toast-icon { color: var(--accent-color); }
+.toast-error   .toast-icon { color: #e74c3c; }
+.toast-warning .toast-icon { color: #f39c12; }
+.toast-info    .toast-icon { color: #3498db; }
+
+.toast-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateX(100%); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastOut {
+    from { opacity: 1; transform: translateX(0); }
+    to   { opacity: 0; transform: translateX(100%); }
 }

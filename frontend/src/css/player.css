@@ -1,3 +1,4 @@
+/* Dark theme (default) */
 :root {
     --bg-color: #121212;
     --surface-color: #1e1e1e;
@@ -6,6 +7,26 @@
     --accent-color: #1db954;
     --bar-bg: #404040;
     --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Light theme */
+[data-theme="light"] {
+    --bg-color: #fafafa;
+    --surface-color: #ffffff;
+    --text-primary: #121212;
+    --text-secondary: #666666;
+    --accent-color: #1db954;
+    --bar-bg: #e0e0e0;
+}
+
+/* Accent theme (green) */
+[data-theme="accent"] {
+    --bg-color: #0a1f0a;
+    --surface-color: #142814;
+    --text-primary: #e0ffe0;
+    --text-secondary: #a0d0a0;
+    --accent-color: #2ecc71;
+    --bar-bg: #1a3a1a;
 }
 
 * {
@@ -24,6 +45,78 @@ body {
     justify-content: center;
     align-items: center;
     overflow: hidden;
+    padding-top: 36px;
+}
+
+/* ============ 自定义标题栏（无边框窗口） ============ */
+.titlebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 36px;
+    background: var(--surface-color);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 0 14px;
+    --wails-draggable: drag;
+    user-select: none;
+    z-index: 1000;
+}
+
+.titlebar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.titlebar-icon {
+    width: 16px;
+    height: 16px;
+    fill: var(--accent-color);
+}
+
+.titlebar-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+}
+
+.titlebar-controls {
+    display: flex;
+    gap: 2px;
+    --wails-draggable: no-drag;
+}
+
+.titlebar-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+}
+
+.titlebar-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.titlebar-btn svg {
+    fill: currentColor;
+}
+
+.titlebar-close:hover {
+    background: #e74c3c;
+    color: white;
 }
 
 
@@ -33,15 +126,12 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-size: contain;
-    /* 修改为 contain (适合) */
+    background-size:cover;
     background-repeat: no-repeat;
     background-position: center;
-    opacity: 0.3;
-    /* 稍微提高一点不透明度，因为contain会有留黑区域 */
-    filter: blur(60px);
+    opacity: 0.75;
+    filter: blur(5px);
     z-index: -1;
-    transition: background-image 0.5s ease;
 }
 
 .player-container {
@@ -68,6 +158,24 @@ body {
     height: 100%;
     object-fit: cover;
     display: block;
+}
+
+/* 默认封面（无 cover 时显示的音符图标） */
+.album-art .card-icon {
+    width: 100%;
+    height: 100%;
+    background-color: #282828;
+    border-radius: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+}
+
+.album-art .card-icon svg {
+    width: 50%;
+    height: 50%;
+    fill: currentColor;
 }
 
 .info-and-controls {
@@ -110,11 +218,10 @@ body {
     background: transparent;
     display: flex;
     align-items: center;
-    padding: 0 14px;
+    padding: 0 40px;
     cursor: pointer;
     transition: background 0.2s ease, border-color 0.2s ease, transform 0.1s;
     gap: 10px;
-    backdrop-filter: blur(10px);
     border-radius: 4px;
 }
 
@@ -202,8 +309,11 @@ body {
 
 .lyrics-wrapper {
     height: 130px;
-    overflow: hidden;
+    overflow: auto;
     position: relative;
+}
+.lyrics-wrapper::-webkit-scrollbar {
+    display: none;
 }
 
 .lyrics-content {
@@ -420,7 +530,7 @@ input[type=range]:active::-webkit-slider-thumb {
 }
 
 .btn-back {
-    width40px;
+    width: 40px;
     height: 40px;
     margin-left: 15px;
     border-radius: 50%;
