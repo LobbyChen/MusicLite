@@ -233,6 +233,24 @@ func (a *App) GetAllTracks() ([]format.MscData, error) {
 	return result, nil
 }
 
+// GetNextTracks 返回下一曲目（前端用）
+func (a *App) GetNextTracks(currTrackId int64) format.MscData {
+	// 先获取一次现在的列表
+	currMscs, _ := a.GetAllTracks()
+	// 找到现在的
+	for index, d := range currMscs {
+		// 边界条件-最后一个
+		if d.ID == currTrackId {
+			if index == len(currMscs)-1 {
+				return currMscs[0]
+			} else {
+				return currMscs[index+1]
+			}
+		}
+	}
+	return format.MscData{}
+}
+
 // GetTrack 返回单首曲目完整数据（播放器页用）
 func (a *App) GetTrack(id int64) (format.MscData, error) {
 	rec, err := a.database.GetTrackByID(id)

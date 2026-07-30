@@ -1286,6 +1286,25 @@ body.player-active > .mini-player {
     background: var(--accent-color);
 }
 
+
+.player-overlay .btn-next {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    opacity: 0.6;
+    transition: opacity 0.2s, color 0.2s, transform 0.1s;
+}
+.player-overlay .btn-next:hover {
+    opacity: 1;
+}
+.player-overlay .btn-next:active {
+    transform: scale(0.92);
+}
+.player-overlay .btn-next svg {
+    width: 20px;
+    height: 20px;
+}
+
 .player-overlay .btn-back {
     width: 40px;
     height: 40px;

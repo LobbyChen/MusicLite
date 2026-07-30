@@ -152,10 +152,16 @@ function renderTracks(tracks) {
             </div>
         `;
 
-        // 点击卡片主体 → 打开播放器视图（SPA，不跳转页面，audio 保持连续）
+        // 点击卡片主体 → 打开播放器视图
         card.addEventListener("click", (e) => {
             if (e.target.closest('.card-actions')) return; // 点击按钮不打开
+            window.audioManager.loadTrack(track);
+            if (window.audioManager) {
+                // LoadTrack开始播放
+                window.audioManager.play();
+            }
             openPlayer(track.id);
+            
         });
 
         // 编辑按钮

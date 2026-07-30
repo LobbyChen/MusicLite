@@ -10,6 +10,8 @@ export function GetAllTracks():Promise<Array<format.MscData>>;
 
 export function GetDatabase():Promise<storage.Database>;
 
+export function GetNextTracks(arg1:number):Promise<format.MscData>;
+
 export function GetTrack(arg1:number):Promise<format.MscData>;
 
 export function ImportFiles():Promise<number>;

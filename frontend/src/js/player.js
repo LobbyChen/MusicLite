@@ -1,6 +1,6 @@
 // player.js — 播放器视图（SPA overlay 模块）
 // 与库视图共享同一个 window.audioManager，切换视图时 audio 不销毁，播放保持连续。
-import { GetTrack, LoadSettings } from '../../wailsjs/go/main/App.js';
+import { GetTrack, LoadSettings ,GetNextTracks} from '../../wailsjs/go/main/App.js';
 
 // ============ DOM 元素（来自 libraries.html 的 player-overlay） ============
 const overlay = document.getElementById('player-overlay');
@@ -29,6 +29,7 @@ const backBtn = document.getElementById('backBtn');
 // 模式切换按钮
 const expandFullscreenBtn = document.getElementById('expandFullscreenBtn');
 const collapseCardBtn = document.getElementById('collapseCardBtn');
+const nextBtn = document.getElementById('nextBtn');
 
 // 全屏歌词 DOM
 const fullscreenLyricsEl = document.getElementById('fullscreenLyrics');
@@ -407,7 +408,7 @@ function loadTrack(data) {
 playBtn.addEventListener('click', togglePlay);
 loopBtn.addEventListener('click', toggleLoop);
 backBtn.addEventListener('click', closePlayer);
-
+nextBtn.addEventListener('click', playNextTrack);
 audio.addEventListener('timeupdate', updateProgress);
 audio.addEventListener('loadedmetadata', () => {
     totalDurationEl.textContent = formatTime(audio.duration);
@@ -423,12 +424,12 @@ audio.addEventListener('error', (e) => {
     seekSlider.disabled = true;
 });
 audio.addEventListener('ended', () => {
-    // 单曲循环由 audioManager 处理，这里仅在非循环时更新 UI
     if (!window.audioManager.getLoopOne()) {
         playIcon.style.display = 'block';
         pauseIcon.style.display = 'none';
         seekSlider.value = 0;
         updateProgressFill('seekProgress', 0);
+        playNextTrack();
     }
 });
 
@@ -522,7 +523,26 @@ async function openPlayer(trackId) {
         return false;
     }
 }
+async function playNextTrack() {
+    if (!currentTrackData || !currentTrackData.id) {
+        console.warn("No current track to determine next track");
+        return;
+    }
 
+    try {
+        // 调用后端获取下一首曲目
+        const nextTrack = await GetNextTracks(currentTrackData.id);
+        // 检查是否返回了有效数据 (如果返回列表为空或出错，nextTrack 可能是空对象)
+        if (nextTrack && nextTrack.id) {
+            loadTrack(nextTrack);
+            playAudio(); // 自动播放下一首
+        } else {
+            console.log("Reached end of playlist or no next track found.");
+        }
+    } catch (err) {
+        console.error("Failed to get next track:", err);
+    }
+}
 function closePlayer() {
     overlay.classList.remove('active');
     document.body.classList.remove('player-active');
