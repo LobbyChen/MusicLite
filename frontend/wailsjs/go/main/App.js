@@ -26,6 +26,10 @@ export function GetNextTracks(arg1) {
   return window['go']['main']['App']['GetNextTracks'](arg1);
 }
 
+export function GetPrevTracks(arg1) {
+  return window['go']['main']['App']['GetPrevTracks'](arg1);
+}
+
 export function GetRandomTrack(arg1) {
   return window['go']['main']['App']['GetRandomTrack'](arg1);
 }

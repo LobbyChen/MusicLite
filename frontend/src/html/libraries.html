@@ -176,7 +176,9 @@
     <!-- 拖放导入遮罩 -->
     <div id="drop-overlay" class="drop-overlay">
         <div class="drop-overlay-inner">
-            <svg viewBox="0 0 24 24" width="64" height="64"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            <svg viewBox="0 0 24 24" width="64" height="64">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+            </svg>
             <div class="drop-overlay-text">松开鼠标导入音乐文件</div>
             <div class="drop-overlay-hint">支持 MP3 / OGG / FLAC / WAV / APE</div>
         </div>
@@ -231,6 +233,11 @@
                             </svg>
                             <svg viewBox="0 0 24 24" id="pauseIcon">
                                 <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                            </svg>
+                        </button>
+                        <button class="btn btn-next" id="prevBtn" title="上一曲">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M18 18L9.5 12L18 6V18zM8 6V18H6V6H8Z" />
                             </svg>
                         </button>
                         <button class="btn btn-next" id="nextBtn" title="下一曲">

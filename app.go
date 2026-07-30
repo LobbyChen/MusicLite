@@ -6,12 +6,12 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	goruntime "runtime"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -327,6 +327,22 @@ func (a *App) GetNextTracks(currTrackId int64) format.MscData {
 				return currMscs[0]
 			} else {
 				return currMscs[index+1]
+			}
+		}
+	}
+	return format.MscData{}
+}
+func (a *App) GetPrevTracks(currTrackId int64) format.MscData {
+	// 先获取一次现在的列表
+	currMscs, _ := a.GetAllTracks()
+	// 找到现在的
+	for index, d := range currMscs {
+		// 边界条件-最第一个
+		if d.ID == currTrackId {
+			if index == 0 {
+				return currMscs[len(currMscs)-1]
+			} else {
+				return currMscs[index-1]
 			}
 		}
 	}

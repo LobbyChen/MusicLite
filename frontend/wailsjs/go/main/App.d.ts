@@ -16,6 +16,8 @@ export function GetInstalledFonts():Promise<Array<string>>;
 
 export function GetNextTracks(arg1:number):Promise<format.MscData>;
 
+export function GetPrevTracks(arg1:number):Promise<format.MscData>;
+
 export function GetRandomTrack(arg1:number):Promise<format.MscData>;
 
 export function GetTrack(arg1:number):Promise<format.MscData>;
