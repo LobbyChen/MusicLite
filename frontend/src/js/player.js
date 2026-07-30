@@ -1,21 +1,13 @@
+// player.js — 播放器视图（SPA overlay 模块）
+// 与库视图共享同一个 window.audioManager，切换视图时 audio 不销毁，播放保持连续。
 import { GetTrack, LoadSettings } from '../../wailsjs/go/main/App.js';
 
-// ============ 标题栏窗口控制 ============
-document.getElementById('minimizeBtn')?.addEventListener('click', () => window.runtime?.WindowMinimise());
-document.getElementById('closeBtn')?.addEventListener('click', () => window.runtime?.Quit());
-
-// 全局变量用于存储当前歌曲数据
-let currentTrackData = null;
-let isPlaying = false;
-let isSeeking = false;
-let parsedLyrics = [];
-let currentLyricIndex = -1;
-let lyricsExpanded = false;
-
-const audioPlayerEl = document.getElementById('audioPlayer');
+// ============ DOM 元素（来自 libraries.html 的 player-overlay） ============
+const overlay = document.getElementById('player-overlay');
 const playBtn = document.getElementById('playBtn');
 const playIcon = document.getElementById('playIcon');
 const pauseIcon = document.getElementById('pauseIcon');
+const loopBtn = document.getElementById('loopBtn');
 const seekSlider = document.getElementById('seekSlider');
 const volSlider = document.getElementById('volSlider');
 const currentTimeEl = document.getElementById('currentTime');
@@ -34,8 +26,27 @@ const lyricsPreviewEl = document.getElementById('lyricsPreview');
 
 const backBtn = document.getElementById('backBtn');
 
-// 使用全局音频管理器（与库页面共享同一个音频实例）
-const audio = window.audioManager ? window.audioManager.audio : audioPlayerEl;
+// 模式切换按钮
+const expandFullscreenBtn = document.getElementById('expandFullscreenBtn');
+const collapseCardBtn = document.getElementById('collapseCardBtn');
+
+// 全屏歌词 DOM
+const fullscreenLyricsEl = document.getElementById('fullscreenLyrics');
+const fullscreenBgEl = document.getElementById('fullscreenBg');
+const fullscreenTrackNameEl = document.getElementById('fullscreenTrackName');
+const fullscreenArtistNameEl = document.getElementById('fullscreenArtistName');
+const fullscreenLyricsWrapperEl = document.getElementById('fullscreenLyricsWrapper');
+const fullscreenLyricsContentEl = document.getElementById('fullscreenLyricsContent');
+
+// 全局状态
+let currentTrackData = null;
+let isSeeking = false;
+let parsedLyrics = [];
+let currentLyricIndex = -1;
+let lyricsCardExpanded = false; // 卡片歌词展开状态
+
+// 使用全局音频管理器（与库页面共享同一个 audio 实例，跨视图持久）
+const audio = window.audioManager.audio;
 
 // ============ LRC 解析 ============
 function parseLyrics(lrcText) {
@@ -61,16 +72,27 @@ function parseLyrics(lrcText) {
     return lyrics.sort((a, b) => a.time - b.time);
 }
 
-// ============ 渲染歌词 ============
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ============ 渲染歌词（同时渲染小卡片和全屏） ============
 function renderLyrics(lyricsArray) {
     if (!lyricsArray || lyricsArray.length === 0) {
+        // 小卡片
         lyricsContentEl.innerHTML = '<div class="no-lyrics">暂无歌词</div>';
         lyricsPreviewEl.textContent = '暂无歌词';
         lyricsPreviewEl.classList.remove('active');
+        // 全屏
+        fullscreenLyricsContentEl.innerHTML = '<div class="no-lyrics">暂无歌词</div>';
         parsedLyrics = [];
         return;
     }
     parsedLyrics = lyricsArray;
+
+    // 构建歌词 HTML（小卡片用）
     let html = '<div class="lyric-line empty"></div>'.repeat(2);
     for (let i = 0; i < lyricsArray.length; i++) {
         const line = lyricsArray[i];
@@ -79,8 +101,28 @@ function renderLyrics(lyricsArray) {
     html += '<div class="lyric-line empty"></div>'.repeat(3);
     lyricsContentEl.innerHTML = html;
 
-    // 绑定歌词行点击
+    // 构建歌词 HTML（全屏用，更大的行高）
+    let fsHtml = '<div class="fs-lyric-line empty"></div>'.repeat(4);
+    for (let i = 0; i < lyricsArray.length; i++) {
+        const line = lyricsArray[i];
+        fsHtml += `<div class="fs-lyric-line" data-index="${i}" data-time="${line.time}">${escapeHtml(line.text)}</div>`;
+    }
+    fsHtml += '<div class="fs-lyric-line empty"></div>'.repeat(4);
+    fullscreenLyricsContentEl.innerHTML = fsHtml;
+
+    // 小卡片点击跳转
     lyricsContentEl.querySelectorAll('.lyric-line[data-time]').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const time = parseFloat(el.dataset.time);
+            if (!isNaN(time) && audio.duration) {
+                audio.currentTime = time;
+            }
+        });
+    });
+
+    // 全屏歌词点击跳转
+    fullscreenLyricsContentEl.querySelectorAll('.fs-lyric-line[data-time]').forEach(el => {
         el.addEventListener('click', (e) => {
             e.stopPropagation();
             const time = parseFloat(el.dataset.time);
@@ -92,12 +134,6 @@ function renderLyrics(lyricsArray) {
 
     currentLyricIndex = -1;
     updateLyricsScroll(audio.currentTime || 0);
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 // ============ 歌词滚动与高亮 ============
@@ -113,7 +149,7 @@ function updateLyricsScroll(currentTime) {
         }
     }
 
-    // 更新折叠条的预览文本
+    // 更新小卡片预览
     if (newIndex >= 0 && parsedLyrics[newIndex]) {
         lyricsPreviewEl.textContent = parsedLyrics[newIndex].text;
         lyricsPreviewEl.classList.add('active');
@@ -125,10 +161,8 @@ function updateLyricsScroll(currentTime) {
     if (newIndex === currentLyricIndex) return;
     currentLyricIndex = newIndex;
 
-    lyricsContentEl.querySelectorAll('.lyric-line.active').forEach(el => {
-        el.classList.remove('active');
-    });
-
+    // 小卡片高亮与滚动
+    lyricsContentEl.querySelectorAll('.lyric-line.active').forEach(el => el.classList.remove('active'));
     if (newIndex >= 0) {
         const activeEl = lyricsContentEl.querySelector(`.lyric-line[data-index="${newIndex}"]`);
         if (activeEl) {
@@ -139,104 +173,100 @@ function updateLyricsScroll(currentTime) {
             lyricsContentEl.style.transform = `translateY(${-targetOffset}px)`;
         }
     }
-}
 
-// ============ 歌词展开/收起 ============
-function toggleLyrics(forceState) {
-    const shouldExpand = typeof forceState === 'boolean' ? forceState : !lyricsExpanded;
-    lyricsExpanded = shouldExpand;
-    if (lyricsExpanded) {
-        lyricsAreaEl.classList.add('expanded');
-    } else {
-        lyricsAreaEl.classList.remove('expanded');
-    }
-}
-var toogleStatus = false;
-
-lyricsToggleEl.addEventListener('click', (e) => {
-    if (!toogleStatus) {
-        toogleStatus = true;
-        e.stopPropagation();
-        toggleLyrics(true);
-    } else {
-        toogleStatus = false;
-        toggleLyrics(false);
-    };
-});
-
-lyricsCardEl.addEventListener('click', (e) => {
-    if (e.target === lyricsCardEl || e.target === lyricsWrapperEl || e.target === lyricsContentEl) {
-        toogleStatus = false;
-        toggleLyrics(false);
-    }
-});
-
-document.addEventListener('click', (e) => {
-    if (lyricsExpanded && !lyricsAreaEl.contains(e.target)) {
-        toogleStatus = false;
-        toggleLyrics(false);
-    }
-});
-
-// ============ 核心功能：加载单个轨道 ============
-function loadTrack(data) {
-    currentTrackData = data;
-
-    // 更新文本信息
-    trackNameEl.textContent = data.name || "Unknown Title";
-    artistNameEl.textContent = data.artist || "Unknown Artist";
-
-    // 更新图片 (Cover 和 Background)
-    const imgUrl = data.cover || "";
-    if (imgUrl) {
-        coverImgEl.innerHTML = `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
-    } else {
-        coverImgEl.innerHTML = '<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"></path></svg></div>';
-    }
-    coverImgEl.style.display = 'flex';
-
-    // 设置背景：使用同一张图片，CSS中已设置为 contain 和 blur
-    bgLayerEl.style.backgroundImage = imgUrl ? `url('${imgUrl}')` : 'none';
-
-    // 使用全局 audioManager 加载曲目（仅在曲目变化时重新加载）
-    if (window.audioManager) {
-        // 检查 localStorage 中是否已有该曲目（说明其他页面已加载过）
-        const savedTrackJson = localStorage.getItem('currentTrack');
-        const savedTrack = savedTrackJson ? JSON.parse(savedTrackJson) : null;
-        const isAlreadyLoaded = savedTrack && savedTrack.id === data.id;
-
-        if (!isAlreadyLoaded) {
-            // 不同曲目：正常加载（会重置播放位置）
-            window.audioManager.loadTrack(data);
-        } else {
-            // 同一首曲目：调用 restore() 从上次位置自动续播
-            window.audioManager.currentTrack = data;
-            window.audioManager.restore();
+    // 全屏歌词高亮与滚动
+    fullscreenLyricsContentEl.querySelectorAll('.fs-lyric-line.active').forEach(el => el.classList.remove('active'));
+    if (newIndex >= 0) {
+        const fsActiveEl = fullscreenLyricsContentEl.querySelector(`.fs-lyric-line[data-index="${newIndex}"]`);
+        if (fsActiveEl) {
+            fsActiveEl.classList.add('active');
+            const lineHeight = 56;
+            const wrapperHeight = fullscreenLyricsWrapperEl.clientHeight;
+            const targetOffset = (newIndex + 4) * lineHeight - wrapperHeight / 2 + lineHeight / 2;
+            fullscreenLyricsContentEl.style.transform = `translateY(${-targetOffset}px)`;
         }
-    } else {
-        audio.src = data.src;
-        audio.load();
-    }
-
-    // 解析并渲染歌词
-    renderLyrics(parseLyrics(data.lyrics));
-
-    // 重置状态
-    toggleLyrics(false);
-    seekSlider.value = 0;
-    currentTimeEl.textContent = "0:00";
-    totalDurationEl.textContent = "0:00";
-    updateProgressFill('seekProgress', 0);
-
-    // 同步当前播放状态到 UI
-    syncPlayState();
-    if (audio.duration && !isNaN(audio.duration)) {
-        seekSlider.disabled = false;
-        totalDurationEl.textContent = formatTime(audio.duration);
-        updateProgress();
     }
 }
 
+// ============ 卡片歌词模式 ============
+function openLyricsCard() {
+    if (!currentTrackData) return;
+    lyricsCardExpanded = true;
+    lyricsAreaEl.classList.add('expanded');
+    // 同步一次滚动位置
+    if (parsedLyrics.length > 0) {
+        currentLyricIndex = -1;
+        updateLyricsScroll(audio.currentTime || 0);
+    }
+}
+
+function closeLyricsCard() {
+    lyricsCardExpanded = false;
+    lyricsAreaEl.classList.remove('expanded');
+}
+
+function toggleLyricsCard() {
+    if (lyricsCardExpanded) {
+        closeLyricsCard();
+    } else {
+        openLyricsCard();
+    }
+}
+
+// ============ 全屏歌词模式 ============
+function openFullscreenLyrics() {
+    if (!currentTrackData) return;
+    // 切换到全屏前收起卡片
+    closeLyricsCard();
+    fullscreenTrackNameEl.textContent = currentTrackData.name || '未知';
+    fullscreenArtistNameEl.textContent = currentTrackData.artist || '--';
+    fullscreenBgEl.style.backgroundImage = bgLayerEl.style.backgroundImage;
+    fullscreenLyricsEl.classList.add('active');
+    // 立即同步一次滚动位置
+    if (parsedLyrics.length > 0) {
+        currentLyricIndex = -1;
+        updateLyricsScroll(audio.currentTime || 0);
+    }
+}
+
+function closeFullscreenLyrics() {
+    fullscreenLyricsEl.classList.remove('active');
+}
+
+// 从全屏切回卡片
+function switchFullscreenToCard() {
+    closeFullscreenLyrics();
+    openLyricsCard();
+}
+
+// 点击歌词预览区域 → toggle 全屏歌词展开/收起
+lyricsToggleEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleLyricsCard();
+});
+
+// 卡片歌词中的"全屏"按钮 → 切换到全屏歌词
+expandFullscreenBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openFullscreenLyrics();
+});
+
+// 全屏歌词中的"卡片"按钮 → 切换回卡片歌词
+collapseCardBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    switchFullscreenToCard();
+});
+
+// 点击全屏歌词任意处或按 Esc 退出（回到收起状态）
+fullscreenLyricsEl.addEventListener('click', (e) => {
+    // 点击歌词行本身不退出（让跳转逻辑生效）
+    if (e.target.closest('.fs-lyric-line[data-time]')) return;
+    // 点击切换按钮不退出
+    if (e.target.closest('#collapseCardBtn')) return;
+    closeFullscreenLyrics();
+});
+
+// ============ 进度与音量工具函数 ============
 function formatTime(seconds) {
     if (isNaN(seconds)) return "0:00";
     const mins = Math.floor(seconds / 60);
@@ -256,15 +286,22 @@ function updateProgressFill(elementId, percent) {
 // 同步 audio 实际播放状态到 UI
 function syncPlayState() {
     if (!audio.paused && audio.src) {
-        isPlaying = true;
         playIcon.style.display = 'none';
         pauseIcon.style.display = 'block';
         playBtn.classList.add('btn-pause');
     } else {
-        isPlaying = false;
         playIcon.style.display = 'block';
         pauseIcon.style.display = 'none';
         playBtn.classList.remove('btn-pause');
+    }
+}
+
+// 同步循环按钮状态
+function syncLoopState() {
+    if (window.audioManager.getLoopOne()) {
+        loopBtn.classList.add('active');
+    } else {
+        loopBtn.classList.remove('active');
     }
 }
 
@@ -272,19 +309,12 @@ function playAudio() {
     const playPromise = audio.play();
     if (playPromise !== undefined) {
         playPromise.then(_ => {
-            isPlaying = true;
-            playIcon.style.display = 'none';
-            pauseIcon.style.display = 'block';
-            playBtn.classList.add('btn-pause');
+            syncPlayState();
         }).catch(error => {
-            // AbortError: play() 被新的 load() 或 pause() 中断，通常无害
             if (error.name !== 'AbortError') {
                 console.error("Playback failed:", error);
             }
-            isPlaying = false;
-            playIcon.style.display = 'block';
-            pauseIcon.style.display = 'none';
-            playBtn.classList.remove('btn-pause');
+            syncPlayState();
         });
     }
 }
@@ -294,11 +324,12 @@ function togglePlay() {
         playAudio();
     } else {
         audio.pause();
-        isPlaying = false;
-        playIcon.style.display = 'block';
-        pauseIcon.style.display = 'none';
-        playBtn.classList.remove('btn-pause');
     }
+}
+
+function toggleLoop() {
+    window.audioManager.toggleLoopOne();
+    syncLoopState();
 }
 
 function updateProgress() {
@@ -321,20 +352,68 @@ function setProgress() {
 function setVolume() {
     audio.volume = volSlider.value / 100;
     updateProgressFill('volProgress', volSlider.value);
-    // 保存到全局管理器
     if (window.audioManager) {
         localStorage.setItem('volume', audio.volume.toString());
     }
 }
 
-// Event Listeners
+// ============ 核心：加载单个轨道 ============
+function loadTrack(data) {
+    currentTrackData = data;
+
+    trackNameEl.textContent = data.name || "Unknown Title";
+    artistNameEl.textContent = data.artist || "Unknown Artist";
+
+    const imgUrl = data.cover || "";
+    if (imgUrl) {
+        coverImgEl.innerHTML = `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
+    } else {
+        coverImgEl.innerHTML = '<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"></path></svg></div>';
+    }
+    coverImgEl.style.display = 'flex';
+
+    bgLayerEl.style.backgroundImage = imgUrl ? `url('${imgUrl}')` : 'none';
+
+    // 共享 audioManager：仅在曲目变化时重新加载，保持同曲播放连续
+    if (window.audioManager) {
+        const savedTrackJson = localStorage.getItem('currentTrack');
+        const savedTrack = savedTrackJson ? JSON.parse(savedTrackJson) : null;
+        const isAlreadyLoaded = savedTrack && savedTrack.id === data.id;
+
+        if (!isAlreadyLoaded) {
+            // 不同曲目：正常加载（会重置播放位置）
+            window.audioManager.loadTrack(data);
+        }
+        // 同一首曲目：不重新加载，audio 继续保持当前播放状态（无中断）
+    }
+
+    renderLyrics(parseLyrics(data.lyrics));
+
+    seekSlider.value = 0;
+    currentTimeEl.textContent = "0:00";
+    totalDurationEl.textContent = "0:00";
+    updateProgressFill('seekProgress', 0);
+
+    syncPlayState();
+    syncLoopState();
+    if (audio.duration && !isNaN(audio.duration)) {
+        seekSlider.disabled = false;
+        totalDurationEl.textContent = formatTime(audio.duration);
+        updateProgress();
+    }
+}
+
+// ============ 事件绑定（只绑定一次） ============
 playBtn.addEventListener('click', togglePlay);
-backBtn.addEventListener('click', () => window.history.back());
+loopBtn.addEventListener('click', toggleLoop);
+backBtn.addEventListener('click', closePlayer);
 
 audio.addEventListener('timeupdate', updateProgress);
 audio.addEventListener('loadedmetadata', () => {
     totalDurationEl.textContent = formatTime(audio.duration);
     if (!audio.paused) seekSlider.disabled = false;
+    // overlay 打开时同步一次进度
+    if (overlay.classList.contains('active')) updateProgress();
 });
 audio.addEventListener('play', syncPlayState);
 audio.addEventListener('pause', syncPlayState);
@@ -344,11 +423,13 @@ audio.addEventListener('error', (e) => {
     seekSlider.disabled = true;
 });
 audio.addEventListener('ended', () => {
-    isPlaying = false;
-    playIcon.style.display = 'block';
-    pauseIcon.style.display = 'none';
-    seekSlider.value = 0;
-    updateProgressFill('seekProgress', 0);
+    // 单曲循环由 audioManager 处理，这里仅在非循环时更新 UI
+    if (!window.audioManager.getLoopOne()) {
+        playIcon.style.display = 'block';
+        pauseIcon.style.display = 'none';
+        seekSlider.value = 0;
+        updateProgressFill('seekProgress', 0);
+    }
 });
 
 seekSlider.addEventListener('mousedown', () => { isSeeking = true; });
@@ -374,18 +455,41 @@ seekSlider.addEventListener('touchcancel', finishSeeking);
 volSlider.addEventListener('input', setVolume);
 
 document.addEventListener('keydown', (e) => {
+    // 仅在播放器视图激活时响应快捷键
+    if (!overlay.classList.contains('active')) return;
     if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
     }
+    if (e.code === 'Escape') {
+        if (fullscreenLyricsEl.classList.contains('active')) {
+            closeFullscreenLyrics();
+        } else if (lyricsCardExpanded) {
+            closeLyricsCard();
+        }
+    }
 });
 
-// ============ 初始化：从 URL 取 id，调 Go 绑定加载曲目 ============
-document.addEventListener("DOMContentLoaded", async function () {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("id");
+// ============ 导出：打开/关闭播放器视图 ============
+async function openPlayer(trackId) {
+    // 删除检查：若曲目不存在则不打开播放器
+    if (trackId) {
+        try {
+            await GetTrack(Number(trackId));
+        } catch (err) {
+            // 曲目已删除，清理状态并通知
+            console.warn('Track not found, clearing:', err);
+            window.audioManager.clearTrack();
+            return false;
+        }
+    }
 
-    // 应用保存的音量
+    // 显示 overlay（带过渡动画）
+    overlay.classList.add('active');
+    document.body.classList.add('player-active');
+    syncLoopState();
+
+    // 同步音量到滑块
     try {
         const settings = await LoadSettings();
         const savedVolume = localStorage.getItem('volume');
@@ -401,21 +505,29 @@ document.addEventListener("DOMContentLoaded", async function () {
         console.warn('Failed to load settings:', e);
     }
 
-    if (!id) {
+    if (!trackId) {
         trackNameEl.textContent = "未指定曲目";
         artistNameEl.textContent = "";
-        return;
+        return true;
     }
 
     try {
-        const track = await GetTrack(Number(id));
-        // loadTrack 内部会判断是否同一曲目：
-        // - 同一首：调用 restore() 从上次位置自动续播
-        // - 不同曲目：重新加载（重置播放位置）
+        const track = await GetTrack(Number(trackId));
         loadTrack(track);
+        return true;
     } catch (err) {
         console.error("加载曲目失败:", err);
         trackNameEl.textContent = "加载失败";
         artistNameEl.textContent = String(err);
+        return false;
     }
-});
+}
+
+function closePlayer() {
+    overlay.classList.remove('active');
+    document.body.classList.remove('player-active');
+    closeFullscreenLyrics();
+    closeLyricsCard();
+}
+
+export { openPlayer, closePlayer };

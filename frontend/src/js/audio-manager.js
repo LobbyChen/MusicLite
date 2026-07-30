@@ -8,6 +8,8 @@ class AudioManager {
         this.audio.preload = 'metadata';
         this.currentTrack = null;
         this.listeners = new Map();
+        // 单曲循环状态（持久化到 localStorage）
+        this.loopOne = localStorage.getItem('loopOne') === '1';
 
         // 音频事件监听
         this.audio.addEventListener('play', () => {
@@ -20,6 +22,12 @@ class AudioManager {
             this.emit('pause');
         });
         this.audio.addEventListener('ended', () => {
+            // 单曲循环：播放结束后自动回到开头重播
+            if (this.loopOne) {
+                this.audio.currentTime = 0;
+                this.audio.play().catch(e => console.warn('Loop replay failed:', e));
+                return; // 不触发 ended 事件，保持播放
+            }
             localStorage.setItem('isPlaying', '0');
             localStorage.setItem('currentTime', '0');
             this.emit('ended');
@@ -107,6 +115,30 @@ class AudioManager {
         return !this.audio.paused;
     }
 
+    // 单曲循环开关
+    toggleLoopOne() {
+        this.loopOne = !this.loopOne;
+        localStorage.setItem('loopOne', this.loopOne ? '1' : '0');
+        this.emit('loopchange', this.loopOne);
+        return this.loopOne;
+    }
+
+    getLoopOne() {
+        return this.loopOne;
+    }
+
+    // 清除当前曲目（用于曲目已删除的场景）
+    clearTrack() {
+        this.audio.pause();
+        this.audio.removeAttribute('src');
+        this.audio.load();
+        this.currentTrack = null;
+        localStorage.removeItem('currentTrack');
+        localStorage.removeItem('currentTime');
+        localStorage.setItem('isPlaying', '0');
+        this.emit('trackcleared');
+    }
+
     // 事件系统
     on(event, callback) {
         if (!this.listeners.has(event)) {
@@ -131,7 +163,8 @@ class AudioManager {
         }
     }
 
-    // 从 localStorage 恢复播放状态并自动续播
+    // 从 localStorage 恢复曲目信息（不自动播放，仅恢复到暂停状态）
+    // 这样进入应用不会突然有声，切换视图时若正在播放则由持久 audio 元素保持连续
     restore() {
         const savedTrack = localStorage.getItem('currentTrack');
         if (savedTrack) {
@@ -141,19 +174,14 @@ class AudioManager {
                 this.audio.src = track.src;
                 this.audio.load();
 
-                // 恢复播放位置
+                // 恢复播放位置（等 metadata 加载后 seek），但不自动 play
                 const savedTime = parseFloat(localStorage.getItem('currentTime') || '0');
-                const wasPlaying = localStorage.getItem('isPlaying') === '1';
-
-                // 等 metadata 加载后再 seek 和播放
                 const onMeta = () => {
                     if (savedTime > 0 && savedTime < this.audio.duration) {
                         this.audio.currentTime = savedTime;
                     }
-                    if (wasPlaying) {
-                        // 自动续播
-                        this.audio.play().catch(e => console.warn('Auto-resume failed:', e));
-                    }
+                    // 标记为暂停状态（不自动播放）
+                    localStorage.setItem('isPlaying', '0');
                     this.audio.removeEventListener('loadedmetadata', onMeta);
                 };
                 this.audio.addEventListener('loadedmetadata', onMeta);

@@ -153,5 +153,85 @@
 
         <!-- Toast 通知容器 -->
         <div id="toast-container" class="toast-container"></div>
+
+        <div id="player-overlay" class="player-overlay">
+            <div class="player-bg-layer" id="bgLayer"></div>
+            <div class="player-container">
+                <div class="album-art-wrapper">
+                    <div class="album-art" id="coverImg"></div>
+                </div>
+                <div class="info-and-controls">
+                    <div class="track-info">
+                        <div class="track-name" id="trackName">加载中</div>
+                        <div class="artist-name" id="artistName">--</div>
+                    </div>
+                    <div class="lyrics-area" id="lyricsArea">
+                        <div class="lyrics-collapsed" id="lyricsToggle">
+                            <div class="lyrics-preview" id="lyricsPreview">暂无歌词</div>
+                        </div>
+                        <div class="lyrics-card" id="lyricsCard">
+                            <button class="lyrics-mode-btn" id="expandFullscreenBtn" title="全屏歌词">
+                                <svg viewBox="0 0 24 24" width="14" height="14"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                            </button>
+                            <div class="lyrics-wrapper" id="lyricsWrapper">
+                                <div class="lyrics-content" id="lyricsContent">
+                                    <div class="no-lyrics">暂无歌词</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="progress-area">
+                        <span class="time-current" id="currentTime">0:00</span>
+                        <div class="slider-container">
+                            <div class="track-bg"></div>
+                            <div class="progress-fill" id="seekProgress"></div>
+                            <input type="range" min="0" max="100" value="0" class="seek_slider" id="seekSlider" disabled>
+                        </div>
+                        <span class="time-duration" id="totalDuration">0:00</span>
+                    </div>
+                    <div class="controls-area">
+                        <div class="main-controls">
+                            <button class="btn btn-play" id="playBtn">
+                                <svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg>
+                                <svg viewBox="0 0 24 24" id="pauseIcon"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                            </button>
+                            <button class="btn btn-loop" id="loopBtn" title="单曲循环">
+                                <svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
+                            </button>
+                        </div>
+                        <div class="volume-control">
+                            <div class="volume-icon" id="volIcon">
+                                <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+                            </div>
+                            <div class="slider-container volume-slider-container">
+                                <div class="track-bg"></div>
+                                <div class="progress-fill" id="volProgress"></div>
+                                <input type="range" min="0" max="100" value="70" class="volume_slider" id="volSlider">
+                            </div>
+                        </div>
+                        <button class="btn btn-back" id="backBtn" title="返回音乐库">
+                            <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 全屏歌词视图 -->
+            <div class="fullscreen-lyrics" id="fullscreenLyrics">
+                <div class="fullscreen-lyrics-bg" id="fullscreenBg"></div>
+                <button class="lyrics-mode-btn fullscreen-mode-btn" id="collapseCardBtn" title="返回卡片歌词">
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
+                </button>
+                <div class="fullscreen-lyrics-header">
+                    <div class="fullscreen-track-name" id="fullscreenTrackName"></div>
+                    <div class="fullscreen-artist-name" id="fullscreenArtistName"></div>
+                </div>
+                <div class="fullscreen-lyrics-wrapper" id="fullscreenLyricsWrapper">
+                    <div class="fullscreen-lyrics-content" id="fullscreenLyricsContent">
+                        <div class="no-lyrics">暂无歌词</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </body>
 </html>

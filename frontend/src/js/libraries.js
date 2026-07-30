@@ -1,4 +1,5 @@
 import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack } from '../../wailsjs/go/main/App.js';
+import { openPlayer } from './player.js';
 
 // ============ 标题栏窗口控制 ============
 document.getElementById('minimizeBtn')?.addEventListener('click', () => window.runtime?.WindowMinimise());
@@ -151,10 +152,10 @@ function renderTracks(tracks) {
             </div>
         `;
 
-        // 点击卡片主体 → 跳转播放器
+        // 点击卡片主体 → 打开播放器视图（SPA，不跳转页面，audio 保持连续）
         card.addEventListener("click", (e) => {
-            if (e.target.closest('.card-actions')) return; // 点击按钮不跳转
-            window.location.href = "/src/html/player.html?id=" + track.id;
+            if (e.target.closest('.card-actions')) return; // 点击按钮不打开
+            openPlayer(track.id);
         });
 
         // 编辑按钮
@@ -414,7 +415,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// 默认封面 HTML（用于无 cover 的曲目，统一使用 .card-icon 结构）
+// 默认封面 HTML
 const DEFAULT_COVER_HTML = '<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"></path></svg></div>';
 
 // 设置封面元素内容（img 或 div 容器）
@@ -463,7 +464,19 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (window.audioManager) {
         // 恢复上次播放状态
         window.audioManager.restore();
-        const currentTrack = window.audioManager.currentTrack;
+        let currentTrack = window.audioManager.currentTrack;
+
+        // 删除检查：若恢复的曲目已不存在，清理状态并隐藏迷你播放器
+        if (currentTrack) {
+            try {
+                const { GetTrack } = await import('../../wailsjs/go/main/App.js');
+                await GetTrack(Number(currentTrack.id));
+            } catch (err) {
+                console.warn('已保存的曲目已被删除，清理状态:', err);
+                window.audioManager.clearTrack();
+                currentTrack = null;
+            }
+        }
 
         if (currentTrack) {
             miniPlayer.style.display = 'flex';
@@ -504,23 +517,31 @@ document.addEventListener("DOMContentLoaded", async function () {
             miniTitle.textContent = track.name || '未知';
             miniArtist.textContent = track.artist || '--';
         });
+
+        // 曲目被清除时（删除检查）隐藏迷你播放器
+        window.audioManager.on('trackcleared', () => {
+            miniPlayer.style.display = 'none';
+        });
     }
 
     // 迷你播放器播放/暂停
     if (miniPlayBtn) {
         miniPlayBtn.addEventListener('click', () => {
-            if (window.audioManager) {
+            if (window.audioManager && window.audioManager.currentTrack) {
                 window.audioManager.toggle();
             }
         });
     }
 
-    // 展开播放器
+    // 展开播放器（SPA overlay，不跳转页面）—— 带删除检查
     if (miniExpand) {
-        miniExpand.addEventListener('click', () => {
+        miniExpand.addEventListener('click', async () => {
             const currentTrack = window.audioManager?.currentTrack;
-            if (currentTrack) {
-                window.location.href = '/src/html/player.html?id=' + currentTrack.id;
+            if (!currentTrack) return;
+            const ok = await openPlayer(currentTrack.id);
+            // 若曲目已删除，openPlayer 返回 false 并已清理状态
+            if (!ok) {
+                miniPlayer.style.display = 'none';
             }
         });
     }
