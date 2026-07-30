@@ -43,6 +43,13 @@ func main() {
 		Windows: &windows.Options{
 			WebviewUserDataPath: webviewDataPath,
 		},
+		// 启用文件拖放：Wails 拦截系统拖放，通过 runtime.OnFileDrop 事件
+		// 把完整文件路径传给前端，绕过 WebView2 不暴露路径的安全限制
+		// DisableWebViewDrop=false 让 WebView 保留 drag 事件用于遮罩视觉反馈
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop:     true,
+			DisableWebViewDrop: false,
+		},
 		OnStartup:  app.startup,
 		OnShutdown: app.shutdown,
 		Bind: []interface{}{

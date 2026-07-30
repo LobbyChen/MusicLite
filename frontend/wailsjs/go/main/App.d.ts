@@ -22,6 +22,8 @@ export function GetTrack(arg1:number):Promise<format.MscData>;
 
 export function ImportFiles():Promise<number>;
 
+export function ImportFilesFromPaths(arg1:Array<string>):Promise<number>;
+
 export function LoadSettings():Promise<main.Settings>;
 
 export function SaveSettings(arg1:main.Settings):Promise<void>;

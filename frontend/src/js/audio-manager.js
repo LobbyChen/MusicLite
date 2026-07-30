@@ -7,17 +7,21 @@ class AudioManager {
 		this.audio.preload = 'metadata';
 		this.currentTrack = null;
 		this.listeners = new Map();
-		
+
 		// 播放模式: 'none' (顺序/默认), 'loopOne' (单曲循环), 'random' (随机)
 		this.playMode = localStorage.getItem('playMode') || 'none';
-		
+
 		// 音频事件监听
 		this.audio.addEventListener('play', () => {
 			localStorage.setItem('isPlaying', '1');
 			this.emit('play');
 		});
 		this.audio.addEventListener('pause', () => {
-			localStorage.setItem('isPlaying', '0');
+			// 只有用户主动暂停才写 '0'；页面卸载导致的 pause 不覆盖
+			// 通过 beforeunload 里设置的 _unloading 标志区分
+			if (!this._unloading) {
+				localStorage.setItem('isPlaying', '0');
+			}
 			localStorage.setItem('currentTime', this.audio.currentTime.toString());
 			this.emit('pause');
 		});
@@ -48,12 +52,18 @@ class AudioManager {
 		this.audio.addEventListener('loadedmetadata', () => this.emit('loadedmetadata', {
 			duration: this.audio.duration
 		}));
-		// 页面卸载前保存当前位置
-		window.addEventListener('beforeunload', () => {
+		// 页面卸载前保存当前位置和播放状态
+		// 用 pagehide + beforeunload 双保险，确保跨页时状态被保存
+		const saveStateOnUnload = () => {
+			this._unloading = true;
 			if (this.audio && !isNaN(this.audio.currentTime)) {
 				localStorage.setItem('currentTime', this.audio.currentTime.toString());
 			}
-		});
+			// 保存当前播放状态，供下个页面 restore 判断是否续播
+			localStorage.setItem('isPlaying', this.isPlaying() ? '1' : '0');
+		};
+		window.addEventListener('beforeunload', saveStateOnUnload);
+		window.addEventListener('pagehide', saveStateOnUnload);
 	}
 	
 	loadTrack(track) {
@@ -169,20 +179,25 @@ class AudioManager {
 	// 从 localStorage 恢复曲目信息
 	restore() {
 		const savedTrack = localStorage.getItem('currentTrack');
+		const wasPlaying = localStorage.getItem('isPlaying') === '1';
 		if (savedTrack) {
 			try {
 				const track = JSON.parse(savedTrack);
 				this.currentTrack = track;
 				this.audio.src = track.src;
 				this.audio.load();
-				// 恢复播放位置（等 metadata 加载后 seek），但不自动 play
+				// 恢复播放位置（等 metadata 加载后 seek）
 				const savedTime = parseFloat(localStorage.getItem('currentTime') || '0');
 				const onMeta = () => {
 					if (savedTime > 0 && savedTime < this.audio.duration) {
 						this.audio.currentTime = savedTime;
 					}
-					// 标记为暂停状态（不自动播放）
-					localStorage.setItem('isPlaying', '0');
+					// 如果之前在播放，跨页恢复后继续播放
+					if (wasPlaying) {
+						this.audio.play().catch(e => console.warn('Restore play failed:', e));
+					} else {
+						localStorage.setItem('isPlaying', '0');
+					}
 					this.audio.removeEventListener('loadedmetadata', onMeta);
 				};
 				this.audio.addEventListener('loadedmetadata', onMeta);

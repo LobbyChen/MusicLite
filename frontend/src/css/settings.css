@@ -47,16 +47,20 @@ html ::-webkit-scrollbar {
     display: none;
 }
 
-body {
+/* 覆盖 libraries.css 的 body 布局（settings 页需要可滚动，不是 flex 列） */
+html body {
     font-family: var(--player-font, system-ui), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: var(--bg-color);
     color: var(--text-primary);
     font-size: var(--base-font-size);
     min-height: 100vh;
+    height: auto;
     padding-top: 36px;
     overflow: auto;
+    display: block;
+    flex-direction: initial;
 }
-body ::-webkit-scrollbar {
+html body ::-webkit-scrollbar {
     display: none;
 }
 
@@ -163,9 +167,8 @@ h1 {
 }
 
 main {
-    max-width: 800px;
     margin: 0 auto;
-    padding: 0 40px 100px;
+    padding: 0 40px 180px;
     overflow: auto;
 }
 

@@ -1498,3 +1498,54 @@ body.player-active > .mini-player {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
+
+/* ============ 拖放导入遮罩 ============ */
+.drop-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+.drop-overlay.active {
+    display: flex;
+    animation: drop-fade-in 0.15s ease-out;
+}
+.drop-overlay-inner {
+    text-align: center;
+    color: #fff;
+    padding: 48px 64px;
+    border: 3px dashed var(--accent-color, #1DB954);
+    border-radius: 24px;
+    background: rgba(0, 0, 0, 0.35);
+    transform: scale(1);
+    transition: transform 0.15s ease-out;
+}
+.drop-overlay.active .drop-overlay-inner {
+    animation: drop-pop 0.2s ease-out;
+}
+.drop-overlay-inner svg {
+    fill: var(--accent-color, #1DB954);
+    margin-bottom: 16px;
+}
+.drop-overlay-text {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+.drop-overlay-hint {
+    font-size: 13px;
+    opacity: 0.7;
+}
+@keyframes drop-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes drop-pop {
+    0% { transform: scale(0.9); }
+    100% { transform: scale(1); }
+}

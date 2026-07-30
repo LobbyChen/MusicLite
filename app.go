@@ -224,8 +224,28 @@ func (a *App) ImportFiles() (int, error) {
 		return 0, err
 	}
 
+	return a.importFromPaths(files)
+}
+
+// ImportFilesFromPaths 按文件路径批量导入（拖放场景用）
+func (a *App) ImportFilesFromPaths(paths []string) (int, error) {
+	return a.importFromPaths(paths)
+}
+
+// importFromPaths 共享的导入逻辑：遍历路径、提取元数据、入库
+func (a *App) importFromPaths(paths []string) (int, error) {
+	// 支持的音频扩展名（小写）
+	allowed := map[string]bool{
+		".mp3": true, ".ogg": true, ".flac": true, ".wav": true, ".ape": true,
+	}
+
 	count := 0
-	for _, filePath := range files {
+	for _, filePath := range paths {
+		ext := strings.ToLower(filepath.Ext(filePath))
+		if !allowed[ext] {
+			continue
+		}
+
 		meta, err := format.ExtractMetadata(filePath)
 		if err != nil {
 			log.Printf("跳过 %s: %v", filePath, err)

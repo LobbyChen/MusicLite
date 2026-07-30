@@ -167,7 +167,75 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyTheme();
     applyAccentToUI();
     setupEventListeners();
+    initMiniPlayer();
 });
+
+// ============ 迷你播放器（设置页也能控制播放） ============
+function initMiniPlayer() {
+    const miniPlayer = document.getElementById('mini-player');
+    const miniCover = document.getElementById('mini-cover');
+    const miniTitle = document.getElementById('mini-title');
+    const miniArtist = document.getElementById('mini-artist');
+    const miniPlayBtn = document.getElementById('mini-play');
+    const miniPlayIcon = document.getElementById('mini-play-icon');
+    const miniPauseIcon = document.getElementById('mini-pause-icon');
+    const miniExpand = document.getElementById('mini-expand');
+    if (!miniPlayer || !window.audioManager) return;
+
+    // 从 localStorage 恢复当前曲目
+    window.audioManager.restore();
+    const currentTrack = window.audioManager.currentTrack;
+    if (currentTrack && currentTrack.src) {
+        miniPlayer.style.display = 'flex';
+        miniTitle.textContent = currentTrack.name || '未知';
+        miniArtist.textContent = currentTrack.artist || '--';
+        setMiniCover(miniCover, currentTrack.cover);
+        // 同步播放按钮图标
+        if (window.audioManager.isPlaying()) {
+            miniPlayIcon.style.display = 'none';
+            miniPauseIcon.style.display = 'block';
+        } else {
+            miniPlayIcon.style.display = 'block';
+            miniPauseIcon.style.display = 'none';
+        }
+    }
+
+    // 播放/暂停
+    miniPlayBtn.addEventListener('click', () => {
+        window.audioManager.toggle();
+    });
+
+    // 返回音乐库
+    miniExpand.addEventListener('click', () => {
+        window.location.href = '/src/html/libraries.html';
+    });
+
+    // 监听播放状态
+    window.audioManager.on('play', () => {
+        miniPlayIcon.style.display = 'none';
+        miniPauseIcon.style.display = 'block';
+    });
+    window.audioManager.on('pause', () => {
+        miniPlayIcon.style.display = 'block';
+        miniPauseIcon.style.display = 'none';
+    });
+    window.audioManager.on('trackloaded', (track) => {
+        miniPlayer.style.display = 'flex';
+        miniTitle.textContent = track.name || '未知';
+        miniArtist.textContent = track.artist || '--';
+        setMiniCover(miniCover, track.cover);
+    });
+}
+
+// 设置迷你播放器封面（有则用 img，无则用默认 SVG）
+function setMiniCover(container, coverUrl) {
+    if (!container) return;
+    if (coverUrl) {
+        container.innerHTML = `<img src="${coverUrl}" alt="cover" style="width:100%;height:100%;object-fit:cover;border-radius:4px;" />`;
+    } else {
+        container.innerHTML = `<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"></path></svg></div>`;
+    }
+}
 
 // Load settings from backend
 async function loadSettings() {

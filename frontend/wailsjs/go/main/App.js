@@ -38,6 +38,10 @@ export function ImportFiles() {
   return window['go']['main']['App']['ImportFiles']();
 }
 
+export function ImportFilesFromPaths(arg1) {
+  return window['go']['main']['App']['ImportFilesFromPaths'](arg1);
+}
+
 export function LoadSettings() {
   return window['go']['main']['App']['LoadSettings']();
 }

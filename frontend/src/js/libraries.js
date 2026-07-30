@@ -1,4 +1,5 @@
-import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs} from '../../wailsjs/go/main/App.js';
+import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths} from '../../wailsjs/go/main/App.js';
+import { OnFileDrop } from '../../wailsjs/runtime/runtime.js';
 import { openPlayer } from './player.js';
 
 // ============ 标题栏窗口控制 ============
@@ -9,10 +10,58 @@ document.getElementById('closeBtn')?.addEventListener('click', () => window.runt
 const fileBtn = document.getElementById("openFileBtn");
 const mediaContainer = document.getElementById('media-container');
 const emptyOverlay = document.getElementById("empty-state");
+const dropOverlay = document.getElementById('drop-overlay');
 
-// 阻止浏览器默认拖放行为（防止拖入文件时在窗口打开）
-document.addEventListener("dragover", (e) => { e.preventDefault(); });
-document.addEventListener("drop", (e) => { e.preventDefault(); });
+// ============ 拖放导入 ============
+// 用计数器区分真正离开窗口（dragenter/leave 会成对触发且嵌套）
+let dragDepth = 0;
+
+document.addEventListener("dragenter", (e) => {
+    e.preventDefault();
+    if (!e.dataTransfer || !e.dataTransfer.types.includes('Files')) return;
+    dragDepth++;
+    dropOverlay?.classList.add('active');
+});
+
+document.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+});
+
+document.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) dropOverlay?.classList.remove('active');
+});
+
+document.addEventListener("drop", (e) => {
+    // 只负责隐藏遮罩和阻止默认行为，真实路径由 Wails OnFileDrop 提供
+    e.preventDefault();
+    dragDepth = 0;
+    dropOverlay?.classList.remove('active');
+});
+
+// Wails 原生文件拖放：提供完整文件路径，绕过 WebView2 安全限制
+// useDropTarget=false 让 Wails 不拦截 drop target，由前端自己处理 UI
+OnFileDrop(async (_x, _y, paths) => {
+    if (!paths || paths.length === 0) return;
+    await doImportPaths(paths);
+}, false);
+
+async function doImportPaths(paths) {
+    try {
+        const count = await ImportFilesFromPaths(paths);
+        if (count > 0) {
+            showToast(`成功导入 ${count} 首音乐`, 'success');
+            await refreshList();
+        } else {
+            showToast('未导入任何文件（可能格式不支持或已存在）', 'warning');
+        }
+    } catch (err) {
+        console.error('拖放导入失败:', err);
+        showToast('导入失败: ' + err, 'error');
+    }
+}
 
 // ============ Toast 通知 ============
 const TOAST_ICONS = {
