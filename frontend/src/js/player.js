@@ -358,6 +358,7 @@ async function playNextTrack() {
 		
 		// 检查是否返回了有效数据
 		if (nextTrack && nextTrack.id) {
+            
 			loadTrack(nextTrack);
 			playAudio(); // 自动播放下一首
 		} else {
@@ -397,6 +398,7 @@ function setVolume() {
 function loadTrack(data) {
 	currentTrackData = data;
 	trackNameEl.textContent = data.name || "Unknown Title";
+    document.title = trackNameEl.textContent ;
 	artistNameEl.textContent = data.artist || "Unknown Artist";
 	const imgUrl = data.cover || "";
 	if (imgUrl) {

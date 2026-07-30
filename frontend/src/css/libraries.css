@@ -7,6 +7,9 @@
     --accent-color: #1db954;
     --border-color: #333;
     --hover-color: #2a2a2a;
+    --base-font-size: 14px;
+    --lyrics-font-size: 16px;
+    --lyrics-font: "Consolas", "Monaco", monospace;
 }
 
 /* Light theme */
@@ -35,12 +38,12 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 body {
     background-color: var(--bg-color);
     color: var(--text-primary);
+    font-size: var(--base-font-size);
     height: 100vh;
     display: flex;
     flex-direction: column;
@@ -430,7 +433,7 @@ h2 {
 .form-textarea {
     resize: vertical;
     min-height: 140px;
-    font-family: "Consolas", "Monaco", monospace;
+    font-family: var(--lyrics-font);
     font-size: 0.85rem;
     line-height: 1.5;
 }
@@ -1037,7 +1040,8 @@ body.player-active > .mini-player {
 
 .lyric-line {
     padding: 5px 0;
-    font-size: 0.9rem;
+    font-family: var(--lyrics-font);
+    font-size: var(--lyrics-font-size);
     color: var(--text-secondary);
     text-align: center;
     cursor: pointer;
@@ -1433,7 +1437,8 @@ body.player-active > .mini-player {
 /* 全屏歌词行 */
 .fs-lyric-line {
     padding: 10px 20px;
-    font-size: 1.3rem;
+    font-family: var(--lyrics-font);
+    font-size: var(--lyrics-font-size);
     color: var(--text-secondary);
     text-align: center;
     cursor: pointer;
@@ -1451,9 +1456,9 @@ body.player-active > .mini-player {
 .fs-lyric-line.active {
     color: var(--text-primary);
     font-weight: 700;
-    font-size: 1.5rem;
+    font-size: calc(var(--lyrics-font-size) * 1.15);
     opacity: 1;
-    text-shadow: 0 0 20px rgba(29, 185, 84, 0.3);
+    text-shadow: 0 0 20px var(--accent-glow);
     transform: scale(1.02);
 }
 

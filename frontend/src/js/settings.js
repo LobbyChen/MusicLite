@@ -1,4 +1,4 @@
-import { LoadSettings, SaveSettings } from '../../wailsjs/go/main/App.js';
+import { LoadSettings, SaveSettings, GetInstalledFonts } from '../../wailsjs/go/main/App.js';
 
 // ============ 标题栏窗口控制 ============
 document.getElementById('minimizeBtn')?.addEventListener('click', () => window.runtime?.WindowMinimise());
@@ -11,16 +11,161 @@ const playerFontSelect = document.getElementById('player-font');
 const lyricsFontSelect = document.getElementById('lyrics-font');
 const volumeSlider = document.getElementById('volume-slider');
 const volumeValue = document.getElementById('volume-value');
+const baseFontSizeSlider = document.getElementById('base-font-size');
+const baseFontSizeValue = document.getElementById('base-font-size-value');
+const lyricsFontSizeSlider = document.getElementById('lyrics-font-size');
+const lyricsFontSizeValue = document.getElementById('lyrics-font-size-value');
 const saveBar = document.getElementById('saveBar');
 const saveBtn = document.getElementById('saveBtn');
+const accentColorItem = document.getElementById('accent-color-item');
+const accentColorInput = document.getElementById('accent-color');
+const accentColorText = document.getElementById('accent-color-text');
+const presetColors = document.querySelectorAll('.preset-color');
+
+// 确认对话框 / Toast 元素（settings.html 里有）
+const confirmModal = document.getElementById('confirmModal');
+const confirmTitleEl = document.getElementById('confirmTitle');
+const confirmMessageEl = document.getElementById('confirmMessage');
+const confirmCancelBtn = document.getElementById('confirmCancel');
+const confirmOkBtn = document.getElementById('confirmOk');
+const toastContainer = document.getElementById('toastContainer');
 
 let currentSettings = null;
 let hasChanges = false;
+let confirmCallback = null;
 
-// Initialize
+// ============ Toast / Confirm 自定义 UI ============
+function showToast(message, type = 'info', duration = 2500) {
+    if (!toastContainer) return;
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    const icon = {
+        success: '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>',
+        error: '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>',
+        warning: '<svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>',
+        info: '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>'
+    }[type] || '';
+    toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-msg">${message}</span>`;
+    toast.addEventListener('click', () => dismissToast(toast));
+    toastContainer.appendChild(toast);
+    if (duration > 0) {
+        setTimeout(() => dismissToast(toast), duration);
+    }
+}
+
+function dismissToast(toast) {
+    if (!toast || toast.classList.contains('toast-out')) return;
+    toast.classList.add('toast-out');
+    setTimeout(() => toast.remove(), 260);
+}
+
+function showConfirm(message, opts = {}) {
+    return new Promise(resolve => {
+        if (!confirmModal) {
+            resolve(window.confirm(message));
+            return;
+        }
+        confirmTitleEl.textContent = opts.title || '确认操作';
+        confirmMessageEl.textContent = message;
+        const okText = opts.okText || '确定';
+        const cancelText = opts.cancelText || '取消';
+        confirmOkBtn.textContent = okText;
+        confirmCancelBtn.textContent = cancelText;
+        confirmOkBtn.className = 'btn ' + (opts.danger ? 'btn-danger' : 'btn-primary');
+
+        const cleanup = (result) => {
+            confirmModal.classList.remove('active');
+            confirmOkBtn.removeEventListener('click', onOk);
+            confirmCancelBtn.removeEventListener('click', onCancel);
+            confirmModal.removeEventListener('click', onBackdrop);
+            document.removeEventListener('keydown', onKey);
+            resolve(result);
+        };
+        const onOk = () => cleanup(true);
+        const onCancel = () => cleanup(false);
+        const onBackdrop = (e) => { if (e.target === confirmModal) cleanup(false); };
+        const onKey = (e) => {
+            if (e.key === 'Escape') cleanup(false);
+            if (e.key === 'Enter') cleanup(true);
+        };
+        confirmOkBtn.addEventListener('click', onOk);
+        confirmCancelBtn.addEventListener('click', onCancel);
+        confirmModal.addEventListener('click', onBackdrop);
+        document.addEventListener('keydown', onKey);
+        confirmModal.classList.add('active');
+    });
+}
+
+// ============ 字体填充：从后端获取系统字体列表 ============
+const FONT_FALLBACK = ", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
+async function populateFontSelects() {
+    let fonts = [];
+    try {
+        fonts = await GetInstalledFonts();
+    } catch (e) {
+        console.warn('获取系统字体失败，使用默认列表', e);
+    }
+    if (!Array.isArray(fonts) || fonts.length === 0) {
+        fonts = ['Microsoft YaHei', 'PingFang SC', 'Segoe UI', 'SimHei', 'SimSun', 'KaiTi', 'FangSong', 'Consolas', 'Monaco', 'Courier New'];
+    }
+    // 去重 & 排序
+    fonts = Array.from(new Set(fonts)).sort((a, b) => a.localeCompare(b, 'zh'));
+
+    // 播放器字体
+    buildFontOptions(playerFontSelect, fonts, {
+        preset: [
+            { value: 'system-ui', label: '系统默认' },
+            { value: 'sans-serif', label: '无衬线体' },
+            { value: 'serif', label: '衬线体' }
+        ],
+        fontFamily: (v) => (v === 'system-ui' || v === 'sans-serif' || v === 'serif') ? v : `'${v}'${FONT_FALLBACK}`
+    });
+    // 歌词字体
+    buildFontOptions(lyricsFontSelect, fonts, {
+        preset: [
+            { value: "'Consolas', 'Monaco', monospace", label: '等宽字体（推荐）' },
+            { value: 'system-ui', label: '系统默认' },
+            { value: 'sans-serif', label: '无衬线体' },
+            { value: 'serif', label: '衬线体' }
+        ],
+        fontFamily: (v) => {
+            if (v.startsWith("'Consolas'")) return v;
+            if (v === 'system-ui' || v === 'sans-serif' || v === 'serif') return v;
+            return `'${v}', monospace`;
+        }
+    });
+}
+
+function buildFontOptions(selectEl, fonts, { preset, fontFamily }) {
+    const frag = document.createDocumentFragment();
+    for (const p of preset) {
+        const opt = document.createElement('option');
+        opt.value = p.value;
+        opt.textContent = p.label;
+        opt.style.fontFamily = fontFamily(p.value);
+        frag.appendChild(opt);
+    }
+    const divider = document.createElement('optgroup');
+    divider.label = '—— 系统字体 ——';
+    for (const name of fonts) {
+        const opt = document.createElement('option');
+        opt.value = `'${name}'`;
+        opt.textContent = name;
+        opt.style.fontFamily = fontFamily(`'${name}'`);
+        divider.appendChild(opt);
+    }
+    frag.appendChild(divider);
+    selectEl.innerHTML = '';
+    selectEl.appendChild(frag);
+}
+
+// ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', async () => {
+    await populateFontSelects();
     await loadSettings();
     applyTheme();
+    applyAccentToUI();
     setupEventListeners();
 });
 
@@ -35,9 +180,12 @@ async function loadSettings() {
             theme: 'dark',
             player_font: 'system-ui',
             lyrics_font: "'Consolas', 'Monaco', monospace",
+            base_font_size: 14,
+            lyrics_font_size: 16,
             last_track_id: 0,
             last_position: 0,
-            volume: 70
+            volume: 70,
+            accent_color: '#1DB954'
         };
         applySettingsToUI(currentSettings);
     }
@@ -49,14 +197,85 @@ function applySettingsToUI(s) {
     themeButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.theme === s.theme);
     });
+    showOrHideAccentItem(s.theme);
+
+    // Accent color
+    const accent = s.accent_color || s.AccentColor || '#1DB954';
+    accentColorInput.value = normalizeColor(accent);
+    accentColorText.value = accent;
+    highlightPreset(accent);
 
     // Fonts
-    playerFontSelect.value = s.player_font || 'system-ui';
-    lyricsFontSelect.value = s.lyrics_font || "'Consolas', 'Monaco', monospace";
+    const pf = normalizeFontOptionValue(s.player_font || 'system-ui', playerFontSelect);
+    const lf = normalizeFontOptionValue(s.lyrics_font || "'Consolas', 'Monaco', monospace", lyricsFontSelect);
+    playerFontSelect.value = pf;
+    lyricsFontSelect.value = lf;
 
     // Volume
     volumeSlider.value = s.volume || 70;
-    volumeValue.textContent = s.volume + '%';
+    volumeValue.textContent = (s.volume ?? 70) + '%';
+
+    // Font sizes
+    const baseSize = (s.base_font_size && s.base_font_size >= 12 && s.base_font_size <= 22) ? s.base_font_size : 14;
+    const lyricsSize = (s.lyrics_font_size && s.lyrics_font_size >= 12 && s.lyrics_font_size <= 40) ? s.lyrics_font_size : 16;
+    baseFontSizeSlider.value = baseSize;
+    baseFontSizeValue.textContent = baseSize + 'px';
+    lyricsFontSizeSlider.value = lyricsSize;
+    lyricsFontSizeValue.textContent = lyricsSize + 'px';
+}
+
+// 让设置值匹配 select 的 option value（后端保存的值可能带引号，匹配最佳 option）
+function normalizeFontOptionValue(savedValue, selectEl) {
+    if (!savedValue) return selectEl.options[0]?.value || '';
+    // 完全匹配
+    for (const opt of selectEl.options) {
+        if (opt.value === savedValue) return savedValue;
+    }
+    // 去掉引号后匹配
+    const clean = savedValue.replace(/^'|'$/g, '').replace(/^"|"$/g, '').trim();
+    for (const opt of selectEl.options) {
+        const optClean = opt.value.replace(/^'|'$/g, '').replace(/^"|"$/g, '').trim();
+        if (optClean === clean) return opt.value;
+    }
+    // 字体名包含匹配
+    for (const opt of selectEl.options) {
+        const optClean = opt.value.replace(/^'|'$/g, '').trim();
+        if (clean.includes(optClean) || optClean.includes(clean)) return opt.value;
+    }
+    return selectEl.options[0]?.value || savedValue;
+}
+
+function showOrHideAccentItem(theme) {
+    if (!accentColorItem) return;
+    accentColorItem.style.display = 'block';
+    // 实际上所有主题都可以自定义主题色，所以我们不隐藏；但可以根据主题高亮对应位置
+}
+
+function applyAccentToUI() {
+    const c = currentSettings?.accent_color || currentSettings?.AccentColor || '#1DB954';
+    const theme = currentSettings?.theme || 'dark';
+    // 调用全局 applyAccentColor，自动算出全套配套色
+    if (window.MusicLiteSettings) {
+        window.MusicLiteSettings.applyAccentColor(c, theme);
+    } else {
+        document.documentElement.style.setProperty('--accent-color', normalizeColor(c));
+        document.body.style.setProperty('--accent-color', normalizeColor(c));
+    }
+}
+
+function normalizeColor(c) {
+    if (!c) return '#1DB954';
+    c = c.trim();
+    if (!c.startsWith('#')) c = '#' + c;
+    if (c.length === 4) c = '#' + c[1] + c[1] + c[2] + c[2] + c[3] + c[3];
+    return c.toLowerCase();
+}
+
+function highlightPreset(color) {
+    const c = normalizeColor(color);
+    presetColors.forEach(p => {
+        p.classList.toggle('active', normalizeColor(p.dataset.color || '') === c);
+    });
 }
 
 // Apply theme to body
@@ -67,11 +286,12 @@ function applyTheme() {
 // Setup event listeners
 function setupEventListeners() {
     // Back button
-    backBtn.addEventListener('click', () => {
+    backBtn.addEventListener('click', async () => {
         if (hasChanges) {
-            if (confirm('设置未保存，是否放弃更改？')) {
-                window.history.back();
-            }
+            const ok = await showConfirm('设置未保存，是否放弃更改？', {
+                title: '放弃更改', okText: '放弃', cancelText: '留在页面', danger: true
+            });
+            if (ok) window.history.back();
         } else {
             window.history.back();
         }
@@ -84,6 +304,45 @@ function setupEventListeners() {
             btn.classList.add('active');
             currentSettings.theme = btn.dataset.theme;
             applyTheme();
+            // 主题切换后重新计算配套色（applyAccentToUI 内部会根据新 theme 算出对应基调）
+            applyAccentToUI();
+            markChanged();
+        });
+    });
+
+    // Accent color picker
+    accentColorInput.addEventListener('input', () => {
+        const v = accentColorInput.value;
+        accentColorText.value = v;
+        currentSettings.accent_color = v;
+        applyAccentToUI();
+        highlightPreset(v);
+        markChanged();
+    });
+    accentColorText.addEventListener('input', () => {
+        let v = accentColorText.value.trim();
+        if (/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(v)) v = '#' + v;
+        if (/^#[0-9a-fA-F]{3}$|^#[0-9a-fA-F]{6}$/.test(v)) {
+            const norm = normalizeColor(v);
+            accentColorInput.value = norm;
+            currentSettings.accent_color = norm;
+            applyAccentToUI();
+            highlightPreset(norm);
+            markChanged();
+        }
+    });
+    accentColorText.addEventListener('blur', () => {
+        const cur = currentSettings.accent_color || '#1DB954';
+        accentColorText.value = cur;
+    });
+    presetColors.forEach(p => {
+        p.addEventListener('click', () => {
+            const c = p.dataset.color;
+            accentColorInput.value = c;
+            accentColorText.value = c;
+            currentSettings.accent_color = c;
+            applyAccentToUI();
+            highlightPreset(c);
             markChanged();
         });
     });
@@ -91,13 +350,17 @@ function setupEventListeners() {
     // Player font
     playerFontSelect.addEventListener('change', () => {
         currentSettings.player_font = playerFontSelect.value;
-        document.body.style.fontFamily = playerFontSelect.value + ", system-ui";
+        // 实时预览：同时设置 <html> 和 <body>
+        document.documentElement.style.setProperty('--player-font', playerFontSelect.value);
+        document.body.style.fontFamily = playerFontSelect.value + FONT_FALLBACK;
         markChanged();
     });
 
     // Lyrics font
     lyricsFontSelect.addEventListener('change', () => {
         currentSettings.lyrics_font = lyricsFontSelect.value;
+        // 实时预览
+        document.documentElement.style.setProperty('--lyrics-font', lyricsFontSelect.value);
         markChanged();
     });
 
@@ -105,6 +368,28 @@ function setupEventListeners() {
     volumeSlider.addEventListener('input', () => {
         volumeValue.textContent = volumeSlider.value + '%';
         currentSettings.volume = parseInt(volumeSlider.value, 10);
+        markChanged();
+    });
+
+    // Base font size slider（界面字号）
+    baseFontSizeSlider.addEventListener('input', () => {
+        const v = parseInt(baseFontSizeSlider.value, 10);
+        baseFontSizeValue.textContent = v + 'px';
+        currentSettings.base_font_size = v;
+        // 实时预览
+        document.documentElement.style.setProperty('--base-font-size', v + 'px');
+        document.body.style.setProperty('--base-font-size', v + 'px');
+        markChanged();
+    });
+
+    // Lyrics font size slider（歌词字号）
+    lyricsFontSizeSlider.addEventListener('input', () => {
+        const v = parseInt(lyricsFontSizeSlider.value, 10);
+        lyricsFontSizeValue.textContent = v + 'px';
+        currentSettings.lyrics_font_size = v;
+        // 实时预览
+        document.documentElement.style.setProperty('--lyrics-font-size', v + 'px');
+        document.body.style.setProperty('--lyrics-font-size', v + 'px');
         markChanged();
     });
 
@@ -128,17 +413,32 @@ async function saveSettings() {
         // 立即应用当前页面的设置
         document.body.setAttribute('data-theme', currentSettings.theme || 'dark');
         if (currentSettings.player_font) {
-            document.body.style.fontFamily = currentSettings.player_font + ", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+            document.documentElement.style.setProperty('--player-font', currentSettings.player_font);
+            document.body.style.fontFamily = currentSettings.player_font + FONT_FALLBACK;
         }
         if (currentSettings.lyrics_font) {
             document.documentElement.style.setProperty('--lyrics-font', currentSettings.lyrics_font);
+        }
+        const baseSize = (currentSettings.base_font_size && currentSettings.base_font_size >= 12 && currentSettings.base_font_size <= 22) ? currentSettings.base_font_size : 14;
+        const lyricsSize = (currentSettings.lyrics_font_size && currentSettings.lyrics_font_size >= 12 && currentSettings.lyrics_font_size <= 40) ? currentSettings.lyrics_font_size : 16;
+        document.documentElement.style.setProperty('--base-font-size', baseSize + 'px');
+        document.body.style.setProperty('--base-font-size', baseSize + 'px');
+        document.documentElement.style.setProperty('--lyrics-font-size', lyricsSize + 'px');
+        document.body.style.setProperty('--lyrics-font-size', lyricsSize + 'px');
+        // 应用主题色 + 全套配套色
+        applyAccentToUI();
+
+        // 同步缓存（让 settings-apply.js 读取到）
+        if (window.MusicLiteSettings) {
+            window.MusicLiteSettings.cached = { ...currentSettings };
         }
 
         // 通知其他页面（libraries、player）应用新设置
         localStorage.setItem('settingsUpdated', Date.now().toString());
         localStorage.setItem('cachedSettings', JSON.stringify(currentSettings));
+        showToast('设置已保存', 'success');
     } catch (err) {
         console.error('Failed to save settings:', err);
-        alert('保存失败: ' + err);
+        showToast('保存失败: ' + (err?.message || err), 'error');
     }
 }

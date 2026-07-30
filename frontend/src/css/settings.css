@@ -7,6 +7,9 @@
     --accent-color: #1db954;
     --border-color: #333;
     --hover-color: #2a2a2a;
+    --base-font-size: 14px;
+    --lyrics-font-size: 16px;
+    --lyrics-font: "Consolas", "Monaco", monospace;
 }
 
 /* Light theme */
@@ -37,12 +40,24 @@
     padding: 0;
 }
 
+html{
+    overflow: auto;
+}
+html ::-webkit-scrollbar {
+    display: none;
+}
+
 body {
     font-family: var(--player-font, system-ui), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: var(--bg-color);
     color: var(--text-primary);
+    font-size: var(--base-font-size);
     min-height: 100vh;
     padding-top: 36px;
+    overflow: auto;
+}
+body ::-webkit-scrollbar {
+    display: none;
 }
 
 /* ============ 自定义标题栏（无边框窗口） ============ */
@@ -151,6 +166,7 @@ main {
     max-width: 800px;
     margin: 0 auto;
     padding: 0 40px 100px;
+    overflow: auto;
 }
 
 .settings-section {
@@ -326,4 +342,238 @@ main {
 
 .btn-primary:hover {
     opacity: 0.9;
+}
+
+/* ========== 颜色选择器 ========== */
+.color-picker-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.color-picker {
+    width: 48px;
+    height: 40px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 2px;
+    background: var(--card-bg);
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.color-picker:hover,
+.color-picker:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.color-text {
+    padding: 10px 14px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: 'Consolas', monospace;
+    font-size: 0.9rem;
+    width: 110px;
+    transition: border-color 0.2s;
+}
+
+.color-text:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.preset-colors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.preset-color {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.15s, border-color 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.preset-color:hover {
+    transform: scale(1.15);
+    border-color: white;
+}
+
+.preset-color.active {
+    transform: scale(1.15);
+    border-color: var(--text-primary);
+}
+
+/* ========== 确认对话框 ========== */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.modal-backdrop.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 28px;
+    min-width: 360px;
+    max-width: 90vw;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    transform: scale(0.95);
+    transition: transform 0.2s;
+}
+
+.modal-backdrop.active .modal {
+    transform: scale(1);
+}
+
+.modal-confirm {
+    text-align: center;
+}
+
+.confirm-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 16px;
+    border-radius: 50%;
+    background: rgba(231, 76, 60, 0.15);
+    color: #e74c3c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal h3 {
+    margin: 0 0 8px;
+    color: var(--text-primary);
+}
+
+.modal p {
+    margin: 0 0 24px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.modal-buttons .btn {
+    min-width: 90px;
+}
+
+.btn-secondary {
+    background: var(--border-color);
+    color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+    background: var(--hover-color);
+}
+
+.btn-danger {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+/* ========== Toast 通知 ========== */
+.toast-container {
+    position: fixed;
+    top: 60px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 10000;
+    pointer-events: none;
+}
+
+.toast {
+    min-width: 260px;
+    max-width: 360px;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border-radius: 8px;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    pointer-events: auto;
+    cursor: pointer;
+    animation: toastIn 0.28s ease-out;
+}
+
+@keyframes toastIn {
+    from { transform: translateX(120%); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+}
+
+.toast.toast-out {
+    animation: toastOut 0.25s ease-in forwards;
+}
+
+@keyframes toastOut {
+    from { transform: translateX(0); opacity: 1; }
+    to   { transform: translateX(120%); opacity: 0; }
+}
+
+.toast-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toast-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+}
+
+.toast-success { border-left-color: var(--accent-color); }
+.toast-success .toast-icon { color: var(--accent-color); }
+
+.toast-error { border-left-color: #e74c3c; }
+.toast-error .toast-icon { color: #e74c3c; }
+
+.toast-warning { border-left-color: #f39c12; }
+.toast-warning .toast-icon { color: #f39c12; }
+
+.toast-info { border-left-color: #3498db; }
+.toast-info .toast-icon { color: #3498db; }
+
+/* ========== 字体下拉 ========== */
+.font-select option {
+    background: var(--card-bg);
+    color: var(--text-primary);
 }

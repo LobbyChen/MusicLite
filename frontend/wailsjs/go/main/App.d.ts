@@ -10,6 +10,10 @@ export function GetAllTracks():Promise<Array<format.MscData>>;
 
 export function GetDatabase():Promise<storage.Database>;
 
+export function GetFileInArgs():Promise<format.MscData>;
+
+export function GetInstalledFonts():Promise<Array<string>>;
+
 export function GetNextTracks(arg1:number):Promise<format.MscData>;
 
 export function GetRandomTrack(arg1:number):Promise<format.MscData>;

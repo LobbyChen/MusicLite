@@ -59,6 +59,7 @@ class AudioManager {
 	loadTrack(track) {
 		if (!track || !track.src) return;
 		this.currentTrack = track;
+        document.title = track.name || track.Name || 'MusicLite';
 		this.audio.src = track.src;
 		this.audio.load();
 		// 保存到 localStorage 以便其他页面恢复
@@ -165,8 +166,7 @@ class AudioManager {
 		}
 	}
 	
-	// 从 localStorage 恢复曲目信息（不自动播放，仅恢复到暂停状态）
-	// 这样进入应用不会突然有声，切换视图时若正在播放则由持久 audio 元素保持连续
+	// 从 localStorage 恢复曲目信息
 	restore() {
 		const savedTrack = localStorage.getItem('currentTrack');
 		if (savedTrack) {
@@ -195,6 +195,7 @@ class AudioManager {
 		if (savedVolume) {
 			this.audio.volume = parseFloat(savedVolume);
 		}
+
 	}
 }
 

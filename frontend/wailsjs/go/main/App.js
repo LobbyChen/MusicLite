@@ -14,6 +14,14 @@ export function GetDatabase() {
   return window['go']['main']['App']['GetDatabase']();
 }
 
+export function GetFileInArgs() {
+  return window['go']['main']['App']['GetFileInArgs']();
+}
+
+export function GetInstalledFonts() {
+  return window['go']['main']['App']['GetInstalledFonts']();
+}
+
 export function GetNextTracks(arg1) {
   return window['go']['main']['App']['GetNextTracks'](arg1);
 }

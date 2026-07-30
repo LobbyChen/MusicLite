@@ -6,6 +6,7 @@
         <link rel="stylesheet" type="text/css" href="/src/css/settings.css" />
         <script src="/wails/ipc.js"></script>
         <script src="/wails/runtime.js"></script>
+        <script src="/src/js/settings-apply.js" type="module"></script>
         <script src="/src/js/settings.js" type="module"></script>
         <title>设置 · MusicLite</title>
     </head>
@@ -72,6 +73,15 @@
                         </button>
                     </div>
                 </div>
+
+                <div class="setting-item" id="accent-color-item" style="display: none;">
+                    <label for="accent-color">自定义主题色</label>
+                    <div class="color-picker-row">
+                        <input type="color" id="accent-color" class="color-picker" value="#1DB954" />
+                        <input type="text" id="accent-color-text" class="color-text" value="#1DB954" maxlength="7" />
+                        <span class="preset-color active" data-color="#1DB954" title="默认墨绿"></span>
+                    </div>
+                </div>
             </section>
 
             <section class="settings-section">
@@ -100,6 +110,22 @@
                         <option value="serif">衬线体</option>
                     </select>
                 </div>
+
+                <div class="setting-item">
+                    <label for="base-font-size">界面字号</label>
+                    <div class="slider-row">
+                        <input type="range" id="base-font-size" min="12" max="22" value="14" step="1" class="setting-slider" />
+                        <span id="base-font-size-value" class="slider-value">14px</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <label for="lyrics-font-size">歌词字号</label>
+                    <div class="slider-row">
+                        <input type="range" id="lyrics-font-size" min="12" max="40" value="16" step="1" class="setting-slider" />
+                        <span id="lyrics-font-size-value" class="slider-value">16px</span>
+                    </div>
+                </div>
             </section>
 
             <section class="settings-section">
@@ -117,7 +143,7 @@
             <section class="settings-section">
                 <h2>关于</h2>
                 <div class="about-info">
-                    <p><strong>MusicLite</strong>Beta 0.5.2</p>
+                    <p><strong>MusicLite</strong>Beta 0.6.1</p>
                     <p class="text-muted">轻量级离线音乐播放器</p>
                     <p class="text-muted">基于 Wails v2 构建</p>
                 </div>
@@ -127,6 +153,24 @@
         <div class="save-bar" id="saveBar" style="display: none;">
             <span>设置已更改</span>
             <button class="btn btn-primary" id="saveBtn">保存</button>
+        </div>
+
+        <div class="toast-container" id="toastContainer"></div>
+
+        <div class="modal-backdrop" id="confirmModal">
+            <div class="modal modal-confirm">
+                <div class="confirm-icon">
+                    <svg viewBox="0 0 24 24" width="28" height="28">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                </div>
+                <h3 id="confirmTitle">确认操作</h3>
+                <p id="confirmMessage">确定要执行此操作吗？</p>
+                <div class="modal-buttons">
+                    <button class="btn btn-secondary" id="confirmCancel">取消</button>
+                    <button class="btn btn-danger" id="confirmOk">确定</button>
+                </div>
+            </div>
         </div>
     </body>
 </html>

@@ -33,9 +33,12 @@ export namespace main {
 	    theme: string;
 	    player_font: string;
 	    lyrics_font: string;
+	    base_font_size: number;
+	    lyrics_font_size: number;
 	    last_track_id: number;
 	    last_position: number;
 	    volume: number;
+	    accent_color: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -46,9 +49,12 @@ export namespace main {
 	        this.theme = source["theme"];
 	        this.player_font = source["player_font"];
 	        this.lyrics_font = source["lyrics_font"];
+	        this.base_font_size = source["base_font_size"];
+	        this.lyrics_font_size = source["lyrics_font_size"];
 	        this.last_track_id = source["last_track_id"];
 	        this.last_position = source["last_position"];
 	        this.volume = source["volume"];
+	        this.accent_color = source["accent_color"];
 	    }
 	}
 

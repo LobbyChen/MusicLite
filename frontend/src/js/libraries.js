@@ -1,4 +1,4 @@
-import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack } from '../../wailsjs/go/main/App.js';
+import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs} from '../../wailsjs/go/main/App.js';
 import { openPlayer } from './player.js';
 
 // ============ 标题栏窗口控制 ============
@@ -161,7 +161,6 @@ function renderTracks(tracks) {
                 window.audioManager.play();
             }
             openPlayer(track.id);
-            
         });
 
         // 编辑按钮
@@ -471,14 +470,32 @@ document.addEventListener("DOMContentLoaded", async function () {
         // 恢复上次播放状态
         window.audioManager.restore();
         let currentTrack = window.audioManager.currentTrack;
-
+        // 设置title（兼容 currentTrack 为空，且字段名大小写）
+        if (currentTrack) {
+            document.title = currentTrack.name || currentTrack.Name || 'MusicLite · 我的音乐库';
+        }
+        // 恢复上次状态后，继续检查这次启动是否传入参数
+        // 获取参数里的文件
+        var defaultFile = await GetFileInArgs();
+        if (defaultFile && defaultFile.src) {
+            // 若有文件
+            console.log("有文件");
+            console.log(defaultFile);
+            // 命令行参数文件已经入库，刷新一下列表显示
+            await refreshList();
+            window.audioManager.loadTrack(defaultFile);
+            window.audioManager.play();
+            currentTrack = defaultFile;
+            document.title = currentTrack.name || currentTrack.Name || 'MusicLite · 我的音乐库';
+        }else{
+            console.log("无文件");
+        }
         // 删除检查：若恢复的曲目已不存在，清理状态并隐藏迷你播放器
         if (currentTrack) {
             try {
                 const { GetTrack } = await import('../../wailsjs/go/main/App.js');
                 await GetTrack(Number(currentTrack.id));
             } catch (err) {
-                console.warn('已保存的曲目已被删除，清理状态:', err);
                 window.audioManager.clearTrack();
                 currentTrack = null;
             }

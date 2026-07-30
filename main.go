@@ -16,15 +16,14 @@ import (
 var assets embed.FS
 
 func main() {
+	file := getFileInArgs()
 	// 创建应用实例并连接数据库
-	app, err := NewApp(dbFile)
+	app, err := NewApp(dbFile, file)
 	if err != nil {
 		panic(err)
 	}
-
 	// 创建音频/封面请求处理器
 	audioHandler := NewAudioHandler(app.GetDatabase())
-
 	// WebView2 用户数据目录（指定到 exe 旁的独立目录，避免旧数据被锁导致控制器创建失败）
 	exePath, _ := os.Executable()
 	webviewDataPath := filepath.Join(filepath.Dir(exePath), "webview-data")

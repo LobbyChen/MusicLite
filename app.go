@@ -6,14 +6,18 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	goruntime "runtime"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/sys/windows/registry"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -21,13 +25,14 @@ import (
 // App struct
 type App struct {
 	ctx             context.Context
+	defaultFile     string
 	database        *storage.Database
 	audioServerPort int // 独立 HTTP 服务器端口，dev 模式下使用
 	audioServerLn   net.Listener
 }
 
 // NewApp 创建应用实例并连接数据库
-func NewApp(sqlite3FilePath string) (*App, error) {
+func NewApp(sqlite3FilePath string, defaultFile string) (*App, error) {
 	// 确保数据库文件所在目录存在
 	dir := filepath.Dir(sqlite3FilePath)
 	if dir != "" && dir != "." {
@@ -55,19 +60,13 @@ func NewApp(sqlite3FilePath string) (*App, error) {
 		return nil, err
 	}
 
-	return &App{database: db}, nil
+	return &App{database: db, defaultFile: defaultFile}, nil
 }
 
 // startup 前端创建后、加载 index.html 前触发
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	// dev 模式下启动独立 HTTP 服务器提供音频/封面
-	// 原因：dev 模式下 WebView 从 Vite dev server 加载页面，
-	// /audio/<id>、/cover/<id> 会被 Vite SPA fallback 拦截返回 index.html，
-	// Vite proxy 转发 WebView2 请求时又因头部过大报 431。
-	// 我们自己起一个服务器，前端直接用绝对 URL，彻底绕开这些坑。
-	// 生产模式 (wails build) 下 AssetServer.Handler 正常工作，无需此服务器。
 	if os.Getenv("devserver") != "" {
 		ln, err := net.Listen("tcp", "127.0.0.1:0") // 端口 0 = 随机可用端口
 		if err != nil {
@@ -101,8 +100,6 @@ func (a *App) shutdown(ctx context.Context) {
 }
 
 // mediaBaseURL 返回音频/封面 URL 的前缀
-// dev 模式: http://127.0.0.1:<port>（自己的服务器）
-// 生产模式: 空串（相对路径走 AssetServer）
 func (a *App) mediaBaseURL() string {
 	if a.audioServerPort > 0 {
 		return fmt.Sprintf("http://127.0.0.1:%d", a.audioServerPort)
@@ -135,6 +132,55 @@ func (a *App) serveAudioFile(w http.ResponseWriter, r *http.Request) {
 
 	// http.ServeFile 自动处理 Content-Type、Range（拖动进度条）、ETag
 	http.ServeFile(w, r, filePath)
+}
+
+func (a *App) getDefaultFilePath() string {
+	return a.defaultFile
+}
+func (a *App) GetFileInArgs() format.MscData {
+	filePath := a.getDefaultFilePath()
+	if filePath == "" {
+		return format.MscData{}
+	}
+
+	meta, err := format.ExtractMetadata(filePath)
+	if err != nil {
+		log.Printf("跳过 %s: %v", filePath, err)
+		return format.MscData{}
+	}
+	rec := storage.TrackRecord{
+		Title:      meta.Title,
+		Artist:     meta.Artist,
+		FilePath:   filePath,
+		CoverData:  meta.CoverData,
+		CoverMIME:  meta.CoverMIME,
+		Lyrics:     meta.Lyrics,
+		Format:     string(meta.Format),
+		ImportedAt: time.Now().Unix(),
+	}
+	var id int64
+	base := a.mediaBaseURL()
+	if id, err = a.database.InsertTrack(rec); err != nil {
+		log.Printf("入库失败 %s: %v", filePath, err)
+		return format.MscData{}
+	}
+	r, err := a.database.GetTrackByID(id)
+	if err != nil {
+		fmt.Println("获取失败")
+		return format.MscData{}
+	}
+	track := format.MscData{
+		ID:       r.ID,
+		Name:     r.Title,
+		Author:   r.Artist,
+		Format:   format.NormalMscFormat(r.Format),
+		AudioURI: base + "/audio/" + strconv.FormatInt(r.ID, 10),
+		Lyrics:   r.Lyrics,
+	}
+	if r.CoverMIME != "" {
+		track.CoverURI = base + "/cover/" + strconv.FormatInt(r.ID, 10)
+	}
+	return track
 }
 
 // serveCoverFile 处理 /cover/<id> 请求，返回封面图片
@@ -318,4 +364,60 @@ func encodeCoverBase64(data []byte, mime string) string {
 		mime = "image/jpeg"
 	}
 	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(data)
+}
+
+// GetInstalledFonts 返回系统中安装的字体名称列表（去重、排序）
+// Windows: 读注册表 HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts
+// 其他平台: 返回常用字体作为兜底
+func (a *App) GetInstalledFonts() []string {
+	set := make(map[string]struct{})
+	if goruntime.GOOS == "windows" {
+		readRegistryFonts(registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts`, set)
+		readRegistryFonts(registry.CURRENT_USER, `SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts`, set)
+	}
+	list := make([]string, 0, len(set))
+	for name := range set {
+		list = append(list, name)
+	}
+	sort.Slice(list, func(i, j int) bool {
+		return strings.ToLower(list[i]) < strings.ToLower(list[j])
+	})
+	if len(list) == 0 {
+		list = []string{"Microsoft YaHei", "SimHei", "SimSun", "KaiTi", "FangSong", "Segoe UI", "Consolas", "Monaco", "Courier New", "Arial"}
+	}
+	return list
+}
+
+// readRegistryFonts 打开指定注册表路径读取字体名；失败时静默跳过
+func readRegistryFonts(root registry.Key, path string, out map[string]struct{}) {
+	k, err := registry.OpenKey(root, path, registry.QUERY_VALUE)
+	if err != nil {
+		log.Printf("打开注册表字体键失败 %s: %v", path, err)
+		return
+	}
+	defer k.Close()
+	names, err := k.ReadValueNames(0)
+	if err != nil {
+		log.Printf("读取注册表字体值失败 %s: %v", path, err)
+		return
+	}
+	for _, name := range names {
+		// 键名格式: "Microsoft YaHei & Microsoft YaHei UI (TrueType)"、"Arial (TrueType)"
+		// 去掉尾部 (TrueType)/(OpenType) 等后缀，再按 &/& /, 拆分字体族名
+		clean := name
+		if i := strings.LastIndex(clean, " ("); i > 0 {
+			clean = clean[:i]
+		}
+		// 多个字体族名用 & 或 , 分隔（如 "微软雅黑 & 微软雅黑 UI"）
+		parts := strings.FieldsFunc(clean, func(r rune) bool {
+			return r == '&' || r == ','
+		})
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if p == "" {
+				continue
+			}
+			out[p] = struct{}{}
+		}
+	}
 }
