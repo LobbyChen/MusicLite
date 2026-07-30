@@ -1475,3 +1475,21 @@ body.player-active > .mini-player {
     color: var(--text-secondary);
     opacity: 0.5;
 }
+
+/* 随机播放激活状态 */
+.player-overlay .btn-loop.active-random {
+    opacity: 1;
+    color: #1ecee9; 
+    animation: spin-slow 3s linear infinite; 
+}
+.player-overlay .btn-loop.active-loop-one {
+    opacity: 1;
+    color: #2fe91e; 
+}
+
+
+
+@keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

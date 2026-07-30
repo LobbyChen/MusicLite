@@ -233,6 +233,22 @@ func (a *App) GetAllTracks() ([]format.MscData, error) {
 	return result, nil
 }
 
+func (a *App) GetRandomTrack(currTrackId int64) format.MscData {
+	// 先获取一次现在的列表
+	currMscs, _ := a.GetAllTracks()
+	var index int
+	for {
+		// 随机一个下标
+		index = random(0, len(currMscs))
+		if currMscs[index].ID == currTrackId {
+			continue
+		}
+		break
+	}
+	// 返回
+	return currMscs[index]
+}
+
 // GetNextTracks 返回下一曲目（前端用）
 func (a *App) GetNextTracks(currTrackId int64) format.MscData {
 	// 先获取一次现在的列表

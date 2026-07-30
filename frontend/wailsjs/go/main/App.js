@@ -18,6 +18,10 @@ export function GetNextTracks(arg1) {
   return window['go']['main']['App']['GetNextTracks'](arg1);
 }
 
+export function GetRandomTrack(arg1) {
+  return window['go']['main']['App']['GetRandomTrack'](arg1);
+}
+
 export function GetTrack(arg1) {
   return window['go']['main']['App']['GetTrack'](arg1);
 }

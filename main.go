@@ -34,7 +34,7 @@ func main() {
 	err = wails.Run(&options.App{
 		Title:     "MusicLite",
 		Width:     1024,
-		Height:    360,
+		Height:    580,
 		Frameless: true, // 无 Windows 原生边框，前端使用自定义标题栏
 		AssetServer: &assetserver.Options{
 			Assets:  assets,
