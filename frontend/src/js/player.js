@@ -1,6 +1,6 @@
 // player.js — 播放器视图（SPA overlay 模块）
 // 与库视图共享同一个 window.audioManager，切换视图时 audio 不销毁，播放保持连续。
-import { GetTrack, LoadSettings, GetNextTracks,GetPrevTracks, GetRandomTrack } from '../../wailsjs/go/main/App.js';
+import { GetTrack, LoadSettings, GetNextTracks,GetPrevTracks, GetRandomTrack, RecordPlayStart, RecordPlayPause, SetApplicationVolume, GetApplicationVolume } from '../../wailsjs/go/main/App.js';
 import { initI18n, t } from './i18n.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
@@ -179,6 +179,107 @@ function renderLyrics(lyricsArray) {
     updateLyricsScroll(audio.currentTime || 0);
 }
 
+// ============ 歌词行切换动画（Web Animations API） ============
+// 从 body class 读取动画模式（由 settings-apply.js 在启动时设置）
+// 比依赖 SettingsManager.cached 更可靠，因为 body class 在脚本加载时就已设置
+function getLyricAnimationMode() {
+    const body = document.body;
+    if (!body) return 'fade';
+    // 从 body class 中提取 lyric-anim-<mode>
+    for (const cls of body.classList) {
+        if (cls.startsWith('lyric-anim-')) {
+            return cls.substring(11); // 'lyric-anim-'.length === 11
+        }
+    }
+    return 'fade';
+}
+
+// 对新高亮行触发进入动画（Web Animations API，每次切换都可靠触发）
+function animateLyricLine(el, isFullscreen) {
+    if (!el) return;
+    const mode = getLyricAnimationMode();
+
+    // 先取消之前可能残留的动画
+    el.getAnimations().forEach(a => a.cancel());
+
+    const baseScale = isFullscreen ? 1.02 : 1;
+    let keyframes;
+    let duration = 600;
+    let easing = 'cubic-bezier(0.16, 1, 0.3, 1)';
+    switch (mode) {
+        case 'slide-up':
+            // 从下方较远位置滑入，位移加大
+            keyframes = [
+                { opacity: 0, transform: `translateY(${isFullscreen ? 60 : 40}px) scale(${baseScale})` },
+                { opacity: 1, transform: `translateY(0) scale(${baseScale})` }
+            ];
+            break;
+        case 'slide-left':
+            // 从右侧较远位置滑入，位移加大
+            keyframes = [
+                { opacity: 0, transform: `translateX(${isFullscreen ? 80 : 60}px) scale(${baseScale})` },
+                { opacity: 1, transform: `translateX(0) scale(${baseScale})` }
+            ];
+            break;
+        case 'zoom':
+            // 缩放幅度加大，从更小放大到 baseScale
+            keyframes = [
+                { opacity: 0, transform: `scale(${isFullscreen ? 0.5 : 0.4})` },
+                { opacity: 1, transform: `scale(${baseScale})` }
+            ];
+            break;
+        case 'bounce':
+            // 弹跳：从上方落下并产生弹跳效果
+            keyframes = [
+                { opacity: 0, transform: `translateY(-${isFullscreen ? 80 : 60}px) scale(${baseScale})`, offset: 0 },
+                { opacity: 1, transform: `translateY(0) scale(${baseScale})`, offset: 0.5 },
+                { opacity: 1, transform: `translateY(-${isFullscreen ? 25 : 20}px) scale(${baseScale})`, offset: 0.7 },
+                { opacity: 1, transform: `translateY(0) scale(${baseScale})`, offset: 0.85 },
+                { opacity: 1, transform: `translateY(-${isFullscreen ? 8 : 6}px) scale(${baseScale})`, offset: 0.95 },
+                { opacity: 1, transform: `translateY(0) scale(${baseScale})`, offset: 1 }
+            ];
+            duration = 800;
+            easing = 'cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+            break;
+        case 'flip':
+            // 翻转：沿 X 轴翻转进入
+            keyframes = [
+                { opacity: 0, transform: `perspective(800px) rotateX(90deg) scale(${baseScale})` },
+                { opacity: 1, transform: `perspective(800px) rotateX(0deg) scale(${baseScale})` }
+            ];
+            duration = 700;
+            easing = 'cubic-bezier(0.16, 1, 0.3, 1)';
+            break;
+        case 'rotate':
+            // 旋转：带缩放的旋转进入
+            keyframes = [
+                { opacity: 0, transform: `rotate(-${isFullscreen ? 270 : 360}deg) scale(${isFullscreen ? 0.3 : 0.2})` },
+                { opacity: 1, transform: `rotate(0deg) scale(${baseScale})` }
+            ];
+            duration = 700;
+            easing = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
+            break;
+        case 'none':
+            // 无动画，不触发
+            return;
+        case 'fade':
+        default:
+            // fade：opacity 从 0 淡入，更明显的淡入效果
+            keyframes = [
+                { opacity: 0 },
+                { opacity: 1 }
+            ];
+            duration = 500;
+            easing = 'ease';
+            break;
+    }
+    el.animate(keyframes, {
+        duration: duration,
+        easing: easing,
+        fill: 'forwards'
+    });
+}
+
 // ============ 歌词滚动与高亮 ============
 function updateLyricsScroll(currentTime) {
     if (!parsedLyrics || parsedLyrics.length === 0) return;
@@ -210,6 +311,7 @@ function updateLyricsScroll(currentTime) {
         const activeEl = lyricsContentEl.querySelector(`.lyric-line[data-index="${newIndex}"]`);
         if (activeEl) {
             activeEl.classList.add('active');
+            animateLyricLine(activeEl, false);
             const wrapperHeight = lyricsWrapperEl.clientHeight;
             // 当前行中心相对于 content 顶部的偏移 - wrapper 高度一半 = 需要的位移
             const targetOffset = activeEl.offsetTop + activeEl.offsetHeight / 2 - wrapperHeight / 2;
@@ -223,6 +325,7 @@ function updateLyricsScroll(currentTime) {
         const fsActiveEl = fullscreenLyricsContentEl.querySelector(`.fs-lyric-line[data-index="${newIndex}"]`);
         if (fsActiveEl) {
             fsActiveEl.classList.add('active');
+            animateLyricLine(fsActiveEl, true);
             const wrapperHeight = fullscreenLyricsWrapperEl.clientHeight;
             const targetOffset = fsActiveEl.offsetTop + fsActiveEl.offsetHeight / 2 - wrapperHeight / 2;
             fullscreenLyricsContentEl.style.transform = `translateY(${-targetOffset}px)`;
@@ -247,11 +350,20 @@ function closeLyricsCard() {
     lyricsAreaEl.classList.remove('expanded');
 }
 
-function toggleLyricsCard() {
-    if (lyricsCardExpanded) {
+// 统一切换函数：折叠 → 全屏 → 折叠；卡片 → 折叠
+// 顺序为"先全屏歌词再卡片歌词"：从折叠态点击先进入全屏，
+// 全屏内的"卡片"按钮可再切到卡片，卡片内的"全屏"按钮可切回全屏。
+function toggleLyrics() {
+    const isFullscreen = fullscreenLyricsEl.classList.contains('active');
+    if (isFullscreen) {
+        // 全屏 → 折叠
+        closeFullscreenLyrics();
+    } else if (lyricsCardExpanded) {
+        // 卡片 → 折叠
         closeLyricsCard();
     } else {
-        openLyricsCard();
+        // 折叠 → 全屏（先全屏）
+        openFullscreenLyrics();
     }
 }
 
@@ -304,10 +416,10 @@ function seekLyric(direction) {
     updateLyricsScroll(targetTime);
 }
 
-// 点击歌词预览区域 → toggle 全屏歌词展开/收起
+// 点击歌词预览区域 → toggle 歌词（折叠 → 全屏 → 折叠；卡片 → 折叠）
 lyricsToggleEl.addEventListener('click', (e) => {
     e.stopPropagation();
-    toggleLyricsCard();
+    toggleLyrics();
 });
 
 // 卡片歌词中的"全屏"按钮 → 切换到全屏歌词
@@ -530,10 +642,12 @@ function setProgress() {
 }
 
 function setVolume() {
-    audio.volume = volSlider.value / 100;
+    const vol = parseInt(volSlider.value, 10);
     updateProgressFill('volProgress', volSlider.value);
+    // 控制 Windows 系统合成器本程序音量（不再是 audio.volume）
+    SetApplicationVolume(vol).catch(() => {});
     if (window.audioManager) {
-        localStorage.setItem('volume', audio.volume.toString());
+        localStorage.setItem('volume', vol.toString());
     }
 }
 
@@ -597,12 +711,23 @@ audio.addEventListener('loadedmetadata', () => {
 audio.addEventListener('play', () => {
     syncPlayState();
     startSmoothProgress(); // 播放时启动平滑进度更新
+    // 听歌时长统计：记录开始播放时间
+    // 优先使用 currentTrackData，回退到 audioManager.currentTrack（恢复播放时 currentTrackData 可能为 null）
+    const track = currentTrackData || (window.audioManager && window.audioManager.currentTrack);
+    if (track && track.id) {
+        RecordPlayStart(track.id).catch((e) => console.warn('RecordPlayStart failed:', e));
+    }
 });
 nextBtn.addEventListener('click', playNextTrack);
 prevBtn.addEventListener('click', playPrevTrack);
 audio.addEventListener('pause', () => {
     syncPlayState();
     stopSmoothProgress(); // 暂停时停止平滑更新，最终状态由 timeupdate 兜底
+    // 听歌时长统计：计算本次播放时长并写入注册表
+    const track = currentTrackData || (window.audioManager && window.audioManager.currentTrack);
+    if (track && track.id) {
+        RecordPlayPause(track.id).catch((e) => console.warn('RecordPlayPause failed:', e));
+    }
 });
 audio.addEventListener('error', (e) => {
     console.error("Audio Load Error:", e);
@@ -611,6 +736,11 @@ audio.addEventListener('error', (e) => {
 });
 
 audio.addEventListener('ended', async () => {
+    // 听歌时长统计：播放结束也需记录（ended 不会触发 pause 事件）
+    const track = currentTrackData || (window.audioManager && window.audioManager.currentTrack);
+    if (track && track.id) {
+        RecordPlayPause(track.id).catch((e) => console.warn('RecordPlayPause failed:', e));
+    }
     const mode = window.audioManager.getPlayMode();
 
     // 单曲循环由 audioManager 内部处理，这里不需要操作
@@ -683,20 +813,17 @@ async function openPlayer(trackId) {
     document.body.classList.add('player-active');
     syncPlayModeState();
 
-    // 同步音量到滑块
+    // 同步音量到滑块 — 从 Windows 系统合成器读取本程序音量
     try {
-        const settings = await LoadSettings();
-        const savedVolume = localStorage.getItem('volume');
-        if (savedVolume !== null) {
-            audio.volume = parseFloat(savedVolume);
-            volSlider.value = parseFloat(savedVolume) * 100;
-        } else {
-            audio.volume = (settings.volume || 70) / 100;
-            volSlider.value = settings.volume || 70;
-        }
+        const sysVol = await GetApplicationVolume();
+        volSlider.value = sysVol;
         updateProgressFill('volProgress', volSlider.value);
+        localStorage.setItem('volume', sysVol.toString());
     } catch (e) {
-        console.warn('Failed to load settings:', e);
+        // 读取系统音量失败，回退到 localStorage 或默认值
+        const savedVolume = localStorage.getItem('volume');
+        volSlider.value = savedVolume ? parseInt(savedVolume, 10) : 70;
+        updateProgressFill('volProgress', volSlider.value);
     }
 
     if (!trackId) {

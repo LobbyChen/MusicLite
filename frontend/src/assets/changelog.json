@@ -1,6 +1,32 @@
 [
   {
     "date": "2026-07-31",
+    "version": "MiscLite Beta 0.8.4",
+    "sections": [
+      {
+        "type": "添加",
+        "items": [
+          "i18n新封装",
+          "单例化实例实现",
+          "新增:打开数据文件夹"
+        ]
+      },
+      {
+        "type": "修改",
+        "items": [
+          "无"
+        ]
+      },
+      {
+        "type": "修复",
+        "items": [
+          "无"
+        ]
+      }
+    ]
+  },
+  {
+    "date": "2026-07-31",
     "version": "MiscLite Beta 0.8.3",
     "sections": [
       {

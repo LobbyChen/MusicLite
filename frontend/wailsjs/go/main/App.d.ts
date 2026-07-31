@@ -10,6 +10,8 @@ export function ExportSettings():Promise<string>;
 
 export function GetAllTracks():Promise<Array<format.MscData>>;
 
+export function GetApplicationVolume():Promise<number>;
+
 export function GetDatabase():Promise<storage.Database>;
 
 export function GetFileInArgs():Promise<format.MscData>;
@@ -18,11 +20,15 @@ export function GetI18nData():Promise<main.I18nData>;
 
 export function GetInstalledFonts():Promise<Array<string>>;
 
+export function GetListenTime(arg1:number):Promise<number>;
+
 export function GetNextTracks(arg1:number):Promise<format.MscData>;
 
 export function GetPrevTracks(arg1:number):Promise<format.MscData>;
 
 export function GetRandomTrack(arg1:number):Promise<format.MscData>;
+
+export function GetTotalListenTime():Promise<number>;
 
 export function GetTrack(arg1:number):Promise<format.MscData>;
 
@@ -36,9 +42,15 @@ export function LoadSettings():Promise<main.Settings>;
 
 export function OpenAppDataFolder():Promise<void>;
 
+export function RecordPlayPause(arg1:number):Promise<void>;
+
+export function RecordPlayStart(arg1:number):Promise<void>;
+
 export function ResetSettings():Promise<main.Settings>;
 
 export function SaveSettings(arg1:main.Settings):Promise<void>;
+
+export function SetApplicationVolume(arg1:number):Promise<void>;
 
 export function UpdateTrack(arg1:number,arg2:string,arg3:string,arg4:string):Promise<void>;
 

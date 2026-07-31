@@ -49,6 +49,13 @@ body {
     flex-direction: column;
     overflow: hidden;
     padding-top: 36px;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+img {
+    -webkit-user-drag: none;
+    user-drag: none;
 }
 body::-webkit-scrollbar {
     display: none;
@@ -537,6 +544,24 @@ h2 {
     color: var(--text-primary);
 }
 
+.btn-stats {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-stats:hover {
+    background-color: var(--hover-color);
+    color: var(--text-primary);
+}
+
 /* Mini Player */
 .mini-player {
     position: fixed;
@@ -560,6 +585,7 @@ h2 {
     gap: 12px;
     flex: 1;
     min-width: 0;
+    cursor: pointer;
 }
 
 .mini-cover {
@@ -1452,6 +1478,32 @@ body.player-active > .mini-player {
     opacity: 1;
     visibility: visible;
     transition: opacity 0.3s ease, visibility 0s;
+}
+
+/* ============ 歌词行切换动画（由 body 上的 .lyric-anim-* class 控制） ============ */
+/* 此动画作用于一行行歌词之间的切换，而非播放器界面与全屏歌词界面之间的过渡 */
+/* slide-up/slide-left/zoom 的进入动画由 player.js 用 Web Animations API 触发，更可靠 */
+
+/* fade（默认）：淡入淡出，通过 color/opacity 的 transition 实现 */
+body.lyric-anim-fade .lyric-line,
+body.lyric-anim-fade .fs-lyric-line {
+    transition: color 0.35s ease, opacity 0.35s ease, font-size 0.35s ease, font-weight 0.35s ease, text-shadow 0.35s ease, background 0.35s ease;
+}
+
+/* slide-up / slide-left / zoom：保留 color 的 transition，transform/opacity 由 JS animate 处理 */
+body.lyric-anim-slide-up .lyric-line,
+body.lyric-anim-slide-up .fs-lyric-line,
+body.lyric-anim-slide-left .lyric-line,
+body.lyric-anim-slide-left .fs-lyric-line,
+body.lyric-anim-zoom .lyric-line,
+body.lyric-anim-zoom .fs-lyric-line {
+    transition: color 0.35s ease, font-size 0.35s ease, font-weight 0.35s ease, text-shadow 0.35s ease, background 0.35s ease;
+}
+
+/* none：无动画 */
+body.lyric-anim-none .lyric-line,
+body.lyric-anim-none .fs-lyric-line {
+    transition: none !important;
 }
 
 /* 模糊背景层 */

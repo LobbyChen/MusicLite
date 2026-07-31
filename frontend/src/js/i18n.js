@@ -76,7 +76,10 @@ export async function initI18n() {
 /**
  * 翻译键值
  * @param {string} key — 翻译键，如 'libraries.title'
- * @param {...string} args — 插值参数，替换 {0}, {1}, ...
+ * @param {...*} args — 插值参数。支持两种形式：
+ *   1. 位置参数：t('key', 'a', 'b')  → 替换 {0}, {1}
+ *   2. 命名参数：t('key', { count: 5 }) → 替换 {count}
+ *      混合使用也支持：t('key', 'pos1', { count: 5 })
  * @returns {string} 翻译后的字符串
  */
 export function t(key, ...args) {
@@ -91,10 +94,18 @@ export function t(key, ...args) {
         // 键不存在，返回键名本身
         return key;
     }
-    // 插值替换 {0}, {1}, ...
     if (args.length > 0) {
         for (let i = 0; i < args.length; i++) {
-            str = str.replace(`{${i}}`, String(args[i]));
+            const arg = args[i];
+            if (arg && typeof arg === 'object' && !Array.isArray(arg)) {
+                // 命名参数：替换 {key}
+                for (const k of Object.keys(arg)) {
+                    str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(arg[k]));
+                }
+            } else {
+                // 位置参数：替换 {0}, {1}, ...
+                str = str.replace(new RegExp(`\\{${i}\\}`, 'g'), String(arg));
+            }
         }
     }
     return str;

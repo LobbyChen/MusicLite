@@ -98,6 +98,8 @@ func (a *App) startup(ctx context.Context) {
 func (a *App) shutdown(ctx context.Context) {
 	// 退出系统托盘
 	systray.Quit()
+	// 持久化未写入的听歌时长到注册表
+	FlushListenTime()
 	// 检查是否有命令行启动的文件
 	if a.defaultFile != "" {
 		// 从库里面剔除
@@ -277,6 +279,11 @@ func (a *App) importFromPaths(paths []string) (int, error) {
 			ImportedAt: time.Now().Unix(),
 		}
 
+		// 元数据中没有歌词时，扫描同目录下同名的 .lrc/.txt 文件作为默认歌词
+		if rec.Lyrics == "" {
+			rec.Lyrics = findSidecarLyrics(filePath)
+		}
+
 		if _, err := a.database.InsertTrack(rec); err != nil {
 			log.Printf("入库失败 %s: %v", filePath, err)
 			continue
@@ -284,6 +291,20 @@ func (a *App) importFromPaths(paths []string) (int, error) {
 		count++
 	}
 	return count, nil
+}
+
+// findSidecarLyrics 扫描音频文件同目录下同名的歌词文件（.lrc 优先于 .txt）
+// 返回歌词内容；找不到则返回空字符串
+func findSidecarLyrics(audioPath string) string {
+	base := strings.TrimSuffix(audioPath, filepath.Ext(audioPath))
+	// 歌词文件扩展名优先级：.lrc > .txt
+	for _, ext := range []string{".lrc", ".txt"} {
+		lyricPath := base + ext
+		if data, err := os.ReadFile(lyricPath); err == nil {
+			return string(data)
+		}
+	}
+	return ""
 }
 
 // GetAllTracks 返回所有曲目列表（前端列表页用）

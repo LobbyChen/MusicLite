@@ -54,6 +54,7 @@ export namespace main {
 	    volume: number;
 	    accent_color: string;
 	    language: string;
+	    lyric_animation: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -71,6 +72,7 @@ export namespace main {
 	        this.volume = source["volume"];
 	        this.accent_color = source["accent_color"];
 	        this.language = source["language"];
+	        this.lyric_animation = source["lyric_animation"];
 	    }
 	}
 

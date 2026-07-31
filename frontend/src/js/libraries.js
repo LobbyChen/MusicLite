@@ -1,4 +1,4 @@
-import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths} from '../../wailsjs/go/main/App.js';
+import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths, GetTotalListenTime} from '../../wailsjs/go/main/App.js';
 import { OnFileDrop } from '../../wailsjs/runtime/runtime.js';
 import { openPlayer } from './player.js';
 import { initI18n, t } from './i18n.js';
@@ -256,7 +256,10 @@ function renderTracks(tracks) {
         card.addEventListener("click", async (e) => {
             if (e.target.closest('.card-actions')) return; // 点击按钮不打开
 
-            const isCurrent = window.audioManager && track === currentTrack;
+            // 用 id 判断是否同一曲目（而非引用相等），避免从设置页返回后
+            // currentTrack 为 undefined 或引用不一致导致误判为不同曲而重置播放
+            const cur = window.audioManager && window.audioManager.currentTrack;
+            const isCurrent = cur && track.id !== undefined && track.id === cur.id;
             if (!isCurrent) {
                 // 不同曲目：加载并开始播放
                 window.audioManager.loadTrack(track);
@@ -536,6 +539,74 @@ function setCover(el, coverUrl) {
     }
 }
 
+// ============ 听歌时长格式化 ============
+// 按需引入单位：<60s 只显示秒，>60s 引入分，>3600s 引入小时，>24h 引入天
+function formatListenTime(totalSeconds) {
+    if (!totalSeconds || totalSeconds <= 0) {
+        return t('libraries.statsEmpty');
+    }
+
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    const parts = [];
+    if (days > 0) {
+        parts.push(t('libraries.statsDays', { count: days }));
+    }
+    if (days > 0 || hours > 0) {
+        parts.push(t('libraries.statsHours', { count: hours }));
+    }
+    if (days > 0 || hours > 0 || minutes > 0) {
+        parts.push(t('libraries.statsMinutes', { count: minutes }));
+    }
+    parts.push(t('libraries.statsSeconds', { count: seconds }));
+
+    return parts.join(' ');
+}
+
+// ============ 听歌统计弹窗（复用确认对话框样式） ============
+function showStatsModal(message) {
+    return new Promise(resolve => {
+        const modal = document.getElementById('confirmModal');
+        const titleEl = document.getElementById('confirmTitle');
+        const messageEl = document.getElementById('confirmMessage');
+        const cancelBtn = document.getElementById('confirmCancel');
+        const okBtn = document.getElementById('confirmOk');
+
+        if (!modal) {
+            resolve(window.confirm(message));
+            return;
+        }
+
+        titleEl.textContent = t('libraries.statsTitle');
+        messageEl.textContent = message;
+        okBtn.textContent = t('common.close');
+        okBtn.className = 'btn btn-primary';
+        cancelBtn.style.display = 'none';
+
+        const cleanup = (result) => {
+            modal.classList.remove('active');
+            okBtn.removeEventListener('click', onOk);
+            modal.removeEventListener('click', onBackdrop);
+            document.removeEventListener('keydown', onKey);
+            cancelBtn.style.display = '';
+            resolve(result);
+        };
+        const onOk = () => cleanup(true);
+        const onBackdrop = (e) => { if (e.target === modal) cleanup(false); };
+        const onKey = (e) => {
+            if (e.key === 'Escape') cleanup(false);
+            if (e.key === 'Enter') cleanup(true);
+        };
+        okBtn.addEventListener('click', onOk);
+        modal.addEventListener('click', onBackdrop);
+        document.addEventListener('keydown', onKey);
+        modal.classList.add('active');
+    });
+}
+
 // ============ 初始化 ============
 document.addEventListener("DOMContentLoaded", async function () {
     // 先初始化 i18n（从后端加载翻译数据），确保 t() 能拿到正确文案
@@ -561,8 +632,23 @@ document.addEventListener("DOMContentLoaded", async function () {
         });
     }
 
+    // 听歌统计按钮
+    const statsBtn = document.getElementById('statsBtn');
+    if (statsBtn) {
+        statsBtn.addEventListener('click', async () => {
+            try {
+                const totalSeconds = await GetTotalListenTime();
+                const formattedTime = formatListenTime(totalSeconds);
+                await showStatsModal(formattedTime);
+            } catch (err) {
+                console.error('获取听歌时长失败:', err);
+            }
+        });
+    }
+
     // 迷你播放器
     const miniPlayer = document.getElementById('mini-player');
+    const miniPlayerLeft = document.querySelector('.mini-player-left');
     const miniCover = document.getElementById('mini-cover');
     const miniTitle = document.getElementById('mini-title');
     const miniArtist = document.getElementById('mini-artist');
@@ -646,7 +732,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             setCover(miniCover, track.cover);
             miniTitle.textContent = track.name || t('common.unknown');
             applyMarquee(miniTitle);
-            miniArtist.textContent = track.artist || '--';
+            miniArtist.textContent = track.artist || t('common.unknownArtist');
             // 同步更新全局当前曲目引用，供卡片点击时判断是否为同一曲目
             currentTrack = track;
         });
@@ -673,6 +759,18 @@ document.addEventListener("DOMContentLoaded", async function () {
             if (!currentTrack) return;
             const ok = await openPlayer(currentTrack.id);
             // 若曲目已删除，openPlayer 返回 false 并已清理状态
+            if (!ok) {
+                miniPlayer.style.display = 'none';
+            }
+        });
+    }
+
+    // 点击 cover + 标题区域也可回到播放器
+    if (miniPlayerLeft) {
+        miniPlayerLeft.addEventListener('click', async () => {
+            const currentTrack = window.audioManager?.currentTrack;
+            if (!currentTrack) return;
+            const ok = await openPlayer(currentTrack.id);
             if (!ok) {
                 miniPlayer.style.display = 'none';
             }

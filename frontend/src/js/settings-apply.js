@@ -50,6 +50,22 @@ function hslToHex(h, s, l) {
     return '#' + toHex(r) + toHex(g) + toHex(b);
 }
 
+// 应用歌词行切换动画：在 body 上设置 .lyric-anim-<mode> class
+function applyLyricAnimation(mode) {
+    const validModes = ['fade', 'slide-up', 'slide-left', 'zoom', 'bounce', 'flip', 'rotate', 'none'];
+    const m = validModes.includes(mode) ? mode : 'fade';
+    // 移除旧的动画 class（用静态数组遍历，避免遍历时修改集合）
+    const toRemove = [];
+    document.body.classList.forEach(c => {
+        if (c.startsWith('lyric-anim-')) toRemove.push(c);
+    });
+    toRemove.forEach(c => document.body.classList.remove(c));
+    // 所有模式都添加对应 class（包括 fade）
+    document.body.classList.add('lyric-anim-' + m);
+    // 持久化到 localStorage，供页面加载时同步读取
+    try { localStorage.setItem('musicLite.lyricAnimation', m); } catch (e) {}
+}
+
 // 根据主题色 + 主题模式，算出全套配套 CSS 变量
 function computePalette(accentHex, theme) {
     const [h, s, l] = hexToHsl(accentHex);
@@ -279,6 +295,9 @@ const SettingsManager = {
         // 关键：直接设置 <html> 的 font-size，让所有 rem 单位跟随缩放
         document.documentElement.style.fontSize = baseSize + 'px';
 
+        // 全屏歌词切换动画
+        applyLyricAnimation(s.lyric_animation);
+
         // 应用 i18n 翻译（在 DOM 和语言都就绪后）
         applyTranslations();
 
@@ -306,6 +325,9 @@ const SettingsManager = {
             document.body.style.setProperty('--lyrics-font-size', lyricsSize + 'px');
             // 关键：直接设置 <html> 的 font-size，让所有 rem 单位跟随缩放
             document.documentElement.style.fontSize = baseSize + 'px';
+
+            // 全屏歌词切换动画
+            applyLyricAnimation(this.cached.lyric_animation);
         }
     },
 
@@ -325,3 +347,22 @@ if (document.readyState === 'loading') {
 } else {
     SettingsManager.apply();
 }
+
+// 同步设置歌词动画 body class（在 DOMContentLoaded 之前就应用，避免歌词渲染时 class 缺失）
+// 先应用默认 fade，等 SettingsManager.apply() 完成后再用实际设置覆盖
+(function syncApplyLyricAnimClass() {
+    const body = document.body;
+    if (!body) return;
+    const toRemove = [];
+    body.classList.forEach(c => { if (c.startsWith('lyric-anim-')) toRemove.push(c); });
+    toRemove.forEach(c => body.classList.remove(c));
+    body.classList.add('lyric-anim-fade');
+    // 尝试从 localStorage 读取已保存的动画设置
+    try {
+        const saved = localStorage.getItem('musicLite.lyricAnimation');
+        if (saved && ['fade','slide-up','slide-left','zoom','bounce','flip','rotate','none'].includes(saved)) {
+            body.classList.remove('lyric-anim-fade');
+            body.classList.add('lyric-anim-' + saved);
+        }
+    } catch (e) {}
+})();

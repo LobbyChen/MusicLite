@@ -38,7 +38,6 @@ class AudioManager {
 			this.emit('ended');
 		});
 		this.audio.addEventListener('timeupdate', () => {
-			// 持续保存播放位置（每秒更新一次足够）
 			const t = Math.floor(this.audio.currentTime);
 			if (t !== this._lastSavedTime) {
 				this._lastSavedTime = t;
@@ -68,7 +67,12 @@ class AudioManager {
 	
 	loadTrack(track) {
 		if (!track || !track.src) return;
-        if (track === this.currentTrack ) return;
+		// 用 id 判断是否同一曲目（而非引用相等），避免从其他页面返回时
+		// 因 currentTrack 被 localStorage 反序列化为新对象而误判为不同曲，
+		// 导致重新 load() 重置播放进度
+		if (this.currentTrack && track.id !== undefined && track.id === this.currentTrack.id) {
+			return;
+		}
 		this.currentTrack = track;
         document.title = track.name || track.Name || 'MusicLite';
 		this.audio.src = track.src;

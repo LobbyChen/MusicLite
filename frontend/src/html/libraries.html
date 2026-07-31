@@ -13,7 +13,7 @@
     <title>MusicLite · 我的音乐库</title>
 </head>
 
-<body>
+<body class="lyric-anim-fade">
     <!-- 自定义标题栏（无边框窗口） -->
     <div class="titlebar">
         <div class="titlebar-left">
@@ -59,6 +59,11 @@
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                 </svg>
                 <span data-i18n="libraries.importFiles">导入文件</span>
+            </button>
+            <button class="btn-stats" id="statsBtn" title="听歌统计" data-i18n-title="libraries.stats">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 20V10M18 20V4M6 20v-4"/>
+                </svg>
             </button>
             <button class="btn-settings" id="settingsBtn" title="设置" data-i18n-title="common.settings">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -313,6 +318,23 @@
                 <div class="fullscreen-lyrics-content" id="fullscreenLyricsContent">
                     <div class="no-lyrics" data-i18n="player.noLyrics">暂无歌词</div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认对话框（复用于听歌统计弹窗） -->
+    <div class="modal-backdrop" id="confirmModal">
+        <div class="modal modal-confirm">
+            <div class="confirm-icon">
+                <svg viewBox="0 0 24 24" width="28" height="28">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+            </div>
+            <h3 id="confirmTitle">确认操作</h3>
+            <p id="confirmMessage">确定要执行此操作吗？</p>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" id="confirmCancel">取消</button>
+                <button class="btn btn-danger" id="confirmOk">确定</button>
             </div>
         </div>
     </div>

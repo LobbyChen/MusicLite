@@ -14,6 +14,10 @@ export function GetAllTracks() {
   return window['go']['main']['App']['GetAllTracks']();
 }
 
+export function GetApplicationVolume() {
+  return window['go']['main']['App']['GetApplicationVolume']();
+}
+
 export function GetDatabase() {
   return window['go']['main']['App']['GetDatabase']();
 }
@@ -30,6 +34,10 @@ export function GetInstalledFonts() {
   return window['go']['main']['App']['GetInstalledFonts']();
 }
 
+export function GetListenTime(arg1) {
+  return window['go']['main']['App']['GetListenTime'](arg1);
+}
+
 export function GetNextTracks(arg1) {
   return window['go']['main']['App']['GetNextTracks'](arg1);
 }
@@ -40,6 +48,10 @@ export function GetPrevTracks(arg1) {
 
 export function GetRandomTrack(arg1) {
   return window['go']['main']['App']['GetRandomTrack'](arg1);
+}
+
+export function GetTotalListenTime() {
+  return window['go']['main']['App']['GetTotalListenTime']();
 }
 
 export function GetTrack(arg1) {
@@ -66,12 +78,24 @@ export function OpenAppDataFolder() {
   return window['go']['main']['App']['OpenAppDataFolder']();
 }
 
+export function RecordPlayPause(arg1) {
+  return window['go']['main']['App']['RecordPlayPause'](arg1);
+}
+
+export function RecordPlayStart(arg1) {
+  return window['go']['main']['App']['RecordPlayStart'](arg1);
+}
+
 export function ResetSettings() {
   return window['go']['main']['App']['ResetSettings']();
 }
 
 export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
+}
+
+export function SetApplicationVolume(arg1) {
+  return window['go']['main']['App']['SetApplicationVolume'](arg1);
 }
 
 export function UpdateTrack(arg1, arg2, arg3, arg4) {

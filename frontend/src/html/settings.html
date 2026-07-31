@@ -142,6 +142,20 @@
                         <span id="volume-value" class="slider-value">70%</span>
                     </div>
                 </div>
+
+                <div class="setting-item">
+                    <label for="lyric-animation-select" data-i18n="settings.lyricAnimation">歌词行切换动画</label>
+                    <select id="lyric-animation-select" class="font-select">
+                        <option value="fade" data-i18n="settings.lyricAnimFade">淡入淡出</option>
+                        <option value="slide-up" data-i18n="settings.lyricAnimSlideUp">向上滑动</option>
+                        <option value="slide-left" data-i18n="settings.lyricAnimSlideLeft">向左滑动</option>
+                        <option value="zoom" data-i18n="settings.lyricAnimZoom">缩放</option>
+                        <option value="bounce" data-i18n="settings.lyricAnimBounce">弹跳</option>
+                        <option value="flip" data-i18n="settings.lyricAnimFlip">翻转</option>
+                        <option value="rotate" data-i18n="settings.lyricAnimRotate">旋转</option>
+                        <option value="none" data-i18n="settings.lyricAnimNone">无动画</option>
+                    </select>
+                </div>
             </section>
 
             <section class="settings-section">
@@ -157,7 +171,7 @@
             <section class="settings-section">
                 <h2 data-i18n="settings.about">关于</h2>
                 <div class="about-info">
-                    <p><strong>MusicLite</strong>Beta 0.8.4</p>
+                    <p><strong>MusicLite</strong>Beta 0.9.0</p>
                     <p class="text-muted" data-i18n="settings.aboutDesc">轻量级离线音乐播放器</p>
                     <p class="text-muted" data-i18n="settings.builtWith">基于 Wails v2 构建</p>
                 </div>
@@ -169,7 +183,11 @@
                         <button class="btn btn-danger" id="reset-settings-btn" data-i18n="settings.resetSettings">重置为默认</button>
                     </div>
                 </div>
-                <div class="setting-item" style="margin-top: 12px;">
+            </section>
+
+            <section class="settings-section">
+                <h2 data-i18n="settings.more">更多</h2>
+                <div class="setting-item">
                     <div class="button-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button class="btn btn-secondary" id="changelog-btn" data-i18n="settings.changelog">更新记录</button>
                         <button class="btn btn-secondary" id="open-data-folder-btn" data-i18n="settings.openDataFolder">打开数据文件夹</button>

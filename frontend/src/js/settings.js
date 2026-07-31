@@ -1,4 +1,4 @@
-import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder } from '../../wailsjs/go/main/App.js';
+import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, SetApplicationVolume, GetApplicationVolume } from '../../wailsjs/go/main/App.js';
 import { initI18n, t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
@@ -62,6 +62,7 @@ const changelogClose = document.getElementById('changelogClose');
 const changelogBody = document.getElementById('changelogBody');
 const volumeSlider = document.getElementById('volume-slider');
 const volumeValue = document.getElementById('volume-value');
+const lyricAnimationSelect = document.getElementById('lyric-animation-select');
 const uiScaleSlider = document.getElementById('ui-scale');
 const uiScaleValue = document.getElementById('ui-scale-value');
 const lyricsScaleSlider = document.getElementById('lyrics-scale');
@@ -342,6 +343,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ============ 迷你播放器（设置页也能控制播放） ============
 function initMiniPlayer() {
     const miniPlayer = document.getElementById('mini-player');
+    const miniPlayerLeft = miniPlayer?.querySelector('.mini-player-left');
     const miniCover = document.getElementById('mini-cover');
     const miniTitle = document.getElementById('mini-title');
     const miniArtist = document.getElementById('mini-artist');
@@ -362,7 +364,7 @@ function initMiniPlayer() {
     const currentTrack = window.audioManager.currentTrack;
     if (currentTrack && currentTrack.src) {
         showMiniPlayer();
-        miniTitle.textContent = currentTrack.name || '未知';
+        miniTitle.textContent = currentTrack.name || t('common.unknown');
         applyMarquee(miniTitle);
         miniArtist.textContent = currentTrack.artist || '--';
         setMiniCover(miniCover, currentTrack.cover);
@@ -386,6 +388,13 @@ function initMiniPlayer() {
         window.location.href = '/src/html/libraries.html';
     });
 
+    // 点击 cover + 标题区域也可返回音乐库
+    if (miniPlayerLeft) {
+        miniPlayerLeft.addEventListener('click', () => {
+            window.location.href = '/src/html/libraries.html';
+        });
+    }
+
     // 监听播放状态
     window.audioManager.on('play', () => {
         miniPlayIcon.style.display = 'none';
@@ -397,9 +406,9 @@ function initMiniPlayer() {
     });
     window.audioManager.on('trackloaded', (track) => {
         showMiniPlayer();
-        miniTitle.textContent = track.name || '未知';
+        miniTitle.textContent = track.name || t('common.unknown');
         applyMarquee(miniTitle);
-        miniArtist.textContent = track.artist || '--';
+        miniArtist.textContent = track.artist || t('common.unknownArtist');
         setMiniCover(miniCover, track.cover);
     });
 }
@@ -419,6 +428,15 @@ async function loadSettings() {
     try {
         currentSettings = await LoadSettings();
         applySettingsToUI(currentSettings);
+        // 音量从 Windows 系统合成器读取（不再是 audio.volume）
+        try {
+            const sysVol = await GetApplicationVolume();
+            volumeSlider.value = sysVol;
+            volumeValue.textContent = sysVol + '%';
+            currentSettings.volume = sysVol;
+        } catch (e) {
+            // 读取系统音量失败，使用 settings 中的值兜底
+        }
     } catch (err) {
         console.error('Failed to load settings:', err);
         currentSettings = {
@@ -462,6 +480,11 @@ function applySettingsToUI(s) {
     // Volume
     volumeSlider.value = s.volume || 70;
     volumeValue.textContent = (s.volume ?? 70) + '%';
+
+    // Lyric animation
+    if (lyricAnimationSelect) {
+        lyricAnimationSelect.value = s.lyric_animation || 'fade';
+    }
 
     // Language
     const lang = s.language || 'zh-CN';
@@ -622,12 +645,32 @@ function setupEventListeners() {
         markChanged();
     });
 
-    // Volume slider
+    // Volume slider — 控制 Windows 系统合成器本程序音量
     volumeSlider.addEventListener('input', () => {
-        volumeValue.textContent = volumeSlider.value + '%';
-        currentSettings.volume = parseInt(volumeSlider.value, 10);
+        const vol = parseInt(volumeSlider.value, 10);
+        volumeValue.textContent = vol + '%';
+        currentSettings.volume = vol;
+        // 实时设置系统音量
+        SetApplicationVolume(vol).catch(() => {});
         markChanged();
     });
+
+    // Lyric animation select
+    if (lyricAnimationSelect) {
+        lyricAnimationSelect.addEventListener('change', () => {
+            currentSettings.lyric_animation = lyricAnimationSelect.value;
+            // 实时预览：直接操作 body class
+            const validModes = ['fade', 'slide-up', 'slide-left', 'zoom', 'bounce', 'flip', 'rotate', 'none'];
+            const m = validModes.includes(lyricAnimationSelect.value) ? lyricAnimationSelect.value : 'fade';
+            document.body.classList.forEach(c => {
+                if (c.startsWith('lyric-anim-')) document.body.classList.remove(c);
+            });
+            document.body.classList.add('lyric-anim-' + m);
+            // 持久化到 localStorage，供页面加载时同步读取
+            try { localStorage.setItem('musicLite.lyricAnimation', m); } catch (e) {}
+            markChanged();
+        });
+    }
 
     // UI scale slider（界面缩放）
     uiScaleSlider.addEventListener('input', () => {
