@@ -10,6 +10,13 @@
     --base-font-size: 14px;
     --lyrics-font-size: 16px;
     --lyrics-font: "Consolas", "Monaco", monospace;
+    /* 动画设计令牌 */
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --dur-fast: 0.15s;
+    --dur-normal: 0.25s;
+    --dur-slow: 0.35s;
 }
 
 /* Light theme */
@@ -38,6 +45,46 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+}
+
+/* ============ 动画级别：4 档控制（0-3） ============
+ * 0 = None      : body.no-anim / [data-anim="0"] → 所有动画与过渡全部禁用
+ * 1 = Basic     : [data-anim="1"] → 仅保留 hover 颜色 / 按钮点按等最基础的 transition，禁用 @keyframes 入场 / 交错 / 光泽 / 弹性
+ * 2 = Enhanced  : [data-anim="2"] → 完整的新动画（默认）
+ * 3 = Epic      : [data-anim="3"] → Enhanced + 更夸张的弹性 / 3D 倾斜 / 旋转等加强效果
+ */
+
+/* 级别 0 — 完全禁用 */
+body[data-anim="0"],
+body[data-anim="0"] *,
+body[data-anim="0"] *::before,
+body[data-anim="0"] *::after,
+body.no-anim,
+body.no-anim *,
+body.no-anim *::before,
+body.no-anim *::after {
+    animation: none !important;
+    animation-delay: 0s !important;
+    animation-duration: 0s !important;
+    transition: none !important;
+    transition-delay: 0s !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+}
+
+/* 级别 1 — Basic：禁用 @keyframes 动画（保留基础 transition）*/
+body[data-anim="1"] *,
+body[data-anim="1"] *::before,
+body[data-anim="1"] *::after {
+    animation: none !important;
+    animation-delay: 0s !important;
+    animation-duration: 0s !important;
+}
+
+/* Basic 级别：将 transition 时长统一缩短为 100ms 的快节奏，仅保留颜色/透明度/基础 transform（去掉弹性与过度效果） */
+body[data-anim="1"] * {
+    transition-duration: 100ms !important;
+    transition-timing-function: linear !important;
 }
 
 body {
@@ -138,6 +185,12 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    animation: headerSlideIn 0.4s var(--ease-out-expo) both;
+}
+
+@keyframes headerSlideIn {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
 h1 {
@@ -160,11 +213,17 @@ h1 {
     display: flex;
     align-items: center;
     gap: 10px;
-    transition: background 0.2s;
+    transition: background var(--dur-normal), border-color var(--dur-normal), transform var(--dur-fast);
 }
 
 .btn-open:hover {
     background-color: var(--hover-color);
+    border-color: var(--accent-color);
+    transform: translateY(-1px);
+}
+
+.btn-open:active {
+    transform: scale(0.97);
 }
 
 /* Main Content */
@@ -172,6 +231,13 @@ main {
     flex: 1;
     padding: 0 40px 40px 40px;
     overflow-y: auto;
+    animation: mainFadeIn 0.5s var(--ease-out-expo) both;
+    animation-delay: 0.1s;
+}
+
+@keyframes mainFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 main::-webkit-scrollbar {
     display: none;
@@ -288,18 +354,34 @@ h2 {
     gap: 10px;
     position: relative;
     /* 入场动画 + hover 过渡 */
-    animation: cardFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
-    transition: background-color 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+    animation: cardFadeIn 0.35s var(--ease-out-expo) both;
+    transition: background-color var(--dur-normal) var(--ease-smooth), transform var(--dur-normal) var(--ease-out-expo), box-shadow var(--dur-normal) var(--ease-smooth), border-color var(--dur-normal) var(--ease-smooth);
+    border: 1px solid transparent;
 }
 
 .media-card:hover {
     background-color: var(--hover-color);
     transform: translateY(-4px);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+    border-color: var(--border-color);
+}
+
+.media-card:hover .card-cover {
+    transform: scale(1.04);
 }
 
 .media-card:hover .card-actions {
     opacity: 1;
+}
+
+.card-cover {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    background-color: #282828;
+    transition: transform 0.3s var(--ease-out-expo);
 }
 
 /* Media List (列表模式) */
@@ -317,12 +399,13 @@ h2 {
     border-radius: 6px;
     cursor: pointer;
     background-color: transparent;
-    animation: cardFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
-    transition: background-color 0.18s ease;
+    animation: cardFadeIn 0.25s var(--ease-out-expo) both;
+    transition: background-color 0.18s var(--ease-smooth), transform 0.18s var(--ease-out-expo);
 }
 
 .media-list-item:hover {
     background-color: var(--hover-color);
+    transform: translateX(4px);
 }
 
 .media-list-item:hover .list-item-actions {
@@ -420,15 +503,6 @@ h2 {
     fill: currentColor;
 }
 
-.card-cover {
-    width: 100%;
-    aspect-ratio: 1;
-    object-fit: cover;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    background-color: #282828;
-}
-
 .card-title {
     font-weight: 600;
     font-size: 0.95rem;
@@ -494,6 +568,17 @@ h2 {
     min-width: 160px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     font-size: 0.9rem;
+    transform-origin: top left;
+    animation: ctxMenuIn 0.18s var(--ease-out-expo) both;
+}
+
+.context-menu.closing {
+    animation: ctxMenuOut 0.14s var(--ease-smooth) both;
+}
+
+.context-menu .context-item {
+    animation: ctxItemIn 0.2s var(--ease-out-expo) both;
+    animation-delay: calc(var(--ctx-i, 0) * 0.025s);
 }
 
 .context-item {
@@ -502,11 +587,12 @@ h2 {
     display: flex;
     align-items: center;
     gap: 8px;
-    transition: background 0.15s;
+    transition: background var(--dur-fast), padding-left var(--dur-fast);
 }
 
 .context-item:hover {
     background: var(--hover-color);
+    padding-left: 20px;
 }
 
 .context-item.danger {
@@ -541,12 +627,16 @@ h2 {
     align-items: center;
     z-index: 200;
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.2s var(--ease-smooth);
 }
 
 .modal-backdrop.active {
     display: flex;
     opacity: 1;
+}
+
+.modal-backdrop.closing {
+    opacity: 0;
 }
 
 .modal {
@@ -556,8 +646,11 @@ h2 {
     width: 400px;
     text-align: center;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    /* 模态框入场动画 */
-    animation: modalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: modalIn 0.25s var(--ease-out-expo) both;
+}
+
+.modal-backdrop.closing .modal {
+    animation: modalOut 0.18s var(--ease-smooth) both;
 }
 
 .modal-large {
@@ -678,6 +771,40 @@ h2 {
     to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+@keyframes modalOut {
+    from { opacity: 1; transform: scale(1) translateY(0); }
+    to   { opacity: 0; transform: scale(0.92) translateY(10px); }
+}
+
+/* 右键菜单入场/退场 */
+@keyframes ctxMenuIn {
+    from { opacity: 0; transform: scale(0.85) translateY(-4px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes ctxMenuOut {
+    from { opacity: 1; transform: scale(1); }
+    to   { opacity: 0; transform: scale(0.9); }
+}
+
+@keyframes ctxItemIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+/* 迷你播放器滑入 */
+@keyframes miniSlideIn {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+/* Toast 弹性入场 */
+@keyframes toastInSpring {
+    0%   { opacity: 0; transform: translateX(100%) scale(0.8); }
+    60%  { opacity: 1; transform: translateX(-8px) scale(1.02); }
+    100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+
 .modal h3 {
     margin-bottom: 20px;
     font-size: 1.2rem;
@@ -761,11 +888,29 @@ h2 {
     border-radius: 20px;
     cursor: pointer;
     font-weight: 600;
-    transition: transform 0.12s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.12s var(--ease-smooth), background-color 0.2s var(--ease-smooth), box-shadow 0.2s var(--ease-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    transition: left 0.5s var(--ease-smooth);
+    pointer-events: none;
 }
 
 .btn:hover {
     transform: translateY(-1px);
+}
+
+.btn:hover::after {
+    left: 100%;
 }
 
 .btn:active {
@@ -858,6 +1003,7 @@ h2 {
     padding: 0 20px;
     z-index: 100;
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+    animation: miniSlideIn 0.3s var(--ease-out-expo) both;
 }
 
 .mini-player-left {
@@ -1064,11 +1210,11 @@ h2 {
     gap: 10px;
     font-size: 0.9rem;
     pointer-events: auto;
-    animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: toastInSpring 0.4s var(--ease-spring) both;
 }
 
 .toast.toast-out {
-    animation: toastOut 0.25s ease forwards;
+    animation: toastOut 0.25s var(--ease-smooth) forwards;
 }
 
 .toast-success { border-left-color: var(--accent-color); }
@@ -1511,6 +1657,11 @@ body.player-active > .mini-player {
     border-radius: 2px;
     z-index: 1;
     pointer-events: none;
+    transition: width 0.15s linear;
+}
+
+.player-overlay .progress-bar-container:hover .progress-fill {
+    box-shadow: 0 0 8px var(--accent-color);
 }
 
 .player-overlay .volume-slider-container .track-bg,
@@ -1974,3 +2125,292 @@ body.lyric-anim-none .fs-lyric-line {
 }
 
 /* 仅当容器带 .marquee 类时，由 JS 用 Web Animations API 驱动 translateX 动画 */
+
+/* ============ Epic 级别加强动画（仅在 data-anim="3" 时生效） ============
+ * 级别 3 = Enhanced（级别 2）的基础上增加：
+ *   - 3D 卡片倾斜与透视
+ *   - 更夸张的弹性曲线（overshoot 更大）
+ *   - Toast 旋转入场
+ *   - 模态框超弹 + 呼吸光泽
+ *   - 右键菜单交错 + 缩放
+ *   - 按钮脉冲光泽
+ */
+
+/* -------- Epic：全局透视 + 弹性曲线升级 -------- */
+body[data-anim="3"] {
+    perspective: 1200px;
+}
+
+/* -------- Epic：Header -------- */
+body[data-anim="3"] header {
+    animation: headerSlideInEpic 0.55s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+}
+@keyframes headerSlideInEpic {
+    0%   { opacity: 0; transform: translateY(-24px) rotateX(-8deg); }
+    100% { opacity: 1; transform: translateY(0) rotateX(0); }
+}
+
+/* -------- Epic：Main -------- */
+body[data-anim="3"] main {
+    animation: mainFadeInEpic 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+}
+@keyframes mainFadeInEpic {
+    0%   { opacity: 0; transform: translateY(16px) scale(0.98); }
+    60%  { opacity: 1; transform: translateY(-2px) scale(1.005); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* -------- Epic：媒体卡片 3D 倾斜 + 超弹入场 -------- */
+body[data-anim="3"] .media-card {
+    transition: transform 0.45s cubic-bezier(0.18, 0.89, 0.32, 1.28),
+                box-shadow 0.45s cubic-bezier(0.18, 0.89, 0.32, 1.28),
+                background-color 0.3s ease,
+                border-color 0.3s ease;
+    transform-style: preserve-3d;
+    will-change: transform;
+    animation: cardFadeInEpic 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+}
+@keyframes cardFadeInEpic {
+    0%   { opacity: 0; transform: translateY(28px) scale(0.9) rotateX(6deg); }
+    70%  { opacity: 1; transform: translateY(-4px) scale(1.02) rotateX(-1deg); }
+    100% { opacity: 1; transform: translateY(0) scale(1) rotateX(0); }
+}
+body[data-anim="3"] .media-card:hover {
+    transform: translateY(-10px) rotateX(4deg) rotateY(-4deg) scale(1.02);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.55),
+                0 0 0 1px var(--accent-color, #1db954) inset;
+}
+
+/* -------- Epic：卡片封面浮动 -------- */
+body[data-anim="3"] .card-cover {
+    transition: transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28),
+                filter 0.4s ease;
+    transform-style: preserve-3d;
+}
+body[data-anim="3"] .media-card:hover .card-cover {
+    transform: scale(1.08) translateZ(12px);
+    filter: brightness(1.08);
+}
+
+/* -------- Epic：卡片按钮弹跳 -------- */
+body[data-anim="3"] .card-btn {
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+                background 0.2s ease;
+}
+body[data-anim="3"] .card-btn:hover {
+    transform: scale(1.15) rotate(6deg);
+}
+body[data-anim="3"] .card-btn:active {
+    transform: scale(0.92);
+}
+
+/* -------- Epic：列表项超弹滑入 -------- */
+body[data-anim="3"] .media-list-item {
+    animation: listItemInEpic 0.38s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+    transition: background-color 0.2s ease,
+                transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28),
+                box-shadow 0.3s ease;
+}
+@keyframes listItemInEpic {
+    0%   { opacity: 0; transform: translateX(-24px) scale(0.96); }
+    70%  { opacity: 1; transform: translateX(4px) scale(1.01); }
+    100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+body[data-anim="3"] .media-list-item:hover {
+    transform: translateX(8px) scale(1.005);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+/* -------- Epic：右键菜单超弹 + 菜单项旋转入场 -------- */
+body[data-anim="3"] .context-menu {
+    animation: ctxMenuInEpic 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.35) both;
+    transform-origin: top left;
+}
+@keyframes ctxMenuInEpic {
+    0%   { opacity: 0; transform: scale(0.75) translateY(-10px) rotate(-2deg); }
+    70%  { opacity: 1; transform: scale(1.03) translateY(1px) rotate(0.5deg); }
+    100% { opacity: 1; transform: scale(1) translateY(0) rotate(0); }
+}
+body[data-anim="3"] .context-menu .context-item {
+    animation: ctxItemInEpic 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+    animation-delay: calc(var(--ctx-i, 0) * 0.04s);
+}
+@keyframes ctxItemInEpic {
+    0%   { opacity: 0; transform: translateX(-16px) rotate(-3deg); }
+    100% { opacity: 1; transform: translateX(0) rotate(0); }
+}
+body[data-anim="3"] .context-item:hover {
+    transform: translateX(6px) scale(1.02);
+}
+
+/* -------- Epic：模态框超弹 + 光泽呼吸 -------- */
+body[data-anim="3"] .modal {
+    animation: modalInEpic 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.35) both;
+    transform-style: preserve-3d;
+    position: relative;
+    overflow: hidden;
+}
+@keyframes modalInEpic {
+    0%   { opacity: 0; transform: scale(0.8) translateY(24px) rotateX(8deg); }
+    60%  { opacity: 1; transform: scale(1.03) translateY(-2px) rotateX(-1deg); }
+    100% { opacity: 1; transform: scale(1) translateY(0) rotateX(0); }
+}
+body[data-anim="3"] .modal-backdrop.closing .modal {
+    animation: modalOutEpic 0.25s cubic-bezier(0.4, 0, 1, 1) both;
+}
+@keyframes modalOutEpic {
+    0%   { opacity: 1; transform: scale(1) translateY(0); }
+    100% { opacity: 0; transform: scale(0.9) translateY(16px); }
+}
+/* 模态框光泽扫动 */
+body[data-anim="3"] .modal::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 60%;
+    height: 200%;
+    background: linear-gradient(120deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.06) 50%,
+        transparent 70%);
+    transform: translateX(-100%) rotate(10deg);
+    animation: modalShine 2.5s ease-in-out infinite;
+    pointer-events: none;
+}
+@keyframes modalShine {
+    0%, 40%  { transform: translateX(-100%) rotate(10deg); }
+    60%, 100%{ transform: translateX(300%) rotate(10deg); }
+}
+
+/* -------- Epic：确认图标弹跳 + 脉冲 -------- */
+body[data-anim="3"] .confirm-icon {
+    animation: confirmIconPopEpic 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.4) both;
+}
+@keyframes confirmIconPopEpic {
+    0%   { opacity: 0; transform: scale(0.3) rotate(-20deg); }
+    60%  { opacity: 1; transform: scale(1.15) rotate(5deg); }
+    80%  { transform: scale(0.95) rotate(-2deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+/* -------- Epic：Toast 旋转弹跳入场 -------- */
+body[data-anim="3"] .toast {
+    animation: toastInEpic 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+}
+@keyframes toastInEpic {
+    0%   { opacity: 0; transform: translateX(120%) scale(0.7) rotate(12deg); }
+    55%  { opacity: 1; transform: translateX(-14px) scale(1.06) rotate(-3deg); }
+    80%  { transform: translateX(4px) scale(0.99) rotate(1deg); }
+    100% { opacity: 1; transform: translateX(0) scale(1) rotate(0); }
+}
+body[data-anim="3"] .toast.toast-out {
+    animation: toastOutEpic 0.3s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+@keyframes toastOutEpic {
+    0%   { opacity: 1; transform: translateX(0) scale(1) rotate(0); }
+    100% { opacity: 0; transform: translateX(120%) scale(0.8) rotate(8deg); }
+}
+
+/* -------- Epic：按钮加强效果 -------- */
+body[data-anim="3"] .btn {
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+                background-color 0.2s ease,
+                box-shadow 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+body[data-anim="3"] .btn:hover {
+    transform: translateY(-2px) scale(1.03);
+}
+body[data-anim="3"] .btn:active {
+    transform: scale(0.94);
+    transition-duration: 0.08s;
+}
+body[data-anim="3"] .btn-primary:hover {
+    box-shadow: 0 8px 22px rgba(29, 185, 84, 0.5);
+}
+body[data-anim="3"] .btn-danger:hover {
+    box-shadow: 0 8px 22px rgba(231, 76, 60, 0.5);
+}
+
+/* 按钮光泽扫动速度加快 */
+body[data-anim="3"] .btn::after {
+    transition: left 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+body[data-anim="3"] .btn:hover::after {
+    left: 150%;
+}
+
+/* -------- Epic：迷你播放器弹入 + 浮动 -------- */
+body[data-anim="3"] .mini-player {
+    animation: miniSlideInEpic 0.45s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+}
+@keyframes miniSlideInEpic {
+    0%   { transform: translateY(100%) scale(0.9); opacity: 0; }
+    70%  { transform: translateY(-6px) scale(1.01); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* -------- Epic：播放器按钮脉冲 -------- */
+body[data-anim="3"] .player-overlay .btn-play:hover {
+    transform: scale(1.12);
+    box-shadow: 0 0 28px var(--accent-glow, rgba(29, 185, 84, 0.45));
+}
+body[data-anim="3"] .player-overlay .btn-play:active {
+    transform: scale(0.92);
+}
+
+/* -------- Epic：滑块拇指弹跳 -------- */
+body[data-anim="3"] .player-overlay input[type=range]::-webkit-slider-thumb {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                background 0.15s ease;
+}
+body[data-anim="3"] .player-overlay input[type=range]:hover::-webkit-slider-thumb {
+    transform: scale(1.3);
+}
+body[data-anim="3"] .player-overlay input[type=range]:active::-webkit-slider-thumb {
+    transform: scale(1.5);
+}
+
+/* -------- Epic：播放器视图切换 -------- */
+body[data-anim="3"] .player-overlay {
+    transition: opacity 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28),
+                transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28),
+                visibility 0s linear 0.35s;
+}
+body[data-anim="3"] .player-overlay.active {
+    transform: scale(1);
+    transition: opacity 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28),
+                transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28),
+                visibility 0s;
+}
+body[data-anim="3"] .player-overlay:not(.active) {
+    transform: scale(1.05) rotateX(2deg);
+}
+
+/* -------- Epic：设置区块逐级入场 -------- */
+body[data-anim="3"] .settings-section {
+    animation: settingsSecInEpic 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+    animation-delay: calc(var(--sec-i, 0) * 0.1s);
+}
+@keyframes settingsSecInEpic {
+    0%   { opacity: 0; transform: translateY(20px) scale(0.98); }
+    70%  { opacity: 1; transform: translateY(-2px) scale(1.005); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* -------- Epic：拖放遮罩弹跳 -------- */
+body[data-anim="3"] .drop-overlay.active .drop-overlay-inner {
+    animation: dropPopEpic 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+@keyframes dropPopEpic {
+    0%   { transform: scale(0.85) rotate(-1deg); }
+    60%  { transform: scale(1.05) rotate(0.5deg); }
+    100% { transform: scale(1) rotate(0); }
+}
+
+/* -------- Epic：视图开关拇指超弹 -------- */
+body[data-anim="3"] .view-toggle-thumb {
+    transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}

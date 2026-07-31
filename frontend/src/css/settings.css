@@ -10,6 +10,13 @@
     --base-font-size: 14px;
     --lyrics-font-size: 16px;
     --lyrics-font: "Consolas", "Monaco", monospace;
+    /* 动画设计令牌 */
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --dur-fast: 0.15s;
+    --dur-normal: 0.25s;
+    --dur-slow: 0.35s;
 }
 
 /* Light theme */
@@ -188,6 +195,13 @@ body.has-mini-player main {
 
 .settings-section {
     margin-bottom: 40px;
+    animation: sectionFadeIn 0.4s var(--ease-out-expo) both;
+    animation-delay: calc(var(--sec-i, 0) * 0.06s);
+}
+
+@keyframes sectionFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
 .settings-section h2 {
@@ -247,6 +261,113 @@ body.has-mini-player main {
 .theme-btn span {
     font-size: 0.85rem;
     font-weight: 500;
+}
+
+/* ========== 通用开关（界面动画等） ========== */
+.toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 4px;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 48px;
+    height: 26px;
+    border-radius: 13px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    transition: background-color var(--dur-normal) var(--ease-smooth), border-color var(--dur-normal) var(--ease-smooth);
+    outline: none;
+}
+
+.toggle-switch:hover {
+    background: var(--hover-color);
+}
+
+.toggle-switch:focus-visible {
+    border-color: var(--accent-color);
+}
+
+.toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    transition: transform var(--dur-normal) var(--ease-out-expo), background-color var(--dur-normal) var(--ease-smooth);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* 开启状态：拇指滑到右侧，颜色用主题色 */
+.toggle-switch[aria-checked="true"] {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.toggle-switch[aria-checked="true"] .toggle-thumb {
+    transform: translateX(22px);
+    background: #ffffff;
+}
+
+.toggle-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* ========== 界面动画四段级别选择器 ========== */
+.anim-level-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.anim-level-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 10px 14px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color var(--dur-normal) var(--ease-smooth),
+                border-color var(--dur-normal) var(--ease-smooth),
+                color var(--dur-normal) var(--ease-smooth),
+                transform var(--dur-fast) var(--ease-out-expo),
+                box-shadow var(--dur-normal) var(--ease-smooth);
+    outline: none;
+}
+
+.anim-level-btn:hover {
+    background: var(--hover-color);
+    transform: translateY(-1px);
+}
+
+.anim-level-btn:focus-visible {
+    border-color: var(--accent-color);
+}
+
+.anim-level-btn.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #ffffff;
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--accent-color) 40%, transparent);
+}
+
+.anim-level-desc {
+    display: block;
+    margin-top: 8px;
 }
 
 /* Font select */
@@ -338,7 +459,16 @@ body.has-mini-player main {
     justify-content: space-between;
     align-items: center;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
-    transition: bottom 0.2s ease;
+    transition: bottom 0.2s var(--ease-smooth);
+}
+
+.save-bar.visible {
+    animation: saveBarIn 0.3s var(--ease-out-expo) both;
+}
+
+@keyframes saveBarIn {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
 }
 
 /* 有迷你播放器时，save-bar 上移到 mini-player 上方，避免被遮挡 */
@@ -452,7 +582,7 @@ body.has-mini-player .save-bar {
     z-index: 9999;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.2s, visibility 0.2s;
+    transition: opacity 0.2s var(--ease-smooth), visibility 0.2s;
 }
 
 .modal-backdrop.active {
@@ -469,11 +599,17 @@ body.has-mini-player .save-bar {
     max-width: 90vw;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     transform: scale(0.95);
-    transition: transform 0.2s;
+    transition: transform 0.25s var(--ease-out-expo);
 }
 
 .modal-backdrop.active .modal {
     transform: scale(1);
+}
+
+.modal-backdrop.closing .modal {
+    transform: scale(0.92);
+    opacity: 0;
+    transition: transform 0.18s var(--ease-smooth), opacity 0.18s var(--ease-smooth);
 }
 
 .modal-confirm {
@@ -557,23 +693,17 @@ body.has-mini-player .save-bar {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     pointer-events: auto;
     cursor: pointer;
-    animation: toastIn 0.28s ease-out;
+    animation: toastInSpring 0.4s var(--ease-spring) both;
 }
 
-@keyframes toastIn {
-    from {
-        transform: translateX(120%);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+@keyframes toastInSpring {
+    0%   { opacity: 0; transform: translateX(120%) scale(0.8); }
+    60%  { opacity: 1; transform: translateX(-8px) scale(1.02); }
+    100% { opacity: 1; transform: translateX(0) scale(1); }
 }
 
 .toast.toast-out {
-    animation: toastOut 0.25s ease-in forwards;
+    animation: toastOut 0.25s var(--ease-smooth) forwards;
 }
 
 @keyframes toastOut {

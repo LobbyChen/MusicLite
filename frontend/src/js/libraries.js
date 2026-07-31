@@ -1,4 +1,4 @@
-import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths, GetTotalListenTime, PickImageFile, PickLyricsFile, ReadFileForEdit } from '../../wailsjs/go/main/App.js';
+import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths, GetTotalListenTime, PickImageFile, PickLyricsFile, ReadFileForEdit, PackShare } from '../../wailsjs/go/main/App.js';
 import { OnFileDrop } from '../../wailsjs/runtime/runtime.js';
 import { openPlayer } from './player.js';
 import { initI18n, t } from './i18n.js';
@@ -191,7 +191,9 @@ function showConfirm({ title = '确认操作', message = '确定要执行此操�
         cancelBtn.replaceWith(newCancel);
 
         const close = (result) => {
+            modal.classList.add('closing');
             modal.classList.remove('active');
+            setTimeout(() => modal.classList.remove('closing'), 200);
             confirmResolver = null;
             resolve(result);
         };
@@ -441,18 +443,21 @@ function showContextMenu(e, track) {
     contextMenuEl = document.createElement('div');
     contextMenuEl.className = 'context-menu';
     contextMenuEl.innerHTML = `
-        <div class="context-item" data-action="edit">
+        <div class="context-item" data-action="edit" style="--ctx-i:0">
             ${t('libraries.editInfo')}
         </div>
+        <div class="context-item" data-action="share" style="--ctx-i:1">
+            ${t('libraries.packShare')}
+        </div>
         <div class="context-divider"></div>
-        <div class="context-item danger" data-action="delete">
+        <div class="context-item danger" data-action="delete" style="--ctx-i:2">
             ${t('common.delete')}
         </div>
     `;
 
     // 定位到点击位置
     const x = Math.min(e.clientX, window.innerWidth - 160);
-    const y = Math.min(e.clientY, window.innerHeight - 150);
+    const y = Math.min(e.clientY, window.innerHeight - 180);
     contextMenuEl.style.left = x + 'px';
     contextMenuEl.style.top = y + 'px';
 
@@ -469,8 +474,10 @@ function showContextMenu(e, track) {
 
 function hideContextMenu() {
     if (contextMenuEl) {
-        contextMenuEl.remove();
+        contextMenuEl.classList.add('closing');
+        const el = contextMenuEl;
         contextMenuEl = null;
+        setTimeout(() => el.remove(), 150);
     }
 }
 
@@ -485,6 +492,9 @@ function handleContextAction(action, track) {
         case 'edit':
             openEditModal(track);
             break;
+        case 'share':
+            doPackShare(track);
+            break;
         case 'delete':
             showConfirm({
                 title: t('libraries.deleteTitle'),
@@ -495,6 +505,17 @@ function handleContextAction(action, track) {
                 if (ok) doDelete(track.id);
             });
             break;
+    }
+}
+
+// ============ 打包分享 ============
+async function doPackShare(track) {
+    try {
+        await PackShare(track.id);
+        showToast(t('libraries.shareSuccess'), 'success');
+    } catch (err) {
+        console.error('打包分享失败:', err);
+        showToast(t('libraries.shareFailed', err), 'error');
     }
 }
 
@@ -603,7 +624,13 @@ async function handleEditDrop(paths) {
 }
 
 function closeEditModal() {
-    document.getElementById("modal-edit").classList.remove("active");
+    const modal = document.getElementById("modal-edit");
+    modal.classList.add("closing");
+    modal.classList.remove("active");
+    setTimeout(() => {
+        modal.classList.remove("closing");
+        modal.style.display = '';
+    }, 200);
     currentEditTrack = null;
     editCoverData = null;
     editCoverMIME = null;

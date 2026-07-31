@@ -90,6 +90,17 @@
                         <span class="preset-color active" data-color="#1DB954" title="默认墨绿"></span>
                     </div>
                 </div>
+
+                <div class="setting-item">
+                    <label for="animations-toggle" data-i18n="settings.animations">界面动画</label>
+                    <div class="anim-level-row">
+                        <button type="button" class="anim-level-btn" data-level="0" data-i18n="settings.animNone">无动画</button>
+                        <button type="button" class="anim-level-btn" data-level="1" data-i18n="settings.animBasic">基础</button>
+                        <button type="button" class="anim-level-btn" data-level="2" data-i18n="settings.animEnhanced">增强</button>
+                        <button type="button" class="anim-level-btn" data-level="3" data-i18n="settings.animEpic">华丽</button>
+                    </div>
+                    <span class="toggle-desc anim-level-desc" data-i18n="settings.animationsDesc">启用过渡、入场与交互动画</span>
+                </div>
             </section>
 
             <section class="settings-section">
@@ -177,7 +188,7 @@
             <section class="settings-section">
                 <h2 data-i18n="settings.about">关于</h2>
                 <div class="about-info">
-                    <p><strong>MusicLite</strong>Beta 0.9.2</p>
+                    <p><strong>MusicLite</strong>Beta 0.9.3</p>
                     <p class="text-muted" data-i18n="settings.aboutDesc">轻量级离线音乐播放器</p>
                     <p class="text-muted" data-i18n="settings.builtWith">基于 Wails v2 构建</p>
                 </div>
@@ -269,3 +280,4 @@
         </div>
     </body>
 </html>
+

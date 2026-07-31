@@ -42,6 +42,8 @@ export function LoadSettings():Promise<main.Settings>;
 
 export function OpenAppDataFolder():Promise<void>;
 
+export function PackShare(arg1:number):Promise<void>;
+
 export function PickImageFile():Promise<main.PickedFile>;
 
 export function PickLyricsFile():Promise<string>;

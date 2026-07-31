@@ -78,6 +78,10 @@ export function OpenAppDataFolder() {
   return window['go']['main']['App']['OpenAppDataFolder']();
 }
 
+export function PackShare(arg1) {
+  return window['go']['main']['App']['PackShare'](arg1);
+}
+
 export function PickImageFile() {
   return window['go']['main']['App']['PickImageFile']();
 }

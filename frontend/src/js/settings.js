@@ -73,6 +73,7 @@ const accentColorItem = document.getElementById('accent-color-item');
 const accentColorInput = document.getElementById('accent-color');
 const accentColorText = document.getElementById('accent-color-text');
 const presetColors = document.querySelectorAll('.preset-color');
+const animLevelBtns = document.querySelectorAll('.anim-level-btn');
 
 // 确认对话框 / Toast 元素（settings.html 里有）
 const confirmModal = document.getElementById('confirmModal');
@@ -126,11 +127,13 @@ function showConfirm(message, opts = {}) {
         confirmOkBtn.className = 'btn ' + (opts.danger ? 'btn-danger' : 'btn-primary');
 
         const cleanup = (result) => {
+            confirmModal.classList.add('closing');
             confirmModal.classList.remove('active');
             confirmOkBtn.removeEventListener('click', onOk);
             confirmCancelBtn.removeEventListener('click', onCancel);
             confirmModal.removeEventListener('click', onBackdrop);
             document.removeEventListener('keydown', onKey);
+            setTimeout(() => confirmModal.classList.remove('closing'), 200);
             resolve(result);
         };
         const onOk = () => cleanup(true);
@@ -324,7 +327,9 @@ function openChangelogModal() {
 
 function closeChangelogModal() {
     if (!changelogModal) return;
+    changelogModal.classList.add('closing');
     changelogModal.classList.remove('active');
+    setTimeout(() => changelogModal.classList.remove('closing'), 200);
 }
 
 // ============ 初始化 ============
@@ -348,6 +353,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyAccentToUI();
     setupEventListeners();
     initMiniPlayer();
+    // 为设置区块添加逐级入场延迟
+    document.querySelectorAll('.settings-section').forEach((sec, i) => {
+        sec.style.setProperty('--sec-i', i);
+    });
 });
 
 // ============ 迷你播放器（设置页也能控制播放） ============
@@ -462,7 +471,8 @@ async function loadSettings() {
             last_track_id: 0,
             last_position: 0,
             volume: 70,
-            accent_color: '#1DB954'
+            accent_color: '#1DB954',
+            animation_level: 2
         };
         applySettingsToUI(currentSettings);
     }
@@ -513,6 +523,26 @@ function applySettingsToUI(s) {
     uiScaleValue.textContent = uiScale + '%';
     lyricsScaleSlider.value = lyricsScale;
     lyricsScaleValue.textContent = lyricsScale + '%';
+
+    // 界面动画级别（默认 2 = 增强；旧文件 enable_animations:false → 0）
+    const lvl = typeof s.animation_level === 'number' ? s.animation_level : (s.enable_animations === false ? 0 : 2);
+    setAnimationLevel(lvl);
+}
+
+// 同步四级动画选择器 UI 与 body data-anim 属性
+function setAnimationLevel(level) {
+    const clamped = Math.max(0, Math.min(3, level | 0));
+    // 选中高亮按钮
+    animLevelBtns.forEach(btn => {
+        const active = parseInt(btn.dataset.level, 10) === clamped;
+        btn.classList.toggle('active', active);
+    });
+    document.body.setAttribute('data-anim', clamped.toString());
+    // 兼容旧逻辑：level 0 时添加 .no-anim（让原 no-anim 规则也生效）
+    document.body.classList.toggle('no-anim', clamped === 0);
+    // 持久化到 localStorage，供 settings-apply.js 启动时同步读取（避免首屏闪烁）
+    try { localStorage.setItem('musicLite.animationsLevel', clamped.toString()); } catch (e) {}
+    return clamped;
 }
 
 // 让设置值匹配 select 的 option value（后端保存的值可能带引号，匹配最佳 option）
@@ -640,6 +670,16 @@ function setupEventListeners() {
         });
     });
 
+    // 界面动画级别选择器
+    animLevelBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const lvl = parseInt(btn.dataset.level, 10) || 0;
+            currentSettings.animation_level = lvl;
+            setAnimationLevel(lvl);
+            markChanged();
+        });
+    });
+
     // Player font
     playerFontSelect.addEventListener('change', () => {
         currentSettings.player_font = playerFontSelect.value;
@@ -735,7 +775,7 @@ function setupEventListeners() {
                 // 先保存当前设置再导出
                 await SaveSettings(currentSettings);
                 hasChanges = false;
-                saveBar.style.display = 'none';
+                hideSaveBar();
                 const path = await ExportSettings();
                 if (path) {
                     showToast(t('settings.exportSuccess', path), 'success');
@@ -785,7 +825,7 @@ function setupEventListeners() {
                     // 立即保存
                     await SaveSettings(defaults);
                     hasChanges = false;
-                    saveBar.style.display = 'none';
+                    hideSaveBar();
                     // 通知其他页面
                     localStorage.setItem('settingsUpdated', Date.now().toString());
                     showToast(t('settings.resetSuccess'), 'success');
@@ -832,6 +872,14 @@ function setupEventListeners() {
 function markChanged() {
     hasChanges = true;
     saveBar.style.display = 'flex';
+    // 强制重排以重启动画（display:none→flex 切换后 animation 不会自动重播）
+    void saveBar.offsetWidth;
+    saveBar.classList.add('visible');
+}
+
+function hideSaveBar() {
+    saveBar.classList.remove('visible');
+    saveBar.style.display = 'none';
 }
 
 // Save settings
@@ -839,7 +887,7 @@ async function saveSettings() {
     try {
         await SaveSettings(currentSettings);
         hasChanges = false;
-        saveBar.style.display = 'none';
+        hideSaveBar();
 
         // 立即应用当前页面的设置
         document.body.setAttribute('data-theme', currentSettings.theme || 'dark');

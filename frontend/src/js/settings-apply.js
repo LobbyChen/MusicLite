@@ -103,6 +103,20 @@ function applyLyricAnimation(mode) {
     try { localStorage.setItem('musicLite.lyricAnimation', m); } catch (e) {}
 }
 
+// 应用界面动画级别（0-3）：设置 body[data-anim] 与兼容的 .no-anim 类
+function applyAnimationLevel(level) {
+    if (!document.body) return;
+    const clamped = Math.max(0, Math.min(3, level | 0));
+    document.body.setAttribute('data-anim', clamped.toString());
+    // 兼容旧逻辑：级别 0 时加 .no-anim（让原 no-anim 规则也生效）
+    document.body.classList.toggle('no-anim', clamped === 0);
+    // 持久化到 localStorage，供页面加载时同步读取（避免首屏闪烁）
+    try { localStorage.setItem('musicLite.animationsLevel', clamped.toString()); } catch (e) {}
+    // 兼容旧 localStorage key（避免旧逻辑读不到）
+    try { localStorage.setItem('musicLite.animationsEnabled', clamped === 0 ? '0' : '1'); } catch (e) {}
+    return clamped;
+}
+
 // 根据主题色 + 主题模式，算出全套配套 CSS 变量
 function computePalette(accentHex, theme) {
     const [h, s, l] = hexToHsl(accentHex);
@@ -460,6 +474,12 @@ const SettingsManager = {
         // 全屏歌词切换动画
         applyLyricAnimation(s.lyric_animation);
 
+        // 界面动画级别（默认 2 = 增强；旧文件 enable_animations:false → 0）
+        const animLvl = typeof s.animation_level === 'number'
+            ? s.animation_level
+            : (s.enable_animations === false ? 0 : 2);
+        applyAnimationLevel(animLvl);
+
         // 应用 i18n 翻译（在 DOM 和语言都就绪后）
         applyTranslations();
 
@@ -490,6 +510,12 @@ const SettingsManager = {
 
             // 全屏歌词切换动画
             applyLyricAnimation(this.cached.lyric_animation);
+
+            // 界面动画级别（兼容旧字段）
+            const animLvl = typeof this.cached.animation_level === 'number'
+                ? this.cached.animation_level
+                : (this.cached.enable_animations === false ? 0 : 2);
+            applyAnimationLevel(animLvl);
         }
     },
 
@@ -526,5 +552,27 @@ if (document.readyState === 'loading') {
             body.classList.remove('lyric-anim-fade');
             body.classList.add('lyric-anim-' + saved);
         }
+    } catch (e) {}
+})();
+
+// 同步应用界面动画级别（在 DOMContentLoaded 之前就应用，避免首屏动画闪烁）
+// 从 localStorage 读取上次的设置，等 SettingsManager.apply() 完成后再用实际设置覆盖
+(function syncApplyAnimationLevel() {
+    const body = document.body;
+    if (!body) return;
+    try {
+        // 优先读取新的 4 档 level，其次回退到旧的 enable/disable 布尔
+        const savedLvl = localStorage.getItem('musicLite.animationsLevel');
+        let lvl = null;
+        if (savedLvl !== null && savedLvl !== '') {
+            const n = parseInt(savedLvl, 10);
+            if (!isNaN(n)) lvl = Math.max(0, Math.min(3, n));
+        }
+        if (lvl === null) {
+            const savedOld = localStorage.getItem('musicLite.animationsEnabled');
+            lvl = (savedOld === '0') ? 0 : 2;
+        }
+        body.setAttribute('data-anim', lvl.toString());
+        body.classList.toggle('no-anim', lvl === 0);
     } catch (e) {}
 })();

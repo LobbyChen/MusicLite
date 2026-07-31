@@ -72,6 +72,7 @@ export namespace main {
 	    language: string;
 	    lyric_animation: string;
 	    list_mode: string;
+	    animation_level: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -91,6 +92,7 @@ export namespace main {
 	        this.language = source["language"];
 	        this.lyric_animation = source["lyric_animation"];
 	        this.list_mode = source["list_mode"];
+	        this.animation_level = source["animation_level"];
 	    }
 	}
 

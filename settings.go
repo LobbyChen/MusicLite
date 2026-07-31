@@ -22,6 +22,7 @@ type Settings struct {
 	Language       string `json:"language"`        // 界面语言："zh-CN" | "en"
 	LyricAnimation string `json:"lyric_animation"` // 全屏歌词切换动画："fade" | "slide-up" | "slide-left" | "zoom" | "none"
 	ListMode       string `json:"list_mode"`       // 音乐库列表模式："card" | "list"
+	AnimationLevel int    `json:"animation_level"` // 界面动画级别：0=无 1=基础 2=增强(默认) 3=华丽
 }
 
 // DefaultSettings 返回默认设置
@@ -39,6 +40,7 @@ func DefaultSettings() Settings {
 		Language:       "zh-CN",
 		LyricAnimation: "fade",
 		ListMode:       "card",
+		AnimationLevel: 2,
 	}
 }
 
@@ -78,6 +80,39 @@ func (a *App) LoadSettings() Settings {
 	}
 	if s.LyricAnimation == "" {
 		s.LyricAnimation = def.LyricAnimation
+	}
+	// 兼容旧版设置：
+	// - 旧字段 enable_animations:false → animation_level:0（无动画）
+	// - 旧字段 enable_animations:true / 缺失 → animation_level:2（增强，默认）
+	// - 新字段 animation_level 已存在且值合法（0-3）→ 直接采用
+	{
+		hasNew := false
+		var raw map[string]json.RawMessage
+		if json.Unmarshal(data, &raw) == nil {
+			if _, ok := raw["animation_level"]; ok {
+				hasNew = true
+			}
+		}
+		if !hasNew {
+			// 迁移旧字段 enable_animations
+			type legacyAnim struct {
+				EnableAnimations *bool `json:"enable_animations"`
+			}
+			var leg legacyAnim
+			if json.Unmarshal(data, &leg) == nil && leg.EnableAnimations != nil {
+				if !*leg.EnableAnimations {
+					s.AnimationLevel = 0
+				} else {
+					s.AnimationLevel = 2
+				}
+			} else {
+				s.AnimationLevel = def.AnimationLevel
+			}
+		}
+		// 边界校验
+		if s.AnimationLevel < 0 || s.AnimationLevel > 3 {
+			s.AnimationLevel = def.AnimationLevel
+		}
 	}
 	// 旧版 base_font_size (12-22px) → 新版 ui_scale (20-200%)
 	// 基准 14px，比例 = round(value / 14 * 100)
