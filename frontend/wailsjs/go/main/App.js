@@ -22,6 +22,10 @@ export function GetFileInArgs() {
   return window['go']['main']['App']['GetFileInArgs']();
 }
 
+export function GetI18nData() {
+  return window['go']['main']['App']['GetI18nData']();
+}
+
 export function GetInstalledFonts() {
   return window['go']['main']['App']['GetInstalledFonts']();
 }

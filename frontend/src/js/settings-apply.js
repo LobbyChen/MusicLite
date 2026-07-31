@@ -1,5 +1,5 @@
 import { LoadSettings } from '../../wailsjs/go/main/App.js';
-import { setLanguage, applyTranslations } from './i18n.js';
+import { initI18n, setLanguage, applyTranslations } from './i18n.js';
 
 const FONT_FALLBACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 const DEFAULT_ACCENT = '#1db954';
@@ -245,7 +245,8 @@ const SettingsManager = {
     async apply() {
         const s = await this.load();
 
-        // 设置界面语言
+        // 先初始化 i18n（从后端加载翻译数据），再设置语言
+        await initI18n();
         const lang = s.language || 'zh-CN';
         setLanguage(lang);
 

@@ -157,7 +157,7 @@
             <section class="settings-section">
                 <h2 data-i18n="settings.about">关于</h2>
                 <div class="about-info">
-                    <p><strong>MusicLite</strong>Beta 0.8.1</p>
+                    <p><strong>MusicLite</strong>Beta 0.8.3</p>
                     <p class="text-muted" data-i18n="settings.aboutDesc">轻量级离线音乐播放器</p>
                     <p class="text-muted" data-i18n="settings.builtWith">基于 Wails v2 构建</p>
                 </div>
@@ -168,6 +168,9 @@
                         <button class="btn btn-secondary" id="import-settings-btn" data-i18n="settings.importSettings">导入设置</button>
                         <button class="btn btn-danger" id="reset-settings-btn" data-i18n="settings.resetSettings">重置为默认</button>
                     </div>
+                </div>
+                <div class="setting-item" style="margin-top: 12px;">
+                    <button class="btn btn-secondary" id="changelog-btn" data-i18n="settings.changelog">更新记录</button>
                 </div>
             </section>
         </main>
@@ -219,6 +222,21 @@
                 <div class="modal-buttons">
                     <button class="btn btn-secondary" id="confirmCancel">取消</button>
                     <button class="btn btn-danger" id="confirmOk">确定</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 更新记录弹窗 -->
+        <div class="modal-backdrop" id="changelogModal">
+            <div class="modal modal-changelog">
+                <div class="changelog-header">
+                    <h3 data-i18n="settings.changelog">更新记录</h3>
+                    <button class="changelog-close" id="changelogClose" data-i18n-title="common.close">
+                        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    </button>
+                </div>
+                <div class="changelog-body" id="changelogBody">
+                    <!-- 由 settings.js 动态渲染 -->
                 </div>
             </div>
         </div>

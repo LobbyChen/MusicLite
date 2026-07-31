@@ -1,5 +1,5 @@
 import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings } from '../../wailsjs/go/main/App.js';
-import { t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
+import { initI18n, t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
 function applyMarquee(el) {
@@ -55,6 +55,10 @@ const languageSelect = document.getElementById('language-select');
 const exportBtn = document.getElementById('export-settings-btn');
 const importBtn = document.getElementById('import-settings-btn');
 const resetBtn = document.getElementById('reset-settings-btn');
+const changelogBtn = document.getElementById('changelog-btn');
+const changelogModal = document.getElementById('changelogModal');
+const changelogClose = document.getElementById('changelogClose');
+const changelogBody = document.getElementById('changelogBody');
 const volumeSlider = document.getElementById('volume-slider');
 const volumeValue = document.getElementById('volume-value');
 const uiScaleSlider = document.getElementById('ui-scale');
@@ -221,8 +225,110 @@ function populateLanguageSelect() {
     languageSelect.appendChild(frag);
 }
 
+// ============ 更新记录弹窗 ============
+let changelogCache = null;
+
+// 加载 changelog.json（构建时由 scripts/gen-changelog.js 生成）
+async function loadChangelog() {
+    if (changelogCache) return changelogCache;
+    try {
+        // Vite 原生支持 import JSON
+        const mod = await import('/src/assets/changelog.json');
+        changelogCache = mod.default || mod;
+    } catch (e) {
+        console.warn('加载更新记录失败:', e);
+        changelogCache = [];
+    }
+    return changelogCache;
+}
+
+// 类型 → CSS class 映射
+const SECTION_TYPE_CLASS = {
+    '添加': 'type-add',
+    '修改': 'type-modify',
+    '修复': 'type-fix',
+};
+
+// 渲染单条更新记录
+function renderChangelogItem(entry) {
+    const item = document.createElement('div');
+    item.className = 'changelog-item';
+
+    // 头部：版本号 + 日期
+    const header = document.createElement('div');
+    header.className = 'changelog-item-header';
+    const ver = document.createElement('div');
+    ver.className = 'changelog-version';
+    ver.textContent = entry.version || '';
+    const date = document.createElement('div');
+    date.className = 'changelog-date';
+    date.textContent = entry.date || '';
+    header.appendChild(ver);
+    header.appendChild(date);
+    item.appendChild(header);
+
+    // 各分段
+    if (Array.isArray(entry.sections)) {
+        for (const section of entry.sections) {
+            // 跳过空段或"无"
+            const items = (section.items || []).filter(s => s && s !== '无');
+            if (items.length === 0) continue;
+
+            const sectionEl = document.createElement('div');
+            sectionEl.className = 'changelog-section';
+
+            const title = document.createElement('span');
+            title.className = 'changelog-section-title ' + (SECTION_TYPE_CLASS[section.type] || 'type-other');
+            title.textContent = section.type || '';
+            sectionEl.appendChild(title);
+
+            const ul = document.createElement('ul');
+            ul.className = 'changelog-items';
+            for (const it of items) {
+                const li = document.createElement('li');
+                li.textContent = it;
+                ul.appendChild(li);
+            }
+            sectionEl.appendChild(ul);
+            item.appendChild(sectionEl);
+        }
+    }
+
+    return item;
+}
+
+function renderChangelog(entries) {
+    if (!changelogBody) return;
+    changelogBody.innerHTML = '';
+    if (!entries || entries.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'changelog-empty';
+        empty.textContent = t('settings.changelogEmpty');
+        changelogBody.appendChild(empty);
+        return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const entry of entries) {
+        frag.appendChild(renderChangelogItem(entry));
+    }
+    changelogBody.appendChild(frag);
+}
+
+function openChangelogModal() {
+    if (!changelogModal) return;
+    changelogModal.classList.add('active');
+    loadChangelog().then(renderChangelog);
+}
+
+function closeChangelogModal() {
+    if (!changelogModal) return;
+    changelogModal.classList.remove('active');
+}
+
 // ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', async () => {
+    // 先初始化 i18n（从后端加载翻译数据），再生成语言选择器
+    await initI18n();
     populateLanguageSelect();
     await populateFontSelects();
     await loadSettings();
@@ -629,6 +735,26 @@ function setupEventListeners() {
                 }
             });
         }
+
+        // Changelog button（更新记录）
+        if (changelogBtn) {
+            changelogBtn.addEventListener('click', openChangelogModal);
+        }
+        if (changelogClose) {
+            changelogClose.addEventListener('click', closeChangelogModal);
+        }
+        if (changelogModal) {
+            // 点击背景关闭
+            changelogModal.addEventListener('click', (e) => {
+                if (e.target === changelogModal) closeChangelogModal();
+            });
+        }
+        // Esc 关闭
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && changelogModal && changelogModal.classList.contains('active')) {
+                closeChangelogModal();
+            }
+        });
     }
 }
 

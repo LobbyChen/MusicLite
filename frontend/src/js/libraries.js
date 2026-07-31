@@ -1,7 +1,7 @@
 import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths} from '../../wailsjs/go/main/App.js';
 import { OnFileDrop } from '../../wailsjs/runtime/runtime.js';
 import { openPlayer } from './player.js';
-import { t } from './i18n.js';
+import { initI18n, t } from './i18n.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
 // 用法：applyMarquee(el) —— el 是承载歌名的容器（如 .mini-title）
@@ -538,6 +538,8 @@ function setCover(el, coverUrl) {
 
 // ============ 初始化 ============
 document.addEventListener("DOMContentLoaded", async function () {
+    // 先初始化 i18n（从后端加载翻译数据），确保 t() 能拿到正确文案
+    await initI18n();
     await refreshList();
 
     // 监听设置变化（用户在设置页修改后通过 localStorage 通知）

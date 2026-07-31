@@ -650,3 +650,151 @@ body.has-mini-player .save-bar {
     text-overflow: ellipsis;
     transition: font-family 0.15s;
 }
+
+/* ============ 更新记录弹窗 ============ */
+.modal-changelog {
+    width: 560px;
+    max-width: 92vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.changelog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.changelog-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.changelog-close {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    --wails-draggable: no-drag;
+}
+
+.changelog-close:hover {
+    background: var(--hover-color);
+    color: var(--text-primary);
+}
+
+.changelog-close svg {
+    fill: currentColor;
+}
+
+.changelog-body {
+    padding: 12px 20px 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* 单条更新记录卡片 */
+.changelog-item {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.changelog-item:last-child {
+    border-bottom: none;
+}
+
+.changelog-item-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.changelog-version {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.changelog-date {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+/* 分段（添加/修改/修复） */
+.changelog-section {
+    margin-top: 6px;
+}
+
+.changelog-section-title {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.changelog-section-title.type-add {
+    background: rgba(46, 204, 113, 0.18);
+    color: #2ecc71;
+}
+
+.changelog-section-title.type-modify {
+    background: rgba(52, 152, 219, 0.18);
+    color: #3498db;
+}
+
+.changelog-section-title.type-fix {
+    background: rgba(231, 76, 60, 0.18);
+    color: #e74c3c;
+}
+
+.changelog-section-title.type-other {
+    background: rgba(241, 196, 15, 0.18);
+    color: #f1c40f;
+}
+
+.changelog-items {
+    display: inline;
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 0;
+}
+
+.changelog-items li {
+    display: inline;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+.changelog-items li::after {
+    content: " · ";
+    color: var(--text-secondary);
+    opacity: 0.5;
+}
+
+.changelog-items li:last-child::after {
+    content: "";
+}
+
+.changelog-empty {
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 40px 0;
+    font-size: 0.9rem;
+}

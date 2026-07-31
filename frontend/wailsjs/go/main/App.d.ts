@@ -14,6 +14,8 @@ export function GetDatabase():Promise<storage.Database>;
 
 export function GetFileInArgs():Promise<format.MscData>;
 
+export function GetI18nData():Promise<main.I18nData>;
+
 export function GetInstalledFonts():Promise<Array<string>>;
 
 export function GetNextTracks(arg1:number):Promise<format.MscData>;

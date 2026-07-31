@@ -29,6 +29,20 @@ export namespace format {
 
 export namespace main {
 	
+	export class I18nData {
+	    version: number;
+	    languages: Record<string, any>;
+	
+	    static createFrom(source: any = {}) {
+	        return new I18nData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.languages = source["languages"];
+	    }
+	}
 	export class Settings {
 	    theme: string;
 	    player_font: string;

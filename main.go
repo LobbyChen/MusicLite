@@ -22,6 +22,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	// 确保 i18n.json 已解压到 APPDATA（首次启动）
+	ensureI18nFile()
 	// 创建音频/封面请求处理器
 	audioHandler := NewAudioHandler(app.GetDatabase())
 	// WebView2 用户数据目录（指定到 exe 旁的独立目录，避免旧数据被锁导致控制器创建失败）

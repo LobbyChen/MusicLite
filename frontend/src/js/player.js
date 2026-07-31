@@ -1,7 +1,7 @@
 // player.js — 播放器视图（SPA overlay 模块）
 // 与库视图共享同一个 window.audioManager，切换视图时 audio 不销毁，播放保持连续。
 import { GetTrack, LoadSettings, GetNextTracks,GetPrevTracks, GetRandomTrack } from '../../wailsjs/go/main/App.js';
-import { t } from './i18n.js';
+import { initI18n, t } from './i18n.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
 function applyMarquee(el) {
@@ -664,6 +664,8 @@ document.addEventListener('keydown', (e) => {
 
 // ============ 导出：打开/关闭播放器视图 ============
 async function openPlayer(trackId) {
+    // 先初始化 i18n（从后端加载翻译数据），确保 t() 能拿到正确文案
+    await initI18n();
     // 删除检查：若曲目不存在则不打开播放器
     if (trackId) {
         try {
