@@ -329,6 +329,16 @@ function closeChangelogModal() {
 
 // ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', async () => {
+    // 阻止触摸板双指缩放及键盘缩放快捷键
+    window.addEventListener('wheel', (e) => {
+        if (e.ctrlKey) { e.preventDefault(); }
+    }, { passive: false });
+    window.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && ['=', '+', '-', '0'].includes(e.key)) {
+            e.preventDefault();
+        }
+    });
+
     // 先初始化 i18n（从后端加载翻译数据），再生成语言选择器
     await initI18n();
     populateLanguageSelect();
@@ -388,9 +398,13 @@ function initMiniPlayer() {
         window.location.href = '/src/html/libraries.html';
     });
 
-    // 点击 cover + 标题区域也可返回音乐库
+    // 点击 cover + 标题区域：跳转到库页面并打开播放器
     if (miniPlayerLeft) {
         miniPlayerLeft.addEventListener('click', () => {
+            const track = window.audioManager?.currentTrack;
+            if (track && track.id) {
+                localStorage.setItem('openPlayerOnLoad', String(track.id));
+            }
             window.location.href = '/src/html/libraries.html';
         });
     }
@@ -524,8 +538,8 @@ function normalizeFontOptionValue(savedValue, selectEl) {
 
 function showOrHideAccentItem(theme) {
     if (!accentColorItem) return;
-    accentColorItem.style.display = 'block';
-    // 实际上所有主题都可以自定义主题色，所以我们不隐藏；但可以根据主题高亮对应位置
+    // 只有"主题色"(custom)模式才显示取色盘，深色/浅色/墨绿使用固定配色
+    accentColorItem.style.display = (theme === 'custom') ? 'block' : 'none';
 }
 
 function applyAccentToUI() {
@@ -581,7 +595,9 @@ function setupEventListeners() {
             btn.classList.add('active');
             currentSettings.theme = btn.dataset.theme;
             applyTheme();
-            // 主题切换后重新计算配套色（applyAccentToUI 内部会根据新 theme 算出对应基调）
+            // 切换主题时显示/隐藏取色盘（仅 custom 主题显示，dark/light/accent 使用固定配色）
+            showOrHideAccentItem(currentSettings.theme);
+            // 主题切换后重新计算配套色（applyAccentToUI 内部会根据新 theme 选择固定配色或动态计算）
             applyAccentToUI();
             markChanged();
         });

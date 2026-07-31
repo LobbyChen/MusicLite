@@ -426,6 +426,108 @@ func (a *App) UpdateTrackCover(id int64, coverData []byte, coverMIME string) err
 	return a.database.UpdateTrackCover(id, coverData, coverMIME)
 }
 
+// PickedFile 文件选择/读取的统一返回结构（用于编辑弹窗的封面/歌词导入）
+type PickedFile struct {
+	Data string `json:"data"` // base64 编码的文件数据（图片用）
+	MIME string `json:"mime"` // MIME 类型
+	Text string `json:"text"` // 文本内容（歌词用）
+}
+
+// imageMIMEFromExt 根据文件扩展名返回图片 MIME 类型
+func imageMIMEFromExt(path string) string {
+	ext := strings.ToLower(filepath.Ext(path))
+	switch ext {
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".gif":
+		return "image/gif"
+	case ".bmp":
+		return "image/bmp"
+	case ".webp":
+		return "image/webp"
+	default:
+		return ""
+	}
+}
+
+// isImageFile 判断是否为图片文件
+func isImageFile(path string) bool {
+	return imageMIMEFromExt(path) != ""
+}
+
+// isLyricsFile 判断是否为歌词文件
+func isLyricsFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".lrc" || ext == ".txt"
+}
+
+// PickImageFile 打开文件对话框选择图片，读取并返回 base64 数据 + MIME
+func (a *App) PickImageFile() (PickedFile, error) {
+	strs := a.getBackendStrings()
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: strs.PickImageFile,
+		Filters: []runtime.FileFilter{
+			{DisplayName: strs.ImageFileFilter, Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.webp"},
+		},
+	})
+	if err != nil {
+		return PickedFile{}, err
+	}
+	if path == "" {
+		return PickedFile{}, nil // 用户取消
+	}
+	return a.readFileForEdit(path)
+}
+
+// PickLyricsFile 打开文件对话框选择歌词文件，读取并返回文本内容
+func (a *App) PickLyricsFile() (string, error) {
+	strs := a.getBackendStrings()
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: strs.PickLyricsFile,
+		Filters: []runtime.FileFilter{
+			{DisplayName: strs.LyricsFileFilter, Pattern: "*.lrc;*.txt"},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "", nil // 用户取消
+	}
+	result, err := a.readFileForEdit(path)
+	if err != nil {
+		return "", err
+	}
+	return result.Text, nil
+}
+
+// ReadFileForEdit 根据路径读取文件（拖放场景），自动检测类型并填充对应字段
+func (a *App) ReadFileForEdit(path string) (PickedFile, error) {
+	return a.readFileForEdit(path)
+}
+
+// readFileForEdit 读取文件并根据扩展名填充对应字段
+func (a *App) readFileForEdit(path string) (PickedFile, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return PickedFile{}, err
+	}
+	// 大小限制：512KB
+	if len(data) > 512*1024 {
+		return PickedFile{}, fmt.Errorf("file too large (max 512KB)")
+	}
+	result := PickedFile{}
+	if isImageFile(path) {
+		result.Data = base64.StdEncoding.EncodeToString(data)
+		result.MIME = imageMIMEFromExt(path)
+	} else if isLyricsFile(path) {
+		result.Text = string(data)
+	}
+	return result, nil
+}
+
 // DeleteTrack 删除曲目
 func (a *App) DeleteTrack(id int64) error {
 	return a.database.DeleteTrack(id)

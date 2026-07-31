@@ -35,15 +35,19 @@ type I18nData struct {
 
 // backendStrings 后端使用的文案子集（从 I18nData 提取）
 type backendStrings struct {
-	SelectMusicFile string
-	ExportSettings  string
-	ImportSettings  string
-	MusicFileFilter string
-	SettingsFilter  string
-	TrayShow        string
-	TrayPlayPause   string
-	TrayQuit        string
-	TrayTooltip     string
+	SelectMusicFile  string
+	ExportSettings   string
+	ImportSettings   string
+	MusicFileFilter  string
+	SettingsFilter   string
+	TrayShow         string
+	TrayPlayPause    string
+	TrayQuit         string
+	TrayTooltip      string
+	PickImageFile    string
+	PickLyricsFile   string
+	ImageFileFilter  string
+	LyricsFileFilter string
 }
 
 var (
@@ -222,14 +226,18 @@ func (a *App) getBackendStrings() backendStrings {
 	}
 
 	return backendStrings{
-		SelectMusicFile: get("backend.selectMusicFile", "选择音乐文件"),
-		ExportSettings:  get("backend.exportSettings", "导出 MusicLite 设置"),
-		ImportSettings:  get("backend.importSettings", "导入 MusicLite 设置"),
-		MusicFileFilter: get("backend.musicFileFilter", "Music File (*.mp3, *.ogg, *.flac, *.wav, *.ape)"),
-		SettingsFilter:  get("backend.settingsFilter", "MusicLite 设置包 (*.msclte.zip)"),
-		TrayShow:        get("backend.trayShow", "显示主窗口"),
-		TrayPlayPause:   get("backend.trayPlayPause", "播放/暂停"),
-		TrayQuit:        get("backend.trayQuit", "退出"),
-		TrayTooltip:     get("backend.trayTooltip", "MusicLite"),
+		SelectMusicFile:  get("backend.selectMusicFile", "选择音乐文件"),
+		ExportSettings:   get("backend.exportSettings", "导出 MusicLite 设置"),
+		ImportSettings:   get("backend.importSettings", "导入 MusicLite 设置"),
+		MusicFileFilter:  get("backend.musicFileFilter", "Music File (*.mp3, *.ogg, *.flac, *.wav, *.ape)"),
+		SettingsFilter:   get("backend.settingsFilter", "MusicLite 设置包 (*.msclte.zip)"),
+		TrayShow:         get("backend.trayShow", "显示主窗口"),
+		TrayPlayPause:    get("backend.trayPlayPause", "播放/暂停"),
+		TrayQuit:         get("backend.trayQuit", "退出"),
+		TrayTooltip:      get("backend.trayTooltip", "MusicLite"),
+		PickImageFile:    get("backend.pickImageFile", "选择封面图片"),
+		PickLyricsFile:   get("backend.pickLyricsFile", "选择歌词文件"),
+		ImageFileFilter:  get("backend.imageFileFilter", "Image Files (*.png, *.jpg, *.jpeg, *.gif, *.bmp, *.webp)"),
+		LyricsFileFilter: get("backend.lyricsFileFilter", "Lyrics Files (*.lrc, *.txt)"),
 	}
 }

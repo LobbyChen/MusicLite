@@ -43,6 +43,22 @@ export namespace main {
 	        this.languages = source["languages"];
 	    }
 	}
+	export class PickedFile {
+	    data: string;
+	    mime: string;
+	    text: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PickedFile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.data = source["data"];
+	        this.mime = source["mime"];
+	        this.text = source["text"];
+	    }
+	}
 	export class Settings {
 	    theme: string;
 	    player_font: string;
@@ -55,6 +71,7 @@ export namespace main {
 	    accent_color: string;
 	    language: string;
 	    lyric_animation: string;
+	    list_mode: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -73,6 +90,7 @@ export namespace main {
 	        this.accent_color = source["accent_color"];
 	        this.language = source["language"];
 	        this.lyric_animation = source["lyric_animation"];
+	        this.list_mode = source["list_mode"];
 	    }
 	}
 

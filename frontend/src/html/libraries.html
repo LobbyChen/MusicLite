@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" type="text/css" href="/src/css/libraries.css" />
     <script src="/wails/ipc.js"></script>
     <script src="/wails/runtime.js"></script>
@@ -76,7 +76,19 @@
 
     <!-- Main Content -->
     <main>
-        <h2 data-i18n="libraries.allTracks">全部曲目</h2>
+        <div class="tracks-header">
+            <h2 data-i18n="libraries.allTracks">全部曲目</h2>
+            <div class="view-toggle" id="view-toggle" role="switch" tabindex="0" aria-label="切换卡片/列表模式" data-i18n-title="settings.listMode">
+                <span class="view-toggle-thumb">
+                    <svg class="view-toggle-icon view-toggle-icon-card" viewBox="0 0 24 24" width="14" height="14">
+                        <path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/>
+                    </svg>
+                    <svg class="view-toggle-icon view-toggle-icon-list" viewBox="0 0 24 24" width="14" height="14">
+                        <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
+                    </svg>
+                </span>
+            </div>
+        </div>
         <div id="media-container" class="media-grid"></div>
 
         <div id="empty-state" class="empty-state">
@@ -122,38 +134,39 @@
     <div id="modal-edit" class="modal-backdrop">
         <div class="modal modal-large">
             <h3 data-i18n="libraries.editTrackTitle">编辑曲目信息</h3>
-            <div class="form-group">
-                <label data-i18n="libraries.titleLabel">标题</label>
-                <input type="text" id="edit-title" class="form-input" placeholder="曲目标题" />
+            <div class="edit-modal-body">
+                <!-- 封面预览 + 更换 -->
+                <div class="edit-cover-section">
+                    <div class="edit-cover-preview" id="edit-cover-preview">
+                        <svg viewBox="0 0 24 24" width="32" height="32"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                    </div>
+                    <div class="edit-cover-actions">
+                        <button class="btn btn-secondary btn-sm" id="edit-cover-pick" data-i18n="libraries.changeCover">更换封面</button>
+                        <button class="btn btn-secondary btn-sm" id="edit-cover-clear" data-i18n="libraries.clearCover">清除</button>
+                    </div>
+                </div>
+                <!-- 右侧：标题/艺术家/歌词 -->
+                <div class="edit-fields-section">
+                    <div class="form-group">
+                        <label data-i18n="libraries.titleLabel">标题</label>
+                        <input type="text" id="edit-title" class="form-input" placeholder="曲目标题" />
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="libraries.artistLabel">艺术家</label>
+                        <input type="text" id="edit-artist" class="form-input" placeholder="艺术家" />
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="libraries.lyricsFormat">歌词 (LRC 格式)</label>
+                        <textarea id="edit-lyrics" class="form-textarea"
+                            placeholder="粘贴 LRC 歌词，如：&#10;[00:12.34]歌词内容&#10;[00:15.67]下一行" data-i18n-placeholder="libraries.lyricsPlaceholder"></textarea>
+                        <div class="edit-lyrics-actions">
+                            <button class="btn btn-secondary btn-sm" id="edit-lyrics-pick" data-i18n="libraries.importFromFile">从文件导入</button>
+                            <button class="btn btn-secondary btn-sm" id="edit-lyrics-clear" data-i18n="libraries.clearLyrics">清空</button>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <label data-i18n="libraries.artistLabel">艺术家</label>
-                <input type="text" id="edit-artist" class="form-input" placeholder="艺术家" />
-            </div>
-            <div class="form-group">
-                <label data-i18n="libraries.lyricsFormat">歌词 (LRC 格式)</label>
-                <textarea id="edit-lyrics" class="form-textarea"
-                    placeholder="粘贴 LRC 歌词，如：&#10;[00:12.34]歌词内容&#10;[00:15.67]下一行" data-i18n-placeholder="libraries.lyricsPlaceholder"></textarea>
-            </div>
-            <div class="modal-buttons">
-                <button class="btn btn-secondary modal-cancel" data-action="cancel" data-i18n="common.cancel">取消</button>
-                <button class="btn btn-primary modal-save" data-action="save" data-i18n="common.save">保存</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Lyrics Edit Modal -->
-    <div id="modal-lyrics-edit" class="modal-backdrop">
-        <div class="modal modal-large">
-            <h3 data-i18n="libraries.editLyrics">编辑歌词</h3>
-            <div class="form-group">
-                <label data-i18n="libraries.lyricsContent">歌词内容 (LRC 格式)</label>
-                <textarea id="lyrics-textarea" class="form-textarea" placeholder="粘贴或输入 LRC 格式歌词" data-i18n-placeholder="libraries.lyricsInputPlaceholder"></textarea>
-            </div>
-            <div class="form-group">
-                <label data-i18n="libraries.importFromFile">从文件导入</label>
-                <input type="file" id="lyrics-file-input" accept=".lrc,.txt" class="form-file" />
-            </div>
+            <div class="edit-drop-hint" data-i18n="libraries.dropEditHint">拖放封面图片或歌词文件到此处</div>
             <div class="modal-buttons">
                 <button class="btn btn-secondary modal-cancel" data-action="cancel" data-i18n="common.cancel">取消</button>
                 <button class="btn btn-primary modal-save" data-action="save" data-i18n="common.save">保存</button>

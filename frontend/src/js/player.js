@@ -794,6 +794,17 @@ document.addEventListener('keydown', (e) => {
 
 // ============ 导出：打开/关闭播放器视图 ============
 async function openPlayer(trackId) {
+    // 阻止触摸板双指缩放（ctrl+wheel）及键盘缩放快捷键
+    if (!window.__zoomBlocked) {
+        window.addEventListener('wheel', (e) => {
+            if (e.ctrlKey) e.preventDefault();
+        }, { passive: false });
+        window.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && ['=', '+', '-', '0'].includes(e.key)) e.preventDefault();
+        });
+        window.__zoomBlocked = true;
+    }
+
     // 先初始化 i18n（从后端加载翻译数据），确保 t() 能拿到正确文案
     await initI18n();
     // 删除检查：若曲目不存在则不打开播放器

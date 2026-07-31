@@ -1,4 +1,4 @@
-import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths, GetTotalListenTime} from '../../wailsjs/go/main/App.js';
+import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths, GetTotalListenTime, PickImageFile, PickLyricsFile, ReadFileForEdit } from '../../wailsjs/go/main/App.js';
 import { OnFileDrop } from '../../wailsjs/runtime/runtime.js';
 import { openPlayer } from './player.js';
 import { initI18n, t } from './i18n.js';
@@ -66,10 +66,23 @@ var currentTrack;
 // ============ 拖放导入 ============
 // 用计数器区分真正离开窗口（dragenter/leave 会成对触发且嵌套）
 let dragDepth = 0;
+// 编辑弹窗内的拖放计数器（独立于全局）
+let editDragDepth = 0;
+
+function isEditModalActive() {
+    const el = document.getElementById('modal-edit');
+    return el && el.classList.contains('active');
+}
 
 document.addEventListener("dragenter", (e) => {
     e.preventDefault();
     if (!e.dataTransfer || !e.dataTransfer.types.includes('Files')) return;
+    // 编辑弹窗打开时，拖放走弹窗逻辑，不显示全局遮罩
+    if (isEditModalActive()) {
+        editDragDepth++;
+        document.getElementById('modal-edit').classList.add('drag-active');
+        return;
+    }
     dragDepth++;
     dropOverlay?.classList.add('active');
 });
@@ -81,6 +94,13 @@ document.addEventListener("dragover", (e) => {
 
 document.addEventListener("dragleave", (e) => {
     e.preventDefault();
+    if (isEditModalActive()) {
+        editDragDepth = Math.max(0, editDragDepth - 1);
+        if (editDragDepth === 0) {
+            document.getElementById('modal-edit').classList.remove('drag-active');
+        }
+        return;
+    }
     dragDepth = Math.max(0, dragDepth - 1);
     if (dragDepth === 0) dropOverlay?.classList.remove('active');
 });
@@ -88,6 +108,11 @@ document.addEventListener("dragleave", (e) => {
 document.addEventListener("drop", (e) => {
     // 只负责隐藏遮罩和阻止默认行为，真实路径由 Wails OnFileDrop 提供
     e.preventDefault();
+    if (isEditModalActive()) {
+        editDragDepth = 0;
+        document.getElementById('modal-edit').classList.remove('drag-active');
+        return;
+    }
     dragDepth = 0;
     dropOverlay?.classList.remove('active');
 });
@@ -96,6 +121,11 @@ document.addEventListener("drop", (e) => {
 // useDropTarget=false 让 Wails 不拦截 drop target，由前端自己处理 UI
 OnFileDrop(async (_x, _y, paths) => {
     if (!paths || paths.length === 0) return;
+    // 编辑弹窗打开时，拖放走封面/歌词导入
+    if (isEditModalActive()) {
+        await handleEditDrop(paths);
+        return;
+    }
     await doImportPaths(paths);
 }, false);
 
@@ -202,6 +232,62 @@ fileBtn.addEventListener("click", async () => {
 });
 
 // ============ 列表渲染 ============
+// 获取当前的列表显示模式（card / list）
+async function getListMode() {
+    try {
+        const cached = localStorage.getItem('cachedSettings');
+        if (cached) {
+            const s = JSON.parse(cached);
+            if (s.list_mode === 'card' || s.list_mode === 'list') return s.list_mode;
+        }
+    } catch (e) {}
+    try {
+        const { LoadSettings } = await import('../../wailsjs/go/main/App.js');
+        const s = await LoadSettings();
+        return (s.list_mode === 'card' || s.list_mode === 'list') ? s.list_mode : 'card';
+    } catch (e) {
+        return 'card';
+    }
+}
+
+// 同步主页开关 UI 与容器 class 到指定模式（不写设置）
+function applyListMode(mode) {
+    const isList = mode === 'list';
+    mediaContainer.classList.toggle('media-list', isList);
+    mediaContainer.classList.toggle('media-grid', !isList);
+    const toggle = document.getElementById('view-toggle');
+    if (toggle) {
+        toggle.setAttribute('data-mode', isList ? 'list' : 'card');
+        toggle.setAttribute('aria-checked', isList ? 'true' : 'false');
+    }
+}
+
+// 切换并持久化模式：保存到后端 + cachedSettings + 即时重渲染
+async function setListMode(mode) {
+    if (mode !== 'card' && mode !== 'list') return;
+    applyListMode(mode);
+    // 写 localStorage 缓存（renderTracks 会读这个）
+    try {
+        const cached = localStorage.getItem('cachedSettings');
+        const obj = cached ? JSON.parse(cached) : {};
+        obj.list_mode = mode;
+        localStorage.setItem('cachedSettings', JSON.stringify(obj));
+    } catch (e) {}
+    // 异步保存到后端（不阻塞 UI）
+    try {
+        const { LoadSettings, SaveSettings } = await import('../../wailsjs/go/main/App.js');
+        const s = await LoadSettings();
+        s.list_mode = mode;
+        await SaveSettings(s);
+        // 通知其他页面（设置页如果还保留模式选择器，会同步状态）
+        localStorage.setItem('settingsUpdated', Date.now().toString());
+    } catch (e) {
+        console.warn('保存 list_mode 失败:', e);
+    }
+    // 重渲染列表（结构切换）
+    await refreshList();
+}
+
 async function refreshList() {
     try {
         const tracks = await GetAllTracks();
@@ -212,7 +298,49 @@ async function refreshList() {
     }
 }
 
-function renderTracks(tracks) {
+// 给列表项绑定点击/编辑/删除/右键（与卡片共用）
+function _bindTrackItemListeners(el, track, actionSelector) {
+    el.addEventListener("click", async (e) => {
+        if (e.target.closest(actionSelector)) return;
+
+        const cur = window.audioManager && window.audioManager.currentTrack;
+        const isCurrent = cur && track.id !== undefined && track.id === cur.id;
+        if (!isCurrent) {
+            window.audioManager.loadTrack(track);
+            window.audioManager.play();
+            currentTrack = track;
+        }
+        await openPlayer(track.id);
+    });
+
+    const editBtn = el.querySelector('.edit-btn');
+    if (editBtn) editBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openEditModal(track);
+    });
+
+    const deleteBtn = el.querySelector('.delete-btn');
+    if (deleteBtn) deleteBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const ok = await showConfirm({
+            title: t('libraries.deleteTitle'),
+            message: t('libraries.deleteConfirm', track.name),
+            okText: t('common.delete'),
+            cancelText: t('common.cancel')
+        });
+        if (ok) doDelete(track.id);
+    });
+
+    el.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        showContextMenu(e, track);
+    });
+}
+
+async function renderTracks(tracks) {
+    const mode = await getListMode();
+    applyListMode(mode);
+
     mediaContainer.innerHTML = '';
 
     if (!tracks || tracks.length === 0) {
@@ -222,81 +350,67 @@ function renderTracks(tracks) {
     }
 
     emptyOverlay.classList.remove('display');
-    mediaContainer.style.display = 'grid';
+    mediaContainer.style.display = (mode === 'list') ? 'flex' : 'grid';
 
-    for (let i = 0; i < tracks.length; i++) {
-        const track = tracks[i];
-        const card = document.createElement('div');
-        card.className = 'media-card';
-        card.dataset.id = track.id;
-        // 逐个卡片入场动画延迟（最多 0.6s）
-        card.style.animationDelay = `${Math.min(i * 0.04, 0.6)}s`;
+    const MUSIC_ICON_SVG = '<svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>';
+    const EDIT_BTN_SVG = `<svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
+    const DELETE_BTN_SVG = `<svg viewBox="0 0 24 24" width="16" height="16"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
+    const EDIT_TITLE = t('libraries.editInfo');
+    const DELETE_TITLE = t('common.delete');
+    const UNKNOWN_ARTIST = t('common.unknownArtist');
 
-        const coverHTML = track.cover
-            ? `<img src="${track.cover}" class="card-cover" alt="${track.name}" />`
-            : `<div class="card-icon">
-                   <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-               </div>`;
+    if (mode === 'list') {
+        // ===== 列表模式 =====
+        for (let i = 0; i < tracks.length; i++) {
+            const track = tracks[i];
+            const item = document.createElement('div');
+            item.className = 'media-list-item';
+            item.dataset.id = track.id;
+            item.style.animationDelay = `${Math.min(i * 0.012, 0.2)}s`;
 
-        card.innerHTML = `
-            ${coverHTML}
-            <div class="card-title">${escapeHtml(track.name)}</div>
-            <div class="card-meta">${escapeHtml(track.artist || t('common.unknownArtist'))}</div>
-            <div class="card-actions">
-                <button class="card-btn edit-btn" title="${t('libraries.editInfo')}">
-                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                </button>
-                <button class="card-btn delete-btn" title="${t('common.delete')}">
-                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                </button>
-            </div>
-        `;
+            const coverHTML = track.cover
+                ? `<div class="list-item-cover"><img src="${bustCoverUrl(track.cover)}" alt="${track.name}" /></div>`
+                : `<div class="list-item-cover">${MUSIC_ICON_SVG}</div>`;
 
-        // 点击卡片主体 → 打开播放器视图
-        card.addEventListener("click", async (e) => {
-            if (e.target.closest('.card-actions')) return; // 点击按钮不打开
+            item.innerHTML = `
+                ${coverHTML}
+                <div class="list-item-info">
+                    <div class="list-item-title">${escapeHtml(track.name)}</div>
+                    <div class="list-item-artist">${escapeHtml(track.artist || UNKNOWN_ARTIST)}</div>
+                </div>
+                <div class="list-item-actions">
+                    <button class="card-btn edit-btn" title="${EDIT_TITLE}">${EDIT_BTN_SVG}</button>
+                    <button class="card-btn delete-btn" title="${DELETE_TITLE}">${DELETE_BTN_SVG}</button>
+                </div>
+            `;
+            _bindTrackItemListeners(item, track, '.list-item-actions');
+            mediaContainer.appendChild(item);
+        }
+    } else {
+        // ===== 卡片模式（默认） =====
+        for (let i = 0; i < tracks.length; i++) {
+            const track = tracks[i];
+            const card = document.createElement('div');
+            card.className = 'media-card';
+            card.dataset.id = track.id;
+            card.style.animationDelay = `${Math.min(i * 0.04, 0.6)}s`;
 
-            // 用 id 判断是否同一曲目（而非引用相等），避免从设置页返回后
-            // currentTrack 为 undefined 或引用不一致导致误判为不同曲而重置播放
-            const cur = window.audioManager && window.audioManager.currentTrack;
-            const isCurrent = cur && track.id !== undefined && track.id === cur.id;
-            if (!isCurrent) {
-                // 不同曲目：加载并开始播放
-                window.audioManager.loadTrack(track);
-                window.audioManager.play();
-                currentTrack = track; // 更新当前曲目引用
-            }
-            // 打开播放器 overlay（loadTrack 内部会判断同曲不重载 audio，保持播放连续）
-            await openPlayer(track.id);
-        });
+            const coverHTML = track.cover
+                ? `<img src="${bustCoverUrl(track.cover)}" class="card-cover" alt="${track.name}" />`
+                : `<div class="card-icon">${MUSIC_ICON_SVG}</div>`;
 
-        // 编辑按钮
-        const editBtn = card.querySelector('.edit-btn');
-        editBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            openEditModal(track);
-        });
-
-        // 删除按钮
-        const deleteBtn = card.querySelector('.delete-btn');
-        deleteBtn.addEventListener("click", async (e) => {
-            e.stopPropagation();
-            const ok = await showConfirm({
-                title: t('libraries.deleteTitle'),
-                message: t('libraries.deleteConfirm', track.name),
-                okText: t('common.delete'),
-                cancelText: t('common.cancel')
-            });
-            if (ok) doDelete(track.id);
-        });
-
-        // 右键菜单
-        card.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-            showContextMenu(e, track);
-        });
-
-        mediaContainer.appendChild(card);
+            card.innerHTML = `
+                ${coverHTML}
+                <div class="card-title">${escapeHtml(track.name)}</div>
+                <div class="card-meta">${escapeHtml(track.artist || UNKNOWN_ARTIST)}</div>
+                <div class="card-actions">
+                    <button class="card-btn edit-btn" title="${EDIT_TITLE}">${EDIT_BTN_SVG}</button>
+                    <button class="card-btn delete-btn" title="${DELETE_TITLE}">${DELETE_BTN_SVG}</button>
+                </div>
+            `;
+            _bindTrackItemListeners(card, track, '.card-actions');
+            mediaContainer.appendChild(card);
+        }
     }
 }
 
@@ -329,12 +443,6 @@ function showContextMenu(e, track) {
     contextMenuEl.innerHTML = `
         <div class="context-item" data-action="edit">
             ${t('libraries.editInfo')}
-        </div>
-        <div class="context-item" data-action="cover">
-            ${t('libraries.changeCover')}
-        </div>
-        <div class="context-item" data-action="lyrics">
-            ${t('libraries.editLyrics')}
         </div>
         <div class="context-divider"></div>
         <div class="context-item danger" data-action="delete">
@@ -377,12 +485,6 @@ function handleContextAction(action, track) {
         case 'edit':
             openEditModal(track);
             break;
-        case 'cover':
-            openCoverPicker(track);
-            break;
-        case 'lyrics':
-            openLyricsModal(track);
-            break;
         case 'delete':
             showConfirm({
                 title: t('libraries.deleteTitle'),
@@ -398,19 +500,114 @@ function handleContextAction(action, track) {
 
 // ============ 编辑模态框 ============
 let currentEditTrack = null;
+let editCoverData = null; // 暂存封面上传的 Array<number>，保存时一起提交
+let editCoverMIME = null;
+let editCoverCleared = false;
+
+// base64 字符串转 Array<number>（供 UpdateTrackCover 使用）
+function base64ToArray(base64) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return Array.from(bytes);
+}
 
 function openEditModal(track) {
     currentEditTrack = track;
-    const modal = document.getElementById("modal-edit");
+    editCoverData = null;
+    editCoverMIME = null;
+    editCoverCleared = false;
+
     document.getElementById("edit-title").value = track.name || '';
     document.getElementById("edit-artist").value = track.artist || '';
     document.getElementById("edit-lyrics").value = track.lyrics || '';
+
+    // 封面预览
+    const preview = document.getElementById("edit-cover-preview");
+    if (track.cover) {
+        preview.innerHTML = `<img src="${bustCoverUrl(track.cover)}" alt="cover" />`;
+    } else {
+        preview.innerHTML = DEFAULT_COVER_HTML;
+    }
+
+    // 更换封面：调用后端文件对话框
+    document.getElementById("edit-cover-pick").onclick = async () => {
+        try {
+            const result = await PickImageFile();
+            if (!result || !result.data) return; // 用户取消
+            editCoverData = base64ToArray(result.data);
+            editCoverMIME = result.mime || 'image/jpeg';
+            editCoverCleared = false;
+            preview.innerHTML = `<img src="data:${editCoverMIME};base64,${result.data}" alt="cover" />`;
+        } catch (err) {
+            console.error('选择封面失败:', err);
+            showToast(t('libraries.coverTooLarge'), 'warning');
+        }
+    };
+
+    // 清除封面
+    document.getElementById("edit-cover-clear").onclick = () => {
+        editCoverData = null;
+        editCoverMIME = null;
+        editCoverCleared = true;
+        preview.innerHTML = DEFAULT_COVER_HTML;
+    };
+
+    // 从文件导入歌词：调用后端文件对话框
+    document.getElementById("edit-lyrics-pick").onclick = async () => {
+        try {
+            const text = await PickLyricsFile();
+            if (!text) return; // 用户取消
+            document.getElementById("edit-lyrics").value = text;
+        } catch (err) {
+            console.error('导入歌词失败:', err);
+            showToast(t('libraries.importFailed', err), 'error');
+        }
+    };
+
+    // 清空歌词
+    document.getElementById("edit-lyrics-clear").onclick = () => {
+        document.getElementById("edit-lyrics").value = '';
+    };
+
+    // 保存/取消按钮由通用模态框事件处理器统一处理（DOMContentLoaded 内绑定）
+
+    const modal = document.getElementById("modal-edit");
     modal.classList.add("active");
+}
+
+// 拖放到编辑弹窗：自动根据后缀名识别封面或歌词
+async function handleEditDrop(paths) {
+    if (!currentEditTrack) return;
+    const preview = document.getElementById("edit-cover-preview");
+    for (const path of paths) {
+        try {
+            const result = await ReadFileForEdit(path);
+            if (result.data) {
+                // 图片 → 封面
+                editCoverData = base64ToArray(result.data);
+                editCoverMIME = result.mime || 'image/jpeg';
+                editCoverCleared = false;
+                preview.innerHTML = `<img src="data:${editCoverMIME};base64,${result.data}" alt="cover" />`;
+            } else if (result.text) {
+                // 文本 → 歌词
+                document.getElementById("edit-lyrics").value = result.text;
+            }
+        } catch (err) {
+            console.error('拖放导入编辑文件失败:', err);
+            showToast(t('libraries.coverTooLarge'), 'warning');
+        }
+    }
 }
 
 function closeEditModal() {
     document.getElementById("modal-edit").classList.remove("active");
     currentEditTrack = null;
+    editCoverData = null;
+    editCoverMIME = null;
+    editCoverCleared = false;
 }
 
 async function saveEditModal() {
@@ -425,115 +622,70 @@ async function saveEditModal() {
     }
 
     try {
+        // 1. 先保存标题/艺术家/歌词
         await UpdateTrack(currentEditTrack.id, title, artist, lyrics);
+
+        // 保存前记录当前编辑的曲目 ID（closeEditModal 会清空 currentEditTrack）
+        const editedId = currentEditTrack.id;
+        const wasCoverCleared = editCoverCleared;
+
+        // 2. 如果封面有变更，单独提交
+        if (editCoverCleared) {
+            try {
+                await UpdateTrackCover(currentEditTrack.id, [], '');
+                _coverBustTs = Date.now();
+            } catch (e) {}
+        } else if (editCoverData && editCoverData.length > 0) {
+            await UpdateTrackCover(currentEditTrack.id, editCoverData, editCoverMIME);
+            _coverBustTs = Date.now();
+        }
+
         closeEditModal();
         showToast(t('libraries.saved'), 'success');
         await refreshList();
+
+        // 如果编辑的是当前播放曲目，同步更新迷你播放器
+        const playingTrack = window.audioManager?.currentTrack;
+        if (playingTrack && playingTrack.id === editedId) {
+            playingTrack.name = title;
+            playingTrack.artist = artist;
+            playingTrack.lyrics = lyrics;
+            if (wasCoverCleared) {
+                playingTrack.cover = '';
+            }
+            localStorage.setItem('currentTrack', JSON.stringify(playingTrack));
+            const miniCover = document.getElementById('mini-cover');
+            const miniTitle = document.getElementById('mini-title');
+            const miniArtist = document.getElementById('mini-artist');
+            if (miniCover) setCover(miniCover, playingTrack.cover);
+            if (miniTitle) { miniTitle.textContent = title || t('common.unknown'); applyMarquee(miniTitle); }
+            if (miniArtist) miniArtist.textContent = artist || '--';
+            window.audioManager.emit('trackloaded', playingTrack);
+        }
     } catch (err) {
         console.error("保存失败:", err);
-        showToast(t('libraries.saveFailed', err), 'error');
+        showToast(t('libraries.saveFailed', err?.message || String(err)), 'error');
     }
 }
 
-// ============ 封面选择 ============
-let currentCoverTrack = null;
-
-function openCoverPicker(track) {
-    currentCoverTrack = track;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            await handleCoverFile(file);
-        }
-    };
-    input.click();
-}
-
-async function handleCoverFile(file) {
-    if (!currentCoverTrack) return;
-
-    // 读取文件为 ArrayBuffer
-    const arrayBuffer = await file.arrayBuffer();
-    const coverData = new Uint8Array(arrayBuffer);
-    const coverMIME = file.type || 'image/jpeg';
-
-    // 限制封面大小 500KB
-    if (coverData.length > 512 * 1024) {
-        showToast(t('libraries.coverTooLarge'), 'warning');
-        return;
-    }
-
-    try {
-        await UpdateTrackCover(currentCoverTrack.id, coverData, coverMIME);
-        currentCoverTrack = null;
-        showToast(t('libraries.coverUpdated'), 'success');
-        await refreshList();
-    } catch (err) {
-        console.error("封面更新失败:", err);
-        showToast(t('libraries.coverUpdateFailed', err), 'error');
-    }
-}
-
-// ============ 歌词模态框 ============
-let currentLyricsTrack = null;
-
-function openLyricsModal(track) {
-    currentLyricsTrack = track;
-    const modal = document.getElementById("modal-lyrics-edit");
-    // 显示该曲目已有的歌词（如果有）
-    const lyricsValue = track.lyrics || '';
-    // console.log('[DEBUG] openLyricsModal - track.lyrics:', lyricsValue);
-    document.getElementById("lyrics-textarea").value = lyricsValue;
-    modal.classList.add("active");
-}
-
-function closeLyricsModal() {
-    document.getElementById("modal-lyrics-edit").classList.remove("active");
-    currentLyricsTrack = null;
-}
-
-async function saveLyricsModal() {
-    if (!currentLyricsTrack) return;
-    const lyrics = document.getElementById("lyrics-textarea").value;
-
-    try {
-        await UpdateTrack(currentLyricsTrack.id, currentLyricsTrack.name, currentLyricsTrack.artist || '', lyrics);
-        closeLyricsModal();
-        showToast(t('libraries.lyricsSaved'), 'success');
-        await refreshList();
-    } catch (err) {
-        console.error("歌词保存失败:", err);
-        showToast(t('libraries.lyricsSaveFailed', err), 'error');
-    }
-}
-
-// 歌词文件上传
-document.addEventListener("DOMContentLoaded", () => {
-    const lyricsFileInput = document.getElementById("lyrics-file-input");
-    if (lyricsFileInput) {
-        lyricsFileInput.addEventListener("change", (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    document.getElementById("lyrics-textarea").value = ev.target.result;
-                };
-                reader.readAsText(file);
-            }
-        });
-    }
-});
-
-// 默认封面 HTML
+// ============ 右键菜单 ============
 const DEFAULT_COVER_HTML = '<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"></path></svg></div>';
+
+// 封面缓存破坏时间戳：每次手动更换封面后更新，避免 /cover/<id> URL 不变导致浏览器一直用旧缓存
+let _coverBustTs = 0;
+
+// 给封面 URL 追加缓存破坏参数（?v=ts），确保后端封面更新后立即生效
+function bustCoverUrl(url) {
+    if (!url) return url;
+    if (_coverBustTs <= 0) return url;
+    const sep = url.includes('?') ? '&' : '?';
+    return url + sep + 'v=' + _coverBustTs;
+}
 
 // 设置封面元素内容（img 或 div 容器）
 function setCover(el, coverUrl) {
     if (coverUrl) {
-        el.innerHTML = `<img src="${coverUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
+        el.innerHTML = `<img src="${bustCoverUrl(coverUrl)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
     } else {
         el.innerHTML = DEFAULT_COVER_HTML;
     }
@@ -609,8 +761,21 @@ function showStatsModal(message) {
 
 // ============ 初始化 ============
 document.addEventListener("DOMContentLoaded", async function () {
+    // 阻止触摸板双指缩放（WebView2 将其映射为 ctrl+wheel）及键盘缩放快捷键
+    window.addEventListener('wheel', (e) => {
+        if (e.ctrlKey) { e.preventDefault(); }
+    }, { passive: false });
+    window.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && ['=', '+', '-', '0'].includes(e.key)) {
+            e.preventDefault();
+        }
+    });
+
     // 先初始化 i18n（从后端加载翻译数据），确保 t() 能拿到正确文案
     await initI18n();
+    // 初始同步开关状态（不重渲染，refreshList 内部会调用 applyListMode）
+    const initialMode = await getListMode();
+    applyListMode(initialMode);
     await refreshList();
 
     // 监听设置变化（用户在设置页修改后通过 localStorage 通知）
@@ -621,8 +786,26 @@ document.addEventListener("DOMContentLoaded", async function () {
                 window.MusicLiteSettings.cached = null;
                 window.MusicLiteSettings.apply();
             }
+            // 刷新列表（可能 list-mode 变更，需要重渲染卡片/列表结构）
+            refreshList();
         }
     });
+
+    // 视图开关：点击切换模式，键盘 Enter/Space 也可触发
+    const viewToggle = document.getElementById('view-toggle');
+    if (viewToggle) {
+        const toggleMode = () => {
+            const cur = viewToggle.getAttribute('data-mode') || 'card';
+            setListMode(cur === 'card' ? 'list' : 'card');
+        };
+        viewToggle.addEventListener('click', toggleMode);
+        viewToggle.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleMode();
+            }
+        });
+    }
 
     // 设置按钮
     const settingsBtn = document.getElementById('settingsBtn');
@@ -780,6 +963,13 @@ document.addEventListener("DOMContentLoaded", async function () {
         });
     }
 
+    // 从设置页跳转过来时自动打开播放器
+    const openPlayerId = localStorage.getItem('openPlayerOnLoad');
+    if (openPlayerId) {
+        localStorage.removeItem('openPlayerOnLoad');
+        openPlayer(Number(openPlayerId));
+    }
+
     // 模态框关闭按钮
     document.querySelectorAll('.modal-close, .modal-save, .modal-cancel').forEach(btn => {
         btn.addEventListener("click", (e) => {
@@ -788,11 +978,9 @@ document.addEventListener("DOMContentLoaded", async function () {
             const action = btn.dataset.action;
             if (action === 'save') {
                 if (modalEl.id === 'modal-edit') saveEditModal();
-                else if (modalEl.id === 'modal-lyrics-edit') saveLyricsModal();
             } else {
                 // 点击 backdrop 关闭
                 if (modalEl.id === 'modal-edit') closeEditModal();
-                else if (modalEl.id === 'modal-lyrics-edit') closeLyricsModal();
             }
         });
     });
@@ -802,7 +990,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         backdrop.addEventListener("click", (e) => {
             if (e.target === backdrop) {
                 if (backdrop.id === 'modal-edit') closeEditModal();
-                else if (backdrop.id === 'modal-lyrics-edit') closeLyricsModal();
             }
         });
     });

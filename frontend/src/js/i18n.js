@@ -97,7 +97,7 @@ export function t(key, ...args) {
     if (args.length > 0) {
         for (let i = 0; i < args.length; i++) {
             const arg = args[i];
-            if (arg && typeof arg === 'object' && !Array.isArray(arg)) {
+            if (arg && typeof arg === 'object' && !Array.isArray(arg) && !(arg instanceof Error)) {
                 // 命名参数：替换 {key}
                 for (const k of Object.keys(arg)) {
                     str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(arg[k]));

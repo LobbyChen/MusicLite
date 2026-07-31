@@ -10,7 +10,7 @@ import (
 
 // Settings 应用设置结构体
 type Settings struct {
-	Theme          string `json:"theme"`           // "dark" | "light" | "accent"
+	Theme          string `json:"theme"`           // "dark" | "light" | "accent" | "custom"
 	PlayerFont     string `json:"player_font"`     // 播放器字体
 	LyricsFont     string `json:"lyrics_font"`     // 歌词字体
 	UIScale        int    `json:"ui_scale"`        // 界面缩放比例 (20-500)，默认 100
@@ -21,6 +21,7 @@ type Settings struct {
 	AccentColor    string `json:"accent_color"`    // 自定义主题色（十六进制，如 #1DB954）
 	Language       string `json:"language"`        // 界面语言："zh-CN" | "en"
 	LyricAnimation string `json:"lyric_animation"` // 全屏歌词切换动画："fade" | "slide-up" | "slide-left" | "zoom" | "none"
+	ListMode       string `json:"list_mode"`       // 音乐库列表模式："card" | "list"
 }
 
 // DefaultSettings 返回默认设置
@@ -37,6 +38,7 @@ func DefaultSettings() Settings {
 		AccentColor:    "#1DB954",
 		Language:       "zh-CN",
 		LyricAnimation: "fade",
+		ListMode:       "card",
 	}
 }
 

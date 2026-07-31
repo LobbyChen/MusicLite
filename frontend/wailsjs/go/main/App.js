@@ -78,6 +78,18 @@ export function OpenAppDataFolder() {
   return window['go']['main']['App']['OpenAppDataFolder']();
 }
 
+export function PickImageFile() {
+  return window['go']['main']['App']['PickImageFile']();
+}
+
+export function PickLyricsFile() {
+  return window['go']['main']['App']['PickLyricsFile']();
+}
+
+export function ReadFileForEdit(arg1) {
+  return window['go']['main']['App']['ReadFileForEdit'](arg1);
+}
+
 export function RecordPlayPause(arg1) {
   return window['go']['main']['App']['RecordPlayPause'](arg1);
 }
