@@ -1,4 +1,4 @@
-import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, SetApplicationVolume, GetApplicationVolume } from '../../wailsjs/go/main/App.js';
+import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer } from '../../wailsjs/go/main/App.js';
 import { initI18n, t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
@@ -62,6 +62,11 @@ const changelogClose = document.getElementById('changelogClose');
 const changelogBody = document.getElementById('changelogBody');
 const volumeSlider = document.getElementById('volume-slider');
 const volumeValue = document.getElementById('volume-value');
+const volumeModeBtns = document.querySelectorAll('.anim-level-btn[data-vol-mode]');
+const maxLyricLinesSlider = document.getElementById('max-lyric-lines');
+const maxLyricLinesValue = document.getElementById('max-lyric-lines-value');
+const setDefaultPlayerBtn = document.getElementById('set-default-player-btn');
+const defaultPlayerStatus = document.getElementById('default-player-status');
 const lyricAnimationSelect = document.getElementById('lyric-animation-select');
 const uiScaleSlider = document.getElementById('ui-scale');
 const uiScaleValue = document.getElementById('ui-scale-value');
@@ -73,7 +78,7 @@ const accentColorItem = document.getElementById('accent-color-item');
 const accentColorInput = document.getElementById('accent-color');
 const accentColorText = document.getElementById('accent-color-text');
 const presetColors = document.querySelectorAll('.preset-color');
-const animLevelBtns = document.querySelectorAll('.anim-level-btn');
+const animLevelBtns = document.querySelectorAll('.anim-level-btn[data-level]');
 
 // 确认对话框 / Toast 元素（settings.html 里有）
 const confirmModal = document.getElementById('confirmModal');
@@ -378,16 +383,9 @@ function initMiniPlayer() {
         document.body.classList.add('has-mini-player');
     };
 
-    // 从 localStorage 恢复当前曲目
-    window.audioManager.restore();
-    const currentTrack = window.audioManager.currentTrack;
-    if (currentTrack && currentTrack.src) {
-        showMiniPlayer();
-        miniTitle.textContent = currentTrack.name || t('common.unknown');
-        applyMarquee(miniTitle);
-        miniArtist.textContent = currentTrack.artist || '--';
-        setMiniCover(miniCover, currentTrack.cover);
-        // 同步播放按钮图标
+    // 单一可信源：根据 audio.paused 同步按钮图标（永远以 audio 实际状态为准）
+    const syncPlayIcon = () => {
+        if (!miniPlayIcon || !miniPauseIcon) return;
         if (window.audioManager.isPlaying()) {
             miniPlayIcon.style.display = 'none';
             miniPauseIcon.style.display = 'block';
@@ -395,7 +393,16 @@ function initMiniPlayer() {
             miniPlayIcon.style.display = 'block';
             miniPauseIcon.style.display = 'none';
         }
-    }
+    };
+
+    const applyTrackUI = (track) => {
+        if (!track || !track.src) return;
+        showMiniPlayer();
+        miniTitle.textContent = track.name || t('common.unknown');
+        applyMarquee(miniTitle);
+        miniArtist.textContent = track.artist || '--';
+        setMiniCover(miniCover, track.cover);
+    };
 
     // 播放/暂停
     miniPlayBtn.addEventListener('click', () => {
@@ -418,22 +425,26 @@ function initMiniPlayer() {
         });
     }
 
-    // 监听播放状态
-    window.audioManager.on('play', () => {
-        miniPlayIcon.style.display = 'none';
-        miniPauseIcon.style.display = 'block';
-    });
-    window.audioManager.on('pause', () => {
-        miniPlayIcon.style.display = 'block';
-        miniPauseIcon.style.display = 'none';
-    });
+    // 先绑定事件，再 restore()，避免事件早到但还没被绑定
+    window.audioManager.on('play', () => syncPlayIcon());
+    window.audioManager.on('pause', () => syncPlayIcon());
     window.audioManager.on('trackloaded', (track) => {
-        showMiniPlayer();
-        miniTitle.textContent = track.name || t('common.unknown');
-        applyMarquee(miniTitle);
-        miniArtist.textContent = track.artist || t('common.unknownArtist');
-        setMiniCover(miniCover, track.cover);
+        applyTrackUI(track);
+        // trackloaded 后同步一次图标（此时 play/pause 可能已经被 restore 驱动过）
+        syncPlayIcon();
     });
+
+    // 从 localStorage 恢复当前曲目（必须在 on() 绑定完成之后调用）
+    window.audioManager.restore();
+    const currentTrack = window.audioManager.currentTrack;
+    if (currentTrack && currentTrack.src) {
+        applyTrackUI(currentTrack);
+    }
+    // restore() 可能是异步 play，先同步一次当前真实状态
+    syncPlayIcon();
+    // 兜底：restore().play() 可能在稍后触发，再等 200ms 拉一次
+    setTimeout(syncPlayIcon, 200);
+    setTimeout(syncPlayIcon, 800);
 }
 
 // 设置迷你播放器封面（有则用 img，无则用默认 SVG）
@@ -451,14 +462,24 @@ async function loadSettings() {
     try {
         currentSettings = await LoadSettings();
         applySettingsToUI(currentSettings);
-        // 音量从 Windows 系统合成器读取（不再是 audio.volume）
+        // 根据 volume_mode 从对应音量源读取
         try {
-            const sysVol = await GetApplicationVolume();
+            const mode = currentSettings.volume_mode || 'synth';
+            const sysVol = mode === 'master'
+                ? await GetSystemMasterVolume()
+                : await GetApplicationVolume();
             volumeSlider.value = sysVol;
             volumeValue.textContent = sysVol + '%';
             currentSettings.volume = sysVol;
         } catch (e) {
             // 读取系统音量失败，使用 settings 中的值兜底
+        }
+        // 检查默认播放器状态
+        try {
+            const isDefault = await IsDefaultPlayer();
+            updateDefaultPlayerStatus(isDefault);
+        } catch (e) {
+            // 忽略
         }
     } catch (err) {
         console.error('Failed to load settings:', err);
@@ -471,8 +492,10 @@ async function loadSettings() {
             last_track_id: 0,
             last_position: 0,
             volume: 70,
+            volume_mode: 'synth',
             accent_color: '#1DB954',
-            animation_level: 2
+            animation_level: 2,
+            max_lyric_lines: 1
         };
         applySettingsToUI(currentSettings);
     }
@@ -505,9 +528,23 @@ function applySettingsToUI(s) {
     volumeSlider.value = s.volume || 70;
     volumeValue.textContent = (s.volume ?? 70) + '%';
 
+    // Volume mode
+    const volMode = s.volume_mode || 'synth';
+    volumeModeBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.volMode === volMode);
+    });
+
     // Lyric animation
     if (lyricAnimationSelect) {
         lyricAnimationSelect.value = s.lyric_animation || 'fade';
+    }
+
+    // Max lyric lines
+    const maxLines = (typeof s.max_lyric_lines === 'number' && s.max_lyric_lines >= 1 && s.max_lyric_lines <= 10)
+        ? s.max_lyric_lines : 1;
+    if (maxLyricLinesSlider) {
+        maxLyricLinesSlider.value = maxLines;
+        maxLyricLinesValue.textContent = maxLines;
     }
 
     // Language
@@ -532,8 +569,9 @@ function applySettingsToUI(s) {
 // 同步四级动画选择器 UI 与 body data-anim 属性
 function setAnimationLevel(level) {
     const clamped = Math.max(0, Math.min(3, level | 0));
-    // 选中高亮按钮
+    // 选中高亮按钮（只处理有 data-level 属性的动画级别按钮，避免误操作音量模式等其他 .anim-level-btn）
     animLevelBtns.forEach(btn => {
+        if (btn.dataset.level === undefined) return;
         const active = parseInt(btn.dataset.level, 10) === clamped;
         btn.classList.toggle('active', active);
     });
@@ -706,10 +744,60 @@ function setupEventListeners() {
         const vol = parseInt(volumeSlider.value, 10);
         volumeValue.textContent = vol + '%';
         currentSettings.volume = vol;
-        // 实时设置系统音量
-        SetApplicationVolume(vol).catch(() => {});
+        // 根据 volume_mode 实时设置音量
+        const mode = currentSettings.volume_mode || 'synth';
+        if (mode === 'master') {
+            SetSystemMasterVolume(vol).catch(() => {});
+        } else {
+            SetApplicationVolume(vol).catch(() => {});
+        }
         markChanged();
     });
+
+    // Volume mode buttons
+    volumeModeBtns.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const mode = btn.dataset.volMode;
+            currentSettings.volume_mode = mode;
+            volumeModeBtns.forEach(b => b.classList.toggle('active', b === btn));
+            try { localStorage.setItem('musicLite.volumeMode', mode); } catch (e) {}
+            // 切换后读取对应音量值更新滑块
+            try {
+                const vol = mode === 'master'
+                    ? await GetSystemMasterVolume()
+                    : await GetApplicationVolume();
+                volumeSlider.value = vol;
+                volumeValue.textContent = vol + '%';
+                currentSettings.volume = vol;
+            } catch (e) {
+                // 读取失败，保持原值
+            }
+            markChanged();
+        });
+    });
+
+    // Max lyric lines slider
+    if (maxLyricLinesSlider) {
+        maxLyricLinesSlider.addEventListener('input', () => {
+            const v = parseInt(maxLyricLinesSlider.value, 10);
+            maxLyricLinesValue.textContent = v;
+            currentSettings.max_lyric_lines = v;
+            try { localStorage.setItem('musicLite.maxLyricLines', v.toString()); } catch (e) {}
+            markChanged();
+        });
+    }
+
+    // Set as default player
+    if (setDefaultPlayerBtn) {
+        setDefaultPlayerBtn.addEventListener('click', async () => {
+            try {
+                await SetAsDefaultPlayer();
+                updateDefaultPlayerStatus(true);
+            } catch (e) {
+                console.error('Set as default player failed:', e);
+            }
+        });
+    }
 
     // Lyric animation select
     if (lyricAnimationSelect) {
@@ -869,6 +957,18 @@ function setupEventListeners() {
 }
 
 // Mark settings as changed
+// 更新默认播放器状态显示
+function updateDefaultPlayerStatus(isDefault) {
+    if (!defaultPlayerStatus) return;
+    if (isDefault) {
+        defaultPlayerStatus.textContent = t('settings.isDefaultPlayer') || '✓ 已设为默认';
+        defaultPlayerStatus.style.color = 'var(--accent-color, #1DB954)';
+    } else {
+        defaultPlayerStatus.textContent = t('settings.notDefaultPlayer') || '未设为默认';
+        defaultPlayerStatus.style.color = '';
+    }
+}
+
 function markChanged() {
     hasChanges = true;
     saveBar.style.display = 'flex';

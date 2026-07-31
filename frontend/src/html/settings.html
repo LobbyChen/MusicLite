@@ -161,6 +161,15 @@
                 </div>
 
                 <div class="setting-item">
+                    <label data-i18n="settings.volumeMode">音量关联</label>
+                    <div class="anim-level-row">
+                        <button type="button" class="anim-level-btn" data-vol-mode="synth" data-i18n="settings.volumeModeSynth">合成器</button>
+                        <button type="button" class="anim-level-btn" data-vol-mode="master" data-i18n="settings.volumeModeMaster">主音量</button>
+                    </div>
+                    <span class="toggle-desc" data-i18n="settings.volumeModeDesc">控制本程序音量（合成器）或控制系统总音量（主音量）</span>
+                </div>
+
+                <div class="setting-item">
                     <label for="lyric-animation-select" data-i18n="settings.lyricAnimation">歌词行切换动画</label>
                     <select id="lyric-animation-select" class="font-select">
                         <option value="fade" data-i18n="settings.lyricAnimFade">淡入淡出</option>
@@ -172,6 +181,15 @@
                         <option value="rotate" data-i18n="settings.lyricAnimRotate">旋转</option>
                         <option value="none" data-i18n="settings.lyricAnimNone">无动画</option>
                     </select>
+                </div>
+
+                <div class="setting-item">
+                    <label for="max-lyric-lines" data-i18n="settings.maxLyricLines">同一时间戳歌词行数</label>
+                    <div class="slider-row">
+                        <input type="range" id="max-lyric-lines" min="1" max="10" value="1" step="1" class="setting-slider" />
+                        <span id="max-lyric-lines-value" class="slider-value">1</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="settings.maxLyricLinesDesc">同一时间戳最多允许同时高亮显示的歌词行数</span>
                 </div>
             </section>
 
@@ -188,7 +206,7 @@
             <section class="settings-section">
                 <h2 data-i18n="settings.about">关于</h2>
                 <div class="about-info">
-                    <p><strong>MusicLite</strong>Beta 0.9.3</p>
+                    <p><strong>MusicLite</strong>Beta 0.9.4</p>
                     <p class="text-muted" data-i18n="settings.aboutDesc">轻量级离线音乐播放器</p>
                     <p class="text-muted" data-i18n="settings.builtWith">基于 Wails v2 构建</p>
                 </div>
@@ -204,6 +222,13 @@
 
             <section class="settings-section">
                 <h2 data-i18n="settings.more">更多</h2>
+                <div class="setting-item">
+                    <label data-i18n="settings.defaultPlayer">默认播放器</label>
+                    <div class="button-row" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
+                        <button class="btn btn-secondary" id="set-default-player-btn" data-i18n="settings.setAsDefault">设为默认播放器</button>
+                        <span id="default-player-status" class="toggle-desc" style="align-self: center;"></span>
+                    </div>
+                </div>
                 <div class="setting-item">
                     <div class="button-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button class="btn btn-secondary" id="changelog-btn" data-i18n="settings.changelog">更新记录</button>
@@ -223,7 +248,7 @@
             <div class="mini-player-left">
                 <div id="mini-cover" class="mini-cover"></div>
                 <div class="mini-info">
-                    <div id="mini-title" class="mini-title" data-i18n="miniplayer.title">未播放</div>
+                    <div id="mini-title" class="mini-title" data-i18n="common.unknown">未播放</div>
                     <div id="mini-artist" class="mini-artist">--</div>
                 </div>
             </div>

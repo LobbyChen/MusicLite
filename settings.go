@@ -23,6 +23,8 @@ type Settings struct {
 	LyricAnimation string `json:"lyric_animation"` // 全屏歌词切换动画："fade" | "slide-up" | "slide-left" | "zoom" | "none"
 	ListMode       string `json:"list_mode"`       // 音乐库列表模式："card" | "list"
 	AnimationLevel int    `json:"animation_level"` // 界面动画级别：0=无 1=基础 2=增强(默认) 3=华丽
+	VolumeMode     string `json:"volume_mode"`     // 音量模式："synth"（合成器，默认）| "master"（系统主音量）
+	MaxLyricLines  int    `json:"max_lyric_lines"` // 同一时间戳最多允许同时显示歌词行数（1-10，默认1）
 }
 
 // DefaultSettings 返回默认设置
@@ -41,6 +43,8 @@ func DefaultSettings() Settings {
 		LyricAnimation: "fade",
 		ListMode:       "card",
 		AnimationLevel: 2,
+		VolumeMode:     "synth",
+		MaxLyricLines:  1,
 	}
 }
 
@@ -151,6 +155,18 @@ func (a *App) LoadSettings() Settings {
 		} else {
 			s.LyricsScale = def.LyricsScale
 		}
+	}
+
+	// VolumeMode 兼容旧版（缺失时默认 "synth"）
+	if s.VolumeMode != "master" && s.VolumeMode != "synth" {
+		s.VolumeMode = def.VolumeMode
+	}
+	// MaxLyricLines 兼容旧版设置文件（缺失时用默认值）
+	if s.MaxLyricLines < 1 {
+		s.MaxLyricLines = def.MaxLyricLines
+	}
+	if s.MaxLyricLines > 10 {
+		s.MaxLyricLines = 10
 	}
 
 	return s

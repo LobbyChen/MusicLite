@@ -50,6 +50,10 @@ export function GetRandomTrack(arg1) {
   return window['go']['main']['App']['GetRandomTrack'](arg1);
 }
 
+export function GetSystemMasterVolume() {
+  return window['go']['main']['App']['GetSystemMasterVolume']();
+}
+
 export function GetTotalListenTime() {
   return window['go']['main']['App']['GetTotalListenTime']();
 }
@@ -70,8 +74,16 @@ export function ImportSettings() {
   return window['go']['main']['App']['ImportSettings']();
 }
 
+export function IsDefaultPlayer() {
+  return window['go']['main']['App']['IsDefaultPlayer']();
+}
+
 export function LoadSettings() {
   return window['go']['main']['App']['LoadSettings']();
+}
+
+export function MuteSystemMasterVolume() {
+  return window['go']['main']['App']['MuteSystemMasterVolume']();
 }
 
 export function OpenAppDataFolder() {
@@ -112,6 +124,18 @@ export function SaveSettings(arg1) {
 
 export function SetApplicationVolume(arg1) {
   return window['go']['main']['App']['SetApplicationVolume'](arg1);
+}
+
+export function SetAsDefaultPlayer() {
+  return window['go']['main']['App']['SetAsDefaultPlayer']();
+}
+
+export function SetSystemMasterVolume(arg1) {
+  return window['go']['main']['App']['SetSystemMasterVolume'](arg1);
+}
+
+export function UnmuteSystemMasterVolume() {
+  return window['go']['main']['App']['UnmuteSystemMasterVolume']();
 }
 
 export function UpdateTrack(arg1, arg2, arg3, arg4) {

@@ -281,6 +281,47 @@ function animateLyricLine(el, isFullscreen) {
 }
 
 // ============ 歌词滚动与高亮 ============
+// getMaxLyricLines 获取当前"同一时间戳歌词行数"设置
+// 优先从 localStorage 取（settings.js 实时同步），否则默认 1
+function getMaxLyricLines() {
+    try {
+        const raw = localStorage.getItem('musicLite.maxLyricLines');
+        if (raw) {
+            const n = parseInt(raw, 10);
+            if (!isNaN(n) && n >= 1 && n <= 10) return n;
+        }
+    } catch (e) {}
+    return 1;
+}
+
+// highlightActiveLyricLines 高亮"同一时间戳"下的多行歌词
+// 规则：从 currentIndex 向前找，只激活时间戳与 parsedLyrics[currentIndex].time
+//       完全相同的连续行；最多激活 maxLines 行。
+// 返回：最后一个（最新）的 DOM 元素，用于滚动定位
+function highlightActiveLyricLines(containerEl, selector, currentIndex, maxLines) {
+    if (!containerEl || !parsedLyrics || parsedLyrics.length === 0 || currentIndex < 0) {
+        if (containerEl) containerEl.querySelectorAll(selector + '.active').forEach(el => el.classList.remove('active'));
+        return null;
+    }
+    containerEl.querySelectorAll(selector).forEach(el => el.classList.remove('active'));
+
+    const anchorTime = parsedLyrics[currentIndex].time;
+    let activated = 0;
+    let lastActiveEl = null;
+
+    // 从 currentIndex 向前找与锚点时间相同的行，最多 maxLines 行
+    for (let i = currentIndex; i >= 0 && activated < maxLines; i--) {
+        if (parsedLyrics[i].time !== anchorTime) break;
+        const el = containerEl.querySelector(`${selector}[data-index="${i}"]`);
+        if (el) {
+            el.classList.add('active');
+            if (i === currentIndex) lastActiveEl = el;
+        }
+        activated++;
+    }
+    return lastActiveEl;
+}
+
 function updateLyricsScroll(currentTime) {
     if (!parsedLyrics || parsedLyrics.length === 0) return;
 
@@ -305,31 +346,32 @@ function updateLyricsScroll(currentTime) {
     if (newIndex === currentLyricIndex) return;
     currentLyricIndex = newIndex;
 
+    const maxLines = getMaxLyricLines();
+
     // 小卡片高亮与滚动（用 offsetTop/offsetHeight 实测精准居中，避免硬编码行高不准）
-    lyricsContentEl.querySelectorAll('.lyric-line.active').forEach(el => el.classList.remove('active'));
     if (newIndex >= 0) {
-        const activeEl = lyricsContentEl.querySelector(`.lyric-line[data-index="${newIndex}"]`);
+        const activeEl = highlightActiveLyricLines(lyricsContentEl, '.lyric-line', newIndex, maxLines);
         if (activeEl) {
-            activeEl.classList.add('active');
             animateLyricLine(activeEl, false);
             const wrapperHeight = lyricsWrapperEl.clientHeight;
-            // 当前行中心相对于 content 顶部的偏移 - wrapper 高度一半 = 需要的位移
             const targetOffset = activeEl.offsetTop + activeEl.offsetHeight / 2 - wrapperHeight / 2;
             lyricsContentEl.style.transform = `translateY(${-targetOffset}px)`;
         }
+    } else {
+        lyricsContentEl && lyricsContentEl.querySelectorAll('.lyric-line.active').forEach(el => el.classList.remove('active'));
     }
 
     // 全屏歌词高亮与滚动（同样用实测偏移精准居中）
-    fullscreenLyricsContentEl.querySelectorAll('.fs-lyric-line.active').forEach(el => el.classList.remove('active'));
     if (newIndex >= 0) {
-        const fsActiveEl = fullscreenLyricsContentEl.querySelector(`.fs-lyric-line[data-index="${newIndex}"]`);
+        const fsActiveEl = highlightActiveLyricLines(fullscreenLyricsContentEl, '.fs-lyric-line', newIndex, maxLines);
         if (fsActiveEl) {
-            fsActiveEl.classList.add('active');
             animateLyricLine(fsActiveEl, true);
             const wrapperHeight = fullscreenLyricsWrapperEl.clientHeight;
             const targetOffset = fsActiveEl.offsetTop + fsActiveEl.offsetHeight / 2 - wrapperHeight / 2;
             fullscreenLyricsContentEl.style.transform = `translateY(${-targetOffset}px)`;
         }
+    } else {
+        fullscreenLyricsContentEl && fullscreenLyricsContentEl.querySelectorAll('.fs-lyric-line.active').forEach(el => el.classList.remove('active'));
     }
 }
 

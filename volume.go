@@ -266,12 +266,16 @@ cleanup_enum:
     if (FAILED(hr)) return (int)hr;
     return (int)0x80004005;
 }
+
 */
 import "C"
 
 import (
 	"fmt"
+	"log"
 	goruntime "runtime"
+
+	volume "github.com/itchyny/volume-go"
 )
 
 // SetApplicationVolume 设置 WebView2 音频子进程在 Windows 系统音量合成器中的音量 (0-100)
@@ -320,7 +324,57 @@ func (a *App) GetApplicationVolume() (int, error) {
 	return r.vol, r.err
 }
 
-// getCurrentPID 返回当前进程 PID
+// GetCurrentPID 返回当前进程 PID
 func getCurrentPID() int {
 	return int(C.GetCurrentProcessId())
+}
+
+// SetSystemMasterVolume 设置系统主音量 (0-100)
+func (a *App) SetSystemMasterVolume(vol int) error {
+	// 钳制范围
+	if vol < 0 {
+		vol = 0
+	}
+	if vol > 100 {
+		vol = 100
+	}
+
+	err := volume.SetVolume(vol)
+	if err != nil {
+		return fmt.Errorf("设置系统主音量失败: %w", err)
+	}
+
+	log.Printf("[Volume] SetSystemMasterVolume(%d) OK", vol)
+	return nil
+}
+
+// GetSystemMasterVolume 获取系统主音量 (0-100)
+func (a *App) GetSystemMasterVolume() (int, error) {
+	vol, err := volume.GetVolume()
+	if err != nil {
+		return 0, fmt.Errorf("获取系统主音量失败: %w", err)
+	}
+
+	log.Printf("[Volume] GetSystemMasterVolume vol=%d", vol)
+	return vol, nil
+}
+
+// MuteSystemMasterVolume 静音系统
+func (a *App) MuteSystemMasterVolume() error {
+	err := volume.Mute()
+	if err != nil {
+		return fmt.Errorf("静音失败: %w", err)
+	}
+	log.Printf("[Volume] MuteSystemMasterVolume OK")
+	return nil
+}
+
+// UnmuteSystemMasterVolume 取消静音
+func (a *App) UnmuteSystemMasterVolume() error {
+	err := volume.Unmute()
+	if err != nil {
+		return fmt.Errorf("取消静音失败: %w", err)
+	}
+	log.Printf("[Volume] UnmuteSystemMasterVolume OK")
+	return nil
 }

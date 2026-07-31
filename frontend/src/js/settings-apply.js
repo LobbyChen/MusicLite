@@ -480,6 +480,12 @@ const SettingsManager = {
             : (s.enable_animations === false ? 0 : 2);
         applyAnimationLevel(animLvl);
 
+        // 同一时间戳歌词行数（同步到 localStorage，供 player.js 读取）
+        const maxLines = (typeof s.max_lyric_lines === 'number' && s.max_lyric_lines >= 1 && s.max_lyric_lines <= 10)
+            ? s.max_lyric_lines
+            : 1;
+        try { localStorage.setItem('musicLite.maxLyricLines', maxLines.toString()); } catch (e) {}
+
         // 应用 i18n 翻译（在 DOM 和语言都就绪后）
         applyTranslations();
 
@@ -516,6 +522,12 @@ const SettingsManager = {
                 ? this.cached.animation_level
                 : (this.cached.enable_animations === false ? 0 : 2);
             applyAnimationLevel(animLvl);
+
+            // 同一时间戳歌词行数（同步到 localStorage）
+            const maxLines = (typeof this.cached.max_lyric_lines === 'number' && this.cached.max_lyric_lines >= 1 && this.cached.max_lyric_lines <= 10)
+                ? this.cached.max_lyric_lines
+                : 1;
+            try { localStorage.setItem('musicLite.maxLyricLines', maxLines.toString()); } catch (e) {}
         }
     },
 

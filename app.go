@@ -92,6 +92,9 @@ func (a *App) startup(ctx context.Context) {
 
 	// 初始化系统托盘（独立 goroutine，systray.Run 会阻塞）
 	go a.initTray()
+
+	// 启动听歌时长 heartbeat（定期提交 pending 到注册表）
+	StartListenTimeHeartbeat()
 }
 
 // shutdown 应用退出前触发，关闭数据库连接和音频服务器

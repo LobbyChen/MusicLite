@@ -73,6 +73,8 @@ export namespace main {
 	    lyric_animation: string;
 	    list_mode: string;
 	    animation_level: number;
+	    volume_mode: string;
+	    max_lyric_lines: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -93,6 +95,8 @@ export namespace main {
 	        this.lyric_animation = source["lyric_animation"];
 	        this.list_mode = source["list_mode"];
 	        this.animation_level = source["animation_level"];
+	        this.volume_mode = source["volume_mode"];
+	        this.max_lyric_lines = source["max_lyric_lines"];
 	    }
 	}
 

@@ -869,15 +869,69 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     // 使用全局音频管理器
     if (window.audioManager) {
-        // 恢复上次播放状态
+        // 单一可信源：根据 audio.paused 同步按钮图标
+        const syncPlayIcon = () => {
+            if (!miniPlayIcon || !miniPauseIcon) return;
+            if (window.audioManager.isPlaying()) {
+                miniPlayIcon.style.display = 'none';
+                miniPauseIcon.style.display = 'block';
+            } else {
+                miniPlayIcon.style.display = 'block';
+                miniPauseIcon.style.display = 'none';
+            }
+        };
+
+        const applyTrackUI = (track) => {
+            if (!track || !track.src) return;
+            miniPlayer.style.display = 'flex';
+            setCover(miniCover, track.cover);
+            miniTitle.textContent = track.name || t('common.unknown');
+            applyMarquee(miniTitle);
+            miniArtist.textContent = track.artist || '--';
+        };
+
+        // 先绑定事件，再 restore()，避免事件早到
+        window.audioManager.on('play', () => syncPlayIcon());
+        window.audioManager.on('pause', () => syncPlayIcon());
+        window.audioManager.on('trackloaded', (track) => {
+            miniPlayer.style.display = 'flex';
+            setCover(miniCover, track.cover);
+            miniTitle.textContent = track.name || t('common.unknown');
+            applyMarquee(miniTitle);
+            miniArtist.textContent = track.artist || t('common.unknownArtist');
+            // 同步更新全局当前曲目引用，供卡片点击时判断是否为同一曲目
+            currentTrack = track;
+            syncPlayIcon();
+        });
+        // 曲目被清除时（删除检查）隐藏迷你播放器
+        window.audioManager.on('trackcleared', () => {
+            miniPlayer.style.display = 'none';
+        });
+
+        // 应用保存的音量（优先使用 localStorage 中实时调整的音量，其次使用设置中的默认音量）
+        try {
+            const savedVolume = localStorage.getItem('volume');
+            if (savedVolume !== null) {
+                let vol = parseFloat(savedVolume);
+                if (vol > 1) vol = vol / 100; // 兼容 0~100 范围
+                window.audioManager.audio.volume = Math.max(0, Math.min(1, vol));
+            } else {
+                const { LoadSettings } = await import('../../wailsjs/go/main/App.js');
+                const settings = await LoadSettings();
+                window.audioManager.audio.volume = (settings.volume || 70) / 100;
+            }
+        } catch (e) {
+            console.warn('Failed to load volume settings:', e);
+        }
+
+        // 恢复上次播放状态（必须在 on() 绑定完成后调用）
         window.audioManager.restore();
         currentTrack = window.audioManager.currentTrack;
-        // 设置title（兼容 currentTrack 为空，且字段名大小写）
         if (currentTrack) {
             document.title = currentTrack.name || currentTrack.Name || 'MusicLite · 我的音乐库';
         }
+
         // 恢复上次状态后，继续检查这次启动是否传入参数
-        // 获取参数里的文件
         var defaultFile = await GetFileInArgs();
         if (defaultFile && defaultFile.src) {
             // 若有文件
@@ -904,56 +958,14 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
 
         if (currentTrack) {
-            miniPlayer.style.display = 'flex';
-            setCover(miniCover, currentTrack.cover);
-            miniTitle.textContent = currentTrack.name || t('common.unknown');
-            applyMarquee(miniTitle);
-            miniArtist.textContent = currentTrack.artist || '--';
+            applyTrackUI(currentTrack);
         }
 
-        // 应用保存的音量（优先使用 localStorage 中实时调整的音量，其次使用设置中的默认音量）
-        // 注意：localStorage 里存的可能是 0~100（系统音量）或 0~1（旧版），需要兼容
-        try {
-            const savedVolume = localStorage.getItem('volume');
-            if (savedVolume !== null) {
-                let vol = parseFloat(savedVolume);
-                if (vol > 1) vol = vol / 100; // 兼容 0~100 范围
-                window.audioManager.audio.volume = Math.max(0, Math.min(1, vol));
-            } else {
-                // 从设置加载默认音量（0~100）
-                const { LoadSettings } = await import('../../wailsjs/go/main/App.js');
-                const settings = await LoadSettings();
-                window.audioManager.audio.volume = (settings.volume || 70) / 100;
-            }
-        } catch (e) {
-            console.warn('Failed to load volume settings:', e);
-        }
-
-        // 监听播放状态
-        window.audioManager.on('play', () => {
-            miniPlayIcon.style.display = 'none';
-            miniPauseIcon.style.display = 'block';
-        });
-
-        window.audioManager.on('pause', () => {
-            miniPlayIcon.style.display = 'block';
-            miniPauseIcon.style.display = 'none';
-        });
-
-        window.audioManager.on('trackloaded', (track) => {
-            miniPlayer.style.display = 'flex';
-            setCover(miniCover, track.cover);
-            miniTitle.textContent = track.name || t('common.unknown');
-            applyMarquee(miniTitle);
-            miniArtist.textContent = track.artist || t('common.unknownArtist');
-            // 同步更新全局当前曲目引用，供卡片点击时判断是否为同一曲目
-            currentTrack = track;
-        });
-
-        // 曲目被清除时（删除检查）隐藏迷你播放器
-        window.audioManager.on('trackcleared', () => {
-            miniPlayer.style.display = 'none';
-        });
+        // 根据真实状态同步一次按钮（restore 已完成的情况）
+        syncPlayIcon();
+        // 兜底：如果 play() 在异步触发，再拉 2 次
+        setTimeout(syncPlayIcon, 200);
+        setTimeout(syncPlayIcon, 800);
     }
 
     // 迷你播放器播放/暂停

@@ -28,6 +28,8 @@ export function GetPrevTracks(arg1:number):Promise<format.MscData>;
 
 export function GetRandomTrack(arg1:number):Promise<format.MscData>;
 
+export function GetSystemMasterVolume():Promise<number>;
+
 export function GetTotalListenTime():Promise<number>;
 
 export function GetTrack(arg1:number):Promise<format.MscData>;
@@ -38,7 +40,11 @@ export function ImportFilesFromPaths(arg1:Array<string>):Promise<number>;
 
 export function ImportSettings():Promise<main.Settings>;
 
+export function IsDefaultPlayer():Promise<boolean>;
+
 export function LoadSettings():Promise<main.Settings>;
+
+export function MuteSystemMasterVolume():Promise<void>;
 
 export function OpenAppDataFolder():Promise<void>;
 
@@ -59,6 +65,12 @@ export function ResetSettings():Promise<main.Settings>;
 export function SaveSettings(arg1:main.Settings):Promise<void>;
 
 export function SetApplicationVolume(arg1:number):Promise<void>;
+
+export function SetAsDefaultPlayer():Promise<void>;
+
+export function SetSystemMasterVolume(arg1:number):Promise<void>;
+
+export function UnmuteSystemMasterVolume():Promise<void>;
 
 export function UpdateTrack(arg1:number,arg2:string,arg3:string,arg4:string):Promise<void>;
 
