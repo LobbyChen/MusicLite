@@ -1,4 +1,5 @@
 import { LoadSettings } from '../../wailsjs/go/main/App.js';
+import { setLanguage, applyTranslations } from './i18n.js';
 
 const FONT_FALLBACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 const DEFAULT_ACCENT = '#1db954';
@@ -244,6 +245,10 @@ const SettingsManager = {
     async apply() {
         const s = await this.load();
 
+        // 设置界面语言
+        const lang = s.language || 'zh-CN';
+        setLanguage(lang);
+
         // 主题
         document.body.setAttribute('data-theme', s.theme || 'dark');
 
@@ -260,13 +265,21 @@ const SettingsManager = {
             document.documentElement.style.setProperty('--lyrics-font', s.lyrics_font);
         }
 
-        // 基准字号 & 歌词字号
-        const baseSize = (s.base_font_size && s.base_font_size >= 12 && s.base_font_size <= 22) ? s.base_font_size : 14;
-        const lyricsSize = (s.lyrics_font_size && s.lyrics_font_size >= 12 && s.lyrics_font_size <= 40) ? s.lyrics_font_size : 16;
+        // 基准字号 & 歌词字号（缩放比例 × 基准值）
+        const uiScale = (s.ui_scale && s.ui_scale >= 20 && s.ui_scale <= 500) ? s.ui_scale : 135;
+        const lyricsScale = (s.lyrics_scale && s.lyrics_scale >= 20 && s.lyrics_scale <= 500) ? s.lyrics_scale : 135;
+        const baseSize = 14 * uiScale / 100;
+        const lyricsSize = 16 * lyricsScale / 100;
+        // 设置 CSS 变量（供 var(--base-font-size) 使用）
         document.documentElement.style.setProperty('--base-font-size', baseSize + 'px');
         document.body.style.setProperty('--base-font-size', baseSize + 'px');
         document.documentElement.style.setProperty('--lyrics-font-size', lyricsSize + 'px');
         document.body.style.setProperty('--lyrics-font-size', lyricsSize + 'px');
+        // 关键：直接设置 <html> 的 font-size，让所有 rem 单位跟随缩放
+        document.documentElement.style.fontSize = baseSize + 'px';
+
+        // 应用 i18n 翻译（在 DOM 和语言都就绪后）
+        applyTranslations();
 
         return s;
     },
@@ -282,12 +295,16 @@ const SettingsManager = {
             if (this.cached.lyrics_font) {
                 document.documentElement.style.setProperty('--lyrics-font', this.cached.lyrics_font);
             }
-            const baseSize = (this.cached.base_font_size && this.cached.base_font_size >= 12 && this.cached.base_font_size <= 22) ? this.cached.base_font_size : 14;
-            const lyricsSize = (this.cached.lyrics_font_size && this.cached.lyrics_font_size >= 12 && this.cached.lyrics_font_size <= 40) ? this.cached.lyrics_font_size : 16;
+            const uiScale = (this.cached.ui_scale && this.cached.ui_scale >= 20 && this.cached.ui_scale <= 500) ? this.cached.ui_scale : 135;
+            const lyricsScale = (this.cached.lyrics_scale && this.cached.lyrics_scale >= 20 && this.cached.lyrics_scale <= 500) ? this.cached.lyrics_scale : 135;
+            const baseSize = 14 * uiScale / 100;
+            const lyricsSize = 16 * lyricsScale / 100;
             document.documentElement.style.setProperty('--base-font-size', baseSize + 'px');
             document.body.style.setProperty('--base-font-size', baseSize + 'px');
             document.documentElement.style.setProperty('--lyrics-font-size', lyricsSize + 'px');
             document.body.style.setProperty('--lyrics-font-size', lyricsSize + 'px');
+            // 关键：直接设置 <html> 的 font-size，让所有 rem 单位跟随缩放
+            document.documentElement.style.fontSize = baseSize + 'px';
         }
     },
 

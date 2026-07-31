@@ -1,4 +1,5 @@
-import { LoadSettings, SaveSettings, GetInstalledFonts } from '../../wailsjs/go/main/App.js';
+import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings } from '../../wailsjs/go/main/App.js';
+import { t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
 function applyMarquee(el) {
@@ -40,7 +41,8 @@ function applyMarquee(el) {
 
 // ============ 标题栏窗口控制 ============
 document.getElementById('minimizeBtn')?.addEventListener('click', () => window.runtime?.WindowMinimise());
-document.getElementById('closeBtn')?.addEventListener('click', () => window.runtime?.Quit());
+// 关闭按钮：隐藏到托盘而非退出（后台播放）
+document.getElementById('closeBtn')?.addEventListener('click', () => window.runtime?.WindowHide());
 
 // DOM Elements
 const backBtn = document.getElementById('backBtn');
@@ -49,12 +51,15 @@ const playerFontSelect = document.getElementById('player-font');
 const lyricsFontSelect = document.getElementById('lyrics-font');
 const playerFontPreview = document.getElementById('player-font-preview');
 const lyricsFontPreview = document.getElementById('lyrics-font-preview');
+const languageSelect = document.getElementById('language-select');
+const exportBtn = document.getElementById('export-settings-btn');
+const importBtn = document.getElementById('import-settings-btn');
 const volumeSlider = document.getElementById('volume-slider');
 const volumeValue = document.getElementById('volume-value');
-const baseFontSizeSlider = document.getElementById('base-font-size');
-const baseFontSizeValue = document.getElementById('base-font-size-value');
-const lyricsFontSizeSlider = document.getElementById('lyrics-font-size');
-const lyricsFontSizeValue = document.getElementById('lyrics-font-size-value');
+const uiScaleSlider = document.getElementById('ui-scale');
+const uiScaleValue = document.getElementById('ui-scale-value');
+const lyricsScaleSlider = document.getElementById('lyrics-scale');
+const lyricsScaleValue = document.getElementById('lyrics-scale-value');
 const saveBar = document.getElementById('saveBar');
 const saveBtn = document.getElementById('saveBtn');
 const accentColorItem = document.getElementById('accent-color-item');
@@ -200,8 +205,24 @@ function buildFontOptions(selectEl, fonts, { preset, fontFamily }) {
     selectEl.appendChild(frag);
 }
 
+// ============ 语言选择器填充 ============
+function populateLanguageSelect() {
+    if (!languageSelect) return;
+    const langs = getAvailableLanguages();
+    const frag = document.createDocumentFragment();
+    for (const { code, nativeName } of langs) {
+        const opt = document.createElement('option');
+        opt.value = code;
+        opt.textContent = nativeName;
+        frag.appendChild(opt);
+    }
+    languageSelect.innerHTML = '';
+    languageSelect.appendChild(frag);
+}
+
 // ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', async () => {
+    populateLanguageSelect();
     await populateFontSelects();
     await loadSettings();
     applyTheme();
@@ -296,8 +317,8 @@ async function loadSettings() {
             theme: 'dark',
             player_font: 'system-ui',
             lyrics_font: "'Consolas', 'Monaco', monospace",
-            base_font_size: 14,
-            lyrics_font_size: 16,
+            ui_scale: 135,
+            lyrics_scale: 135,
             last_track_id: 0,
             last_position: 0,
             volume: 70,
@@ -334,13 +355,19 @@ function applySettingsToUI(s) {
     volumeSlider.value = s.volume || 70;
     volumeValue.textContent = (s.volume ?? 70) + '%';
 
-    // Font sizes
-    const baseSize = (s.base_font_size && s.base_font_size >= 12 && s.base_font_size <= 22) ? s.base_font_size : 14;
-    const lyricsSize = (s.lyrics_font_size && s.lyrics_font_size >= 12 && s.lyrics_font_size <= 40) ? s.lyrics_font_size : 16;
-    baseFontSizeSlider.value = baseSize;
-    baseFontSizeValue.textContent = baseSize + 'px';
-    lyricsFontSizeSlider.value = lyricsSize;
-    lyricsFontSizeValue.textContent = lyricsSize + 'px';
+    // Language
+    const lang = s.language || 'zh-CN';
+    if (languageSelect) languageSelect.value = lang;
+    setLanguage(lang);
+    applyTranslations();
+
+    // Scale
+    const uiScale = (s.ui_scale && s.ui_scale >= 20 && s.ui_scale <= 500) ? s.ui_scale : 135;
+    const lyricsScale = (s.lyrics_scale && s.lyrics_scale >= 20 && s.lyrics_scale <= 500) ? s.lyrics_scale : 135;
+    uiScaleSlider.value = uiScale;
+    uiScaleValue.textContent = uiScale + '%';
+    lyricsScaleSlider.value = lyricsScale;
+    lyricsScaleValue.textContent = lyricsScale + '%';
 }
 
 // 让设置值匹配 select 的 option value（后端保存的值可能带引号，匹配最佳 option）
@@ -407,8 +434,8 @@ function setupEventListeners() {
     // Back button
     backBtn.addEventListener('click', async () => {
         if (hasChanges) {
-            const ok = await showConfirm('设置未保存，是否放弃更改？', {
-                title: '放弃更改', okText: '放弃', cancelText: '留在页面', danger: true
+            const ok = await showConfirm(t('settings.discardConfirm'), {
+                title: t('settings.discardTitle'), okText: t('settings.discardBtn'), cancelText: t('settings.stayBtn'), danger: true
             });
             if (ok) window.history.back();
         } else {
@@ -494,30 +521,84 @@ function setupEventListeners() {
         markChanged();
     });
 
-    // Base font size slider（界面字号）
-    baseFontSizeSlider.addEventListener('input', () => {
-        const v = parseInt(baseFontSizeSlider.value, 10);
-        baseFontSizeValue.textContent = v + 'px';
-        currentSettings.base_font_size = v;
-        // 实时预览
-        document.documentElement.style.setProperty('--base-font-size', v + 'px');
-        document.body.style.setProperty('--base-font-size', v + 'px');
+    // UI scale slider（界面缩放）
+    uiScaleSlider.addEventListener('input', () => {
+        const v = parseInt(uiScaleSlider.value, 10);
+        uiScaleValue.textContent = v + '%';
+        currentSettings.ui_scale = v;
+        // 实时预览：基准 14px × 缩放比例
+        const px = 14 * v / 100;
+        document.documentElement.style.setProperty('--base-font-size', px + 'px');
+        document.body.style.setProperty('--base-font-size', px + 'px');
+        // 直接设置 <html> font-size，让 rem 单位跟随缩放
+        document.documentElement.style.fontSize = px + 'px';
         markChanged();
     });
 
-    // Lyrics font size slider（歌词字号）
-    lyricsFontSizeSlider.addEventListener('input', () => {
-        const v = parseInt(lyricsFontSizeSlider.value, 10);
-        lyricsFontSizeValue.textContent = v + 'px';
-        currentSettings.lyrics_font_size = v;
-        // 实时预览
-        document.documentElement.style.setProperty('--lyrics-font-size', v + 'px');
-        document.body.style.setProperty('--lyrics-font-size', v + 'px');
+    // Lyrics scale slider（歌词缩放）
+    lyricsScaleSlider.addEventListener('input', () => {
+        const v = parseInt(lyricsScaleSlider.value, 10);
+        lyricsScaleValue.textContent = v + '%';
+        currentSettings.lyrics_scale = v;
+        // 实时预览：基准 16px × 缩放比例
+        const px = 16 * v / 100;
+        document.documentElement.style.setProperty('--lyrics-font-size', px + 'px');
+        document.body.style.setProperty('--lyrics-font-size', px + 'px');
         markChanged();
     });
 
     // Save button
     saveBtn.addEventListener('click', saveSettings);
+
+    // Language selector
+    if (languageSelect) {
+        languageSelect.addEventListener('change', () => {
+            const lang = languageSelect.value;
+            currentSettings.language = lang;
+            setLanguage(lang);
+            applyTranslations();
+            markChanged();
+        });
+    }
+
+    // Export settings button
+    if (exportBtn) {
+        exportBtn.addEventListener('click', async () => {
+            try {
+                // 先保存当前设置再导出
+                await SaveSettings(currentSettings);
+                hasChanges = false;
+                saveBar.style.display = 'none';
+                const path = await ExportSettings();
+                if (path) {
+                    showToast(t('settings.exportSuccess', path), 'success');
+                }
+            } catch (err) {
+                console.error('Export failed:', err);
+                showToast(t('settings.exportFailed', err), 'error');
+            }
+        });
+    }
+
+    // Import settings button
+    if (importBtn) {
+        importBtn.addEventListener('click', async () => {
+            try {
+                const newSettings = await ImportSettings();
+                // 应用导入的设置
+                currentSettings = newSettings;
+                applySettingsToUI(newSettings);
+                applyTheme();
+                applyAccentToUI();
+                // 通知其他页面设置已更新
+                localStorage.setItem('settingsUpdated', Date.now().toString());
+                showToast(t('settings.importSuccess'), 'success');
+            } catch (err) {
+                console.error('Import failed:', err);
+                showToast(t('settings.importFailed', err), 'error');
+            }
+        });
+    }
 }
 
 // Mark settings as changed
@@ -542,12 +623,16 @@ async function saveSettings() {
         if (currentSettings.lyrics_font) {
             document.documentElement.style.setProperty('--lyrics-font', currentSettings.lyrics_font);
         }
-        const baseSize = (currentSettings.base_font_size && currentSettings.base_font_size >= 12 && currentSettings.base_font_size <= 22) ? currentSettings.base_font_size : 14;
-        const lyricsSize = (currentSettings.lyrics_font_size && currentSettings.lyrics_font_size >= 12 && currentSettings.lyrics_font_size <= 40) ? currentSettings.lyrics_font_size : 16;
+        const uiScale = (currentSettings.ui_scale && currentSettings.ui_scale >= 20 && currentSettings.ui_scale <= 500) ? currentSettings.ui_scale : 135;
+        const lyricsScale = (currentSettings.lyrics_scale && currentSettings.lyrics_scale >= 20 && currentSettings.lyrics_scale <= 500) ? currentSettings.lyrics_scale : 135;
+        const baseSize = 14 * uiScale / 100;
+        const lyricsSize = 16 * lyricsScale / 100;
         document.documentElement.style.setProperty('--base-font-size', baseSize + 'px');
         document.body.style.setProperty('--base-font-size', baseSize + 'px');
         document.documentElement.style.setProperty('--lyrics-font-size', lyricsSize + 'px');
         document.body.style.setProperty('--lyrics-font-size', lyricsSize + 'px');
+        // 直接设置 <html> font-size，让 rem 单位跟随缩放
+        document.documentElement.style.fontSize = baseSize + 'px';
         // 应用主题色 + 全套配套色
         applyAccentToUI();
 
@@ -559,9 +644,14 @@ async function saveSettings() {
         // 通知其他页面（libraries、player）应用新设置
         localStorage.setItem('settingsUpdated', Date.now().toString());
         localStorage.setItem('cachedSettings', JSON.stringify(currentSettings));
-        showToast('设置已保存', 'success');
+        // 应用语言变更
+        if (currentSettings.language) {
+            setLanguage(currentSettings.language);
+            applyTranslations();
+        }
+        showToast(t('libraries.saved'), 'success');
     } catch (err) {
         console.error('Failed to save settings:', err);
-        showToast('保存失败: ' + (err?.message || err), 'error');
+        showToast(t('libraries.saveFailed', err?.message || err), 'error');
     }
 }

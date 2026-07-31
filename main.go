@@ -50,8 +50,9 @@ func main() {
 			EnableFileDrop:     true,
 			DisableWebViewDrop: false,
 		},
-		OnStartup:  app.startup,
-		OnShutdown: app.shutdown,
+		OnStartup:    app.startup,
+		OnShutdown:   app.shutdown,
+		OnBeforeClose: app.onBeforeClose, // 关闭窗口时最小化到托盘而非退出
 		Bind: []interface{}{
 			app,
 		},

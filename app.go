@@ -17,9 +17,9 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/sys/windows/registry"
-
+	"github.com/getlantern/systray"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"golang.org/x/sys/windows/registry"
 )
 
 // App struct
@@ -28,8 +28,9 @@ type App struct {
 	defaultFile     string
 	defaultTrackId  int64
 	database        *storage.Database
-	audioServerPort int // 独立 HTTP 服务器端口，dev 模式下使用
+	audioServerPort int           // 独立 HTTP 服务器端口，dev 模式下使用
 	audioServerLn   net.Listener
+	trayQuitting    bool // 托盘"退出"时置 true，让 OnBeforeClose 放行
 }
 
 // NewApp 创建应用实例并连接数据库
@@ -88,10 +89,15 @@ func (a *App) startup(ctx context.Context) {
 			log.Printf("音频服务器已启动: 127.0.0.1:%d", a.audioServerPort)
 		}
 	}
+
+	// 初始化系统托盘（独立 goroutine，systray.Run 会阻塞）
+	go a.initTray()
 }
 
 // shutdown 应用退出前触发，关闭数据库连接和音频服务器
 func (a *App) shutdown(ctx context.Context) {
+	// 退出系统托盘
+	systray.Quit()
 	// 检查是否有命令行启动的文件
 	if a.defaultFile != "" {
 		// 从库里面剔除
@@ -218,11 +224,12 @@ func (a *App) serveCoverFile(w http.ResponseWriter, r *http.Request) {
 
 // ImportFiles 打开多选对话框导入音频文件，返回成功导入的数量
 func (a *App) ImportFiles() (int, error) {
+	strs := a.getBackendStrings()
 	files, err := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "选择音乐文件",
+		Title: strs.SelectMusicFile,
 		Filters: []runtime.FileFilter{
 			{
-				DisplayName: "Music File (*.mp3, *.ogg, *.flac, *.wav, *.ape)",
+				DisplayName: strs.MusicFileFilter,
 				Pattern:     "*.mp3;*.ogg;*.flac;*.wav;*.ape",
 			},
 		},

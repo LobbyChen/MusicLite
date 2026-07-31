@@ -251,7 +251,9 @@ h2 {
     font-size: 0.95rem;
     line-height: 1.4;
     display: -webkit-box;
+
     -webkit-line-clamp: 2;
+        line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -811,7 +813,9 @@ h2 {
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden;
+    /* 允许内容溢出时垂直滚动，避免大字号裁剪 */
+    overflow-y: auto;
+    overflow-x: hidden;
     z-index: 500;
     /* 视图切换过渡 */
     opacity: 0;
@@ -902,7 +906,9 @@ body.player-active > .mini-player {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    height: 240px;
+    /* 移除固定 height，改为 min-height 与封面图等高，允许内容撑高避免裁剪 */
+    min-height: 240px;
+    align-self: stretch;
 }
 
 .track-info {
@@ -927,6 +933,11 @@ body.player-active > .mini-player {
     font-size: 1.1rem;
     color: var(--text-secondary);
     font-weight: 400;
+    /* 防止长艺术家名换行撑高容器 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 
 /* ============ 歌词区域 ============ */

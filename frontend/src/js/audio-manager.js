@@ -217,3 +217,10 @@ class AudioManager {
 
 // 每个页面独立创建实例
 window.audioManager = new AudioManager();
+
+// 监听托盘"播放/暂停"菜单事件（由后端 tray.go 通过 Wails EventsEmit 发送）
+if (window.runtime && typeof window.runtime.EventsOn === 'function') {
+	window.runtime.EventsOn('tray:toggle-play', () => {
+		window.audioManager.toggle();
+	});
+}

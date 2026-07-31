@@ -40,9 +40,10 @@
     padding: 0;
 }
 
-html{
+html {
     overflow: auto;
 }
+
 html ::-webkit-scrollbar {
     display: none;
 }
@@ -60,6 +61,7 @@ html body {
     display: block;
     flex-direction: initial;
 }
+
 html body ::-webkit-scrollbar {
     display: none;
 }
@@ -171,6 +173,7 @@ main {
     padding: 0 40px 180px;
     overflow: auto;
 }
+
 /* 有迷你播放器时，main 再加 72px 底部留白避免被遮挡 */
 body.has-mini-player main {
     padding-bottom: 252px;
@@ -330,6 +333,7 @@ body.has-mini-player main {
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
     transition: bottom 0.2s ease;
 }
+
 /* 有迷你播放器时，save-bar 上移到 mini-player 上方，避免被遮挡 */
 body.has-mini-player .save-bar {
     bottom: 72px;
@@ -402,12 +406,15 @@ body.has-mini-player .save-bar {
 }
 
 .preset-colors {
+
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
 }
 
 .preset-color {
+    background-color: #1DB954;
+    color: #1DB954;
     width: 24px;
     height: 24px;
     border-radius: 50%;
@@ -547,8 +554,15 @@ body.has-mini-player .save-bar {
 }
 
 @keyframes toastIn {
-    from { transform: translateX(120%); opacity: 0; }
-    to   { transform: translateX(0); opacity: 1; }
+    from {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
 }
 
 .toast.toast-out {
@@ -556,8 +570,15 @@ body.has-mini-player .save-bar {
 }
 
 @keyframes toastOut {
-    from { transform: translateX(0); opacity: 1; }
-    to   { transform: translateX(120%); opacity: 0; }
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(120%);
+        opacity: 0;
+    }
 }
 
 .toast-icon {
@@ -575,17 +596,37 @@ body.has-mini-player .save-bar {
     fill: currentColor;
 }
 
-.toast-success { border-left-color: var(--accent-color); }
-.toast-success .toast-icon { color: var(--accent-color); }
+.toast-success {
+    border-left-color: var(--accent-color);
+}
 
-.toast-error { border-left-color: #e74c3c; }
-.toast-error .toast-icon { color: #e74c3c; }
+.toast-success .toast-icon {
+    color: var(--accent-color);
+}
 
-.toast-warning { border-left-color: #f39c12; }
-.toast-warning .toast-icon { color: #f39c12; }
+.toast-error {
+    border-left-color: #e74c3c;
+}
 
-.toast-info { border-left-color: #3498db; }
-.toast-info .toast-icon { color: #3498db; }
+.toast-error .toast-icon {
+    color: #e74c3c;
+}
+
+.toast-warning {
+    border-left-color: #f39c12;
+}
+
+.toast-warning .toast-icon {
+    color: #f39c12;
+}
+
+.toast-info {
+    border-left-color: #3498db;
+}
+
+.toast-info .toast-icon {
+    color: #3498db;
+}
 
 /* ========== 字体下拉 ========== */
 .font-select option {
@@ -599,7 +640,6 @@ body.has-mini-player .save-bar {
     padding: 14px 16px;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-left: 3px solid var(--accent-color);
     border-radius: 8px;
     color: var(--text-primary);
     font-size: 1rem;

@@ -33,12 +33,13 @@ export namespace main {
 	    theme: string;
 	    player_font: string;
 	    lyrics_font: string;
-	    base_font_size: number;
-	    lyrics_font_size: number;
+	    ui_scale: number;
+	    lyrics_scale: number;
 	    last_track_id: number;
 	    last_position: number;
 	    volume: number;
 	    accent_color: string;
+	    language: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -49,12 +50,13 @@ export namespace main {
 	        this.theme = source["theme"];
 	        this.player_font = source["player_font"];
 	        this.lyrics_font = source["lyrics_font"];
-	        this.base_font_size = source["base_font_size"];
-	        this.lyrics_font_size = source["lyrics_font_size"];
+	        this.ui_scale = source["ui_scale"];
+	        this.lyrics_scale = source["lyrics_scale"];
 	        this.last_track_id = source["last_track_id"];
 	        this.last_position = source["last_position"];
 	        this.volume = source["volume"];
 	        this.accent_color = source["accent_color"];
+	        this.language = source["language"];
 	    }
 	}
 

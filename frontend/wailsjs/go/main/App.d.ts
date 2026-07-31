@@ -6,6 +6,8 @@ import {main} from '../models';
 
 export function DeleteTrack(arg1:number):Promise<void>;
 
+export function ExportSettings():Promise<string>;
+
 export function GetAllTracks():Promise<Array<format.MscData>>;
 
 export function GetDatabase():Promise<storage.Database>;
@@ -25,6 +27,8 @@ export function GetTrack(arg1:number):Promise<format.MscData>;
 export function ImportFiles():Promise<number>;
 
 export function ImportFilesFromPaths(arg1:Array<string>):Promise<number>;
+
+export function ImportSettings():Promise<main.Settings>;
 
 export function LoadSettings():Promise<main.Settings>;
 

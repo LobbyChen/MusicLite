@@ -6,6 +6,10 @@ export function DeleteTrack(arg1) {
   return window['go']['main']['App']['DeleteTrack'](arg1);
 }
 
+export function ExportSettings() {
+  return window['go']['main']['App']['ExportSettings']();
+}
+
 export function GetAllTracks() {
   return window['go']['main']['App']['GetAllTracks']();
 }
@@ -44,6 +48,10 @@ export function ImportFiles() {
 
 export function ImportFilesFromPaths(arg1) {
   return window['go']['main']['App']['ImportFilesFromPaths'](arg1);
+}
+
+export function ImportSettings() {
+  return window['go']['main']['App']['ImportSettings']();
 }
 
 export function LoadSettings() {

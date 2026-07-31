@@ -1,6 +1,7 @@
 // player.js — 播放器视图（SPA overlay 模块）
 // 与库视图共享同一个 window.audioManager，切换视图时 audio 不销毁，播放保持连续。
 import { GetTrack, LoadSettings, GetNextTracks,GetPrevTracks, GetRandomTrack } from '../../wailsjs/go/main/App.js';
+import { t } from './i18n.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
 function applyMarquee(el) {
@@ -124,11 +125,11 @@ function escapeHtml(text) {
 function renderLyrics(lyricsArray) {
     if (!lyricsArray || lyricsArray.length === 0) {
         // 小卡片
-        lyricsContentEl.innerHTML = '<div class="no-lyrics">暂无歌词</div>';
-        lyricsPreviewEl.textContent = '暂无歌词';
+        lyricsContentEl.innerHTML = '<div class="no-lyrics">' + t('player.noLyrics') + '</div>';
+        lyricsPreviewEl.textContent = t('player.noLyrics');
         lyricsPreviewEl.classList.remove('active');
         // 全屏
-        fullscreenLyricsContentEl.innerHTML = '<div class="no-lyrics">暂无歌词</div>';
+        fullscreenLyricsContentEl.innerHTML = '<div class="no-lyrics">' + t('player.noLyrics') + '</div>';
         parsedLyrics = [];
         return;
     }
@@ -196,7 +197,7 @@ function updateLyricsScroll(currentTime) {
         lyricsPreviewEl.textContent = parsedLyrics[newIndex].text;
         lyricsPreviewEl.classList.add('active');
     } else {
-        lyricsPreviewEl.textContent = parsedLyrics[0] ? parsedLyrics[0].text : '暂无歌词';
+        lyricsPreviewEl.textContent = parsedLyrics[0] ? parsedLyrics[0].text : t('player.noLyrics');
         lyricsPreviewEl.classList.remove('active');
     }
 
@@ -259,7 +260,7 @@ function openFullscreenLyrics() {
     if (!currentTrackData) return;
     // 切换到全屏前收起卡片
     closeLyricsCard();
-    fullscreenTrackNameEl.textContent = currentTrackData.name || '未知';
+    fullscreenTrackNameEl.textContent = currentTrackData.name || t('common.unknown');
     applyMarquee(fullscreenTrackNameEl);
     fullscreenArtistNameEl.textContent = currentTrackData.artist || '--';
     fullscreenBgEl.style.backgroundImage = bgLayerEl.style.backgroundImage;
@@ -539,10 +540,10 @@ function setVolume() {
 // ============ 核心：加载单个轨道 ============
 function loadTrack(data) {
     currentTrackData = data;
-    trackNameEl.textContent = data.name || "Unknown Title";
+    trackNameEl.textContent = data.name || t('common.unknown');
     applyMarquee(trackNameEl);
     document.title = trackNameEl.textContent;
-    artistNameEl.textContent = data.artist || "Unknown Artist";
+    artistNameEl.textContent = data.artist || t('common.unknownArtist');
     const imgUrl = data.cover || "";
     if (imgUrl) {
         coverImgEl.innerHTML = `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;

@@ -1,6 +1,7 @@
 import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths} from '../../wailsjs/go/main/App.js';
 import { OnFileDrop } from '../../wailsjs/runtime/runtime.js';
 import { openPlayer } from './player.js';
+import { t } from './i18n.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
 // 用法：applyMarquee(el) —— el 是承载歌名的容器（如 .mini-title）
@@ -50,7 +51,7 @@ window.applyMarquee = applyMarquee;
 
 // ============ 标题栏窗口控制 ============
 document.getElementById('minimizeBtn')?.addEventListener('click', () => window.runtime?.WindowMinimise());
-document.getElementById('closeBtn')?.addEventListener('click', () => window.runtime?.Quit());
+document.getElementById('closeBtn')?.addEventListener('click', () => window.runtime?.WindowHide());
 
 // DOM Elements
 const fileBtn = document.getElementById("openFileBtn");
@@ -102,14 +103,14 @@ async function doImportPaths(paths) {
     try {
         const count = await ImportFilesFromPaths(paths);
         if (count > 0) {
-            showToast(`成功导入 ${count} 首音乐`, 'success');
+            showToast(t('libraries.importSuccessAlt', count), 'success');
             await refreshList();
         } else {
-            showToast('未导入任何文件（可能格式不支持或已存在）', 'warning');
+            showToast(t('libraries.importNoneAlt'), 'warning');
         }
     } catch (err) {
         console.error('拖放导入失败:', err);
-        showToast('导入失败: ' + err, 'error');
+        showToast(t('libraries.importFailed', err), 'error');
     }
 }
 
@@ -142,7 +143,7 @@ function showToast(message, type = 'info', duration = 3000) {
 let confirmResolver = null;
 const confirmModal = () => document.getElementById('modal-confirm');
 
-function showConfirm({ title = '确认操作', message = '确定要执行此操作吗？', okText = '确定', cancelText = '取消', danger = true } = {}) {
+function showConfirm({ title = '确认操作', message = '确定要执行此操作吗？', okText = t('common.ok'), cancelText = t('common.cancel'), danger = true } = {}) {
     return new Promise((resolve) => {
         const modal = confirmModal();
         document.getElementById('confirm-title').textContent = title;
@@ -187,16 +188,16 @@ fileBtn.addEventListener("click", async () => {
     try {
         const count = await ImportFiles();
         if (count > 0) {
-            showToast(`成功导入 ${count} 首曲目`, 'success');
+            showToast(t('libraries.importSuccess', count), 'success');
             await refreshList();
             // 延迟一下让用户看到 toast，再刷新页面
             setTimeout(() => location.reload(), 600);
         } else {
-            showToast('未选择任何文件', 'info');
+            showToast(t('libraries.importNone'), 'info');
         }
     } catch (err) {
         console.error("导入失败:", err);
-        showToast("导入失败: " + err, 'error');
+        showToast(t('libraries.importFailed', err), 'error');
     }
 });
 
@@ -240,12 +241,12 @@ function renderTracks(tracks) {
         card.innerHTML = `
             ${coverHTML}
             <div class="card-title">${escapeHtml(track.name)}</div>
-            <div class="card-meta">${escapeHtml(track.artist || '未知艺术家')}</div>
+            <div class="card-meta">${escapeHtml(track.artist || t('common.unknownArtist'))}</div>
             <div class="card-actions">
-                <button class="card-btn edit-btn" title="编辑信息">
+                <button class="card-btn edit-btn" title="${t('libraries.editInfo')}">
                     <svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                 </button>
-                <button class="card-btn delete-btn" title="删除">
+                <button class="card-btn delete-btn" title="${t('common.delete')}">
                     <svg viewBox="0 0 24 24" width="16" height="16"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                 </button>
             </div>
@@ -278,10 +279,10 @@ function renderTracks(tracks) {
         deleteBtn.addEventListener("click", async (e) => {
             e.stopPropagation();
             const ok = await showConfirm({
-                title: '删除曲目',
-                message: `确定要删除 "${track.name}" 吗？此操作无法撤销。`,
-                okText: '删除',
-                cancelText: '取消'
+                title: t('libraries.deleteTitle'),
+                message: t('libraries.deleteConfirm', track.name),
+                okText: t('common.delete'),
+                cancelText: t('common.cancel')
             });
             if (ok) doDelete(track.id);
         });
@@ -306,11 +307,11 @@ function escapeHtml(text) {
 async function doDelete(id) {
     try {
         await DeleteTrack(id);
-        showToast('已删除曲目', 'success');
+        showToast(t('libraries.deleted'), 'success');
         await refreshList();
     } catch (err) {
         console.error("删除失败:", err);
-        showToast("删除失败: " + err, 'error');
+        showToast(t('libraries.deleteFailed', err), 'error');
     }
 }
 
@@ -324,17 +325,17 @@ function showContextMenu(e, track) {
     contextMenuEl.className = 'context-menu';
     contextMenuEl.innerHTML = `
         <div class="context-item" data-action="edit">
-            编辑信息
+            ${t('libraries.editInfo')}
         </div>
         <div class="context-item" data-action="cover">
-            添加/更换封面
+            ${t('libraries.changeCover')}
         </div>
         <div class="context-item" data-action="lyrics">
-            编辑歌词
+            ${t('libraries.editLyrics')}
         </div>
         <div class="context-divider"></div>
         <div class="context-item danger" data-action="delete">
-            删除
+            ${t('common.delete')}
         </div>
     `;
 
@@ -381,10 +382,10 @@ function handleContextAction(action, track) {
             break;
         case 'delete':
             showConfirm({
-                title: '删除曲目',
-                message: `确定要删除 "${track.name}" 吗？此操作无法撤销。`,
-                okText: '删除',
-                cancelText: '取消'
+                title: t('libraries.deleteTitle'),
+                message: t('libraries.deleteConfirm', track.name),
+                okText: t('common.delete'),
+                cancelText: t('common.cancel')
             }).then((ok) => {
                 if (ok) doDelete(track.id);
             });
@@ -416,18 +417,18 @@ async function saveEditModal() {
     const lyrics = document.getElementById("edit-lyrics").value;
 
     if (!title) {
-        showToast("标题不能为空", 'warning');
+        showToast(t('libraries.titleRequired'), 'warning');
         return;
     }
 
     try {
         await UpdateTrack(currentEditTrack.id, title, artist, lyrics);
         closeEditModal();
-        showToast('已保存', 'success');
+        showToast(t('libraries.saved'), 'success');
         await refreshList();
     } catch (err) {
         console.error("保存失败:", err);
-        showToast("保存失败: " + err, 'error');
+        showToast(t('libraries.saveFailed', err), 'error');
     }
 }
 
@@ -458,18 +459,18 @@ async function handleCoverFile(file) {
 
     // 限制封面大小 500KB
     if (coverData.length > 512 * 1024) {
-        showToast("封面图片过大，请选择 500KB 以内的图片", 'warning');
+        showToast(t('libraries.coverTooLarge'), 'warning');
         return;
     }
 
     try {
         await UpdateTrackCover(currentCoverTrack.id, coverData, coverMIME);
         currentCoverTrack = null;
-        showToast('封面已更新', 'success');
+        showToast(t('libraries.coverUpdated'), 'success');
         await refreshList();
     } catch (err) {
         console.error("封面更新失败:", err);
-        showToast("封面更新失败: " + err, 'error');
+        showToast(t('libraries.coverUpdateFailed', err), 'error');
     }
 }
 
@@ -498,11 +499,11 @@ async function saveLyricsModal() {
     try {
         await UpdateTrack(currentLyricsTrack.id, currentLyricsTrack.name, currentLyricsTrack.artist || '', lyrics);
         closeLyricsModal();
-        showToast('歌词已保存', 'success');
+        showToast(t('libraries.lyricsSaved'), 'success');
         await refreshList();
     } catch (err) {
         console.error("歌词保存失败:", err);
-        showToast("歌词保存失败: " + err, 'error');
+        showToast(t('libraries.lyricsSaveFailed', err), 'error');
     }
 }
 
@@ -607,7 +608,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         if (currentTrack) {
             miniPlayer.style.display = 'flex';
             setCover(miniCover, currentTrack.cover);
-            miniTitle.textContent = currentTrack.name || '未知';
+            miniTitle.textContent = currentTrack.name || t('common.unknown');
             applyMarquee(miniTitle);
             miniArtist.textContent = currentTrack.artist || '--';
         }
@@ -641,7 +642,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         window.audioManager.on('trackloaded', (track) => {
             miniPlayer.style.display = 'flex';
             setCover(miniCover, track.cover);
-            miniTitle.textContent = track.name || '未知';
+            miniTitle.textContent = track.name || t('common.unknown');
             applyMarquee(miniTitle);
             miniArtist.textContent = track.artist || '--';
             // 同步更新全局当前曲目引用，供卡片点击时判断是否为同一曲目
