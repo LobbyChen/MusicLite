@@ -32,6 +32,8 @@ export function ImportSettings():Promise<main.Settings>;
 
 export function LoadSettings():Promise<main.Settings>;
 
+export function ResetSettings():Promise<main.Settings>;
+
 export function SaveSettings(arg1:main.Settings):Promise<void>;
 
 export function UpdateTrack(arg1:number,arg2:string,arg3:string,arg4:string):Promise<void>;

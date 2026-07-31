@@ -120,3 +120,8 @@ func (a *App) SaveSettings(s Settings) error {
 	}
 	return os.WriteFile(settingsFilePath(), data, 0644)
 }
+
+// ResetSettings 返回默认设置（不立即写盘，由前端再次调用 SaveSettings 持久化）
+func (a *App) ResetSettings() Settings {
+	return DefaultSettings()
+}

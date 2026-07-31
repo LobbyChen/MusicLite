@@ -1,4 +1,4 @@
-import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings } from '../../wailsjs/go/main/App.js';
+import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings } from '../../wailsjs/go/main/App.js';
 import { t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
@@ -54,6 +54,7 @@ const lyricsFontPreview = document.getElementById('lyrics-font-preview');
 const languageSelect = document.getElementById('language-select');
 const exportBtn = document.getElementById('export-settings-btn');
 const importBtn = document.getElementById('import-settings-btn');
+const resetBtn = document.getElementById('reset-settings-btn');
 const volumeSlider = document.getElementById('volume-slider');
 const volumeValue = document.getElementById('volume-value');
 const uiScaleSlider = document.getElementById('ui-scale');
@@ -598,6 +599,36 @@ function setupEventListeners() {
                 showToast(t('settings.importFailed', err), 'error');
             }
         });
+
+        // Reset settings button（重置为默认设置）
+        if (resetBtn) {
+            resetBtn.addEventListener('click', async () => {
+                // 先确认
+                const confirmed = await showConfirm(t('settings.resetConfirm'), {
+                    title: t('settings.resetSettings'),
+                    okText: t('settings.resetSettings'),
+                    danger: true,
+                });
+                if (!confirmed) return;
+                try {
+                    const defaults = await ResetSettings();
+                    currentSettings = defaults;
+                    applySettingsToUI(defaults);
+                    applyTheme();
+                    applyAccentToUI();
+                    // 立即保存
+                    await SaveSettings(defaults);
+                    hasChanges = false;
+                    saveBar.style.display = 'none';
+                    // 通知其他页面
+                    localStorage.setItem('settingsUpdated', Date.now().toString());
+                    showToast(t('settings.resetSuccess'), 'success');
+                } catch (err) {
+                    console.error('Reset failed:', err);
+                    showToast(t('settings.resetFailed', err), 'error');
+                }
+            });
+        }
     }
 }
 

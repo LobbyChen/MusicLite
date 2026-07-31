@@ -157,15 +157,16 @@
             <section class="settings-section">
                 <h2 data-i18n="settings.about">关于</h2>
                 <div class="about-info">
-                    <p><strong>MusicLite</strong>Beta 0.8.0</p>
+                    <p><strong>MusicLite</strong>Beta 0.8.1</p>
                     <p class="text-muted" data-i18n="settings.aboutDesc">轻量级离线音乐播放器</p>
                     <p class="text-muted" data-i18n="settings.builtWith">基于 Wails v2 构建</p>
                 </div>
                 <div class="setting-item" style="margin-top: 16px;">
                     <label data-i18n="settings.exportSettings">设置导入/导出</label>
-                    <div class="button-row" style="display: flex; gap: 10px; margin-top: 8px;">
+                    <div class="button-row" style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
                         <button class="btn btn-secondary" id="export-settings-btn" data-i18n="settings.exportSettings">导出设置</button>
                         <button class="btn btn-secondary" id="import-settings-btn" data-i18n="settings.importSettings">导入设置</button>
+                        <button class="btn btn-danger" id="reset-settings-btn" data-i18n="settings.resetSettings">重置为默认</button>
                     </div>
                 </div>
             </section>

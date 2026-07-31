@@ -112,6 +112,10 @@ const translations = {
         'settings.exportFailed': '导出失败: {0}',
         'settings.importSuccess': '设置导入成功',
         'settings.importFailed': '导入失败: {0}',
+        'settings.resetSettings': '重置为默认',
+        'settings.resetConfirm': '确定要将所有设置恢复为默认值吗？此操作无法撤销。',
+        'settings.resetSuccess': '已恢复默认设置',
+        'settings.resetFailed': '重置失败: {0}',
         'settings.fontPreviewPlayer': '音乐是心灵的呼吸 MusicLite 0123456789',
         'settings.fontPreviewLyrics': '天空的云啊 你要去哪里 ABCabc123',
 
@@ -230,6 +234,10 @@ const translations = {
         'settings.exportFailed': 'Export failed: {0}',
         'settings.importSuccess': 'Settings imported successfully',
         'settings.importFailed': 'Import failed: {0}',
+        'settings.resetSettings': 'Reset to Defaults',
+        'settings.resetConfirm': 'Are you sure you want to reset all settings to defaults? This cannot be undone.',
+        'settings.resetSuccess': 'Settings reset to defaults',
+        'settings.resetFailed': 'Reset failed: {0}',
         'settings.fontPreviewPlayer': 'Music is the breath of the soul MusicLite 0123456789',
         'settings.fontPreviewLyrics': 'Clouds in the sky, where are you going ABCabc123',
 
