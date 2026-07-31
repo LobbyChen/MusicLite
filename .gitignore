@@ -1,3 +1,7 @@
-build/bin
+build
 node_modules
 frontend/dist
+.VSCodeCounter
+*.db
+*.hintrc
+*.py

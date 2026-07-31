@@ -28,7 +28,7 @@ type App struct {
 	defaultFile     string
 	defaultTrackId  int64
 	database        *storage.Database
-	audioServerPort int           // 独立 HTTP 服务器端口，dev 模式下使用
+	audioServerPort int // 独立 HTTP 服务器端口，dev 模式下使用
 	audioServerLn   net.Listener
 	trayQuitting    bool // 托盘"退出"时置 true，让 OnBeforeClose 放行
 }
@@ -337,6 +337,11 @@ func (a *App) GetAllTracks() ([]format.MscData, error) {
 func (a *App) GetRandomTrack(currTrackId int64) format.MscData {
 	// 先获取一次现在的列表
 	currMscs, _ := a.GetAllTracks()
+	// 如果只有一个
+	if len(currMscs) == 1 {
+		// 直接返回
+		return currMscs[0]
+	}
 	var index int
 	for {
 		// 随机一个下标

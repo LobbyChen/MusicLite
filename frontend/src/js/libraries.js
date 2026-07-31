@@ -702,12 +702,15 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
 
         // 应用保存的音量（优先使用 localStorage 中实时调整的音量，其次使用设置中的默认音量）
+        // 注意：localStorage 里存的可能是 0~100（系统音量）或 0~1（旧版），需要兼容
         try {
             const savedVolume = localStorage.getItem('volume');
             if (savedVolume !== null) {
-                window.audioManager.audio.volume = parseFloat(savedVolume);
+                let vol = parseFloat(savedVolume);
+                if (vol > 1) vol = vol / 100; // 兼容 0~100 范围
+                window.audioManager.audio.volume = Math.max(0, Math.min(1, vol));
             } else {
-                // 从设置加载默认音量
+                // 从设置加载默认音量（0~100）
                 const { LoadSettings } = await import('../../wailsjs/go/main/App.js');
                 const settings = await LoadSettings();
                 window.audioManager.audio.volume = (settings.volume || 70) / 100;

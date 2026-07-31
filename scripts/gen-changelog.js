@@ -2,7 +2,7 @@
 // 用法：node scripts/gen-changelog.js
 // 输出：frontend/src/assets/changelog.json
 //
-// 解析 commit message 格式（基于现有提交约定）：
+// 解析 commit message 格式：
 //   MiscLite Beta 0.8.0 - 添加 1. xxx 2. xxx - 修改 1. xxx - 修复 1. xxx Author ... E-mail ...
 //
 // 输出结构：

@@ -213,7 +213,9 @@ class AudioManager {
 		}
 		const savedVolume = localStorage.getItem('volume');
 		if (savedVolume) {
-			this.audio.volume = parseFloat(savedVolume);
+			let vol = parseFloat(savedVolume);
+			if (vol > 1) vol = vol / 100; // 兼容 0~100 范围
+			this.audio.volume = Math.max(0, Math.min(1, vol));
 		}
 
 	}
