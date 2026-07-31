@@ -157,7 +157,7 @@
             <section class="settings-section">
                 <h2 data-i18n="settings.about">关于</h2>
                 <div class="about-info">
-                    <p><strong>MusicLite</strong>Beta 0.8.3</p>
+                    <p><strong>MusicLite</strong>Beta 0.8.4</p>
                     <p class="text-muted" data-i18n="settings.aboutDesc">轻量级离线音乐播放器</p>
                     <p class="text-muted" data-i18n="settings.builtWith">基于 Wails v2 构建</p>
                 </div>
@@ -170,7 +170,10 @@
                     </div>
                 </div>
                 <div class="setting-item" style="margin-top: 12px;">
-                    <button class="btn btn-secondary" id="changelog-btn" data-i18n="settings.changelog">更新记录</button>
+                    <div class="button-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" id="changelog-btn" data-i18n="settings.changelog">更新记录</button>
+                        <button class="btn btn-secondary" id="open-data-folder-btn" data-i18n="settings.openDataFolder">打开数据文件夹</button>
+                    </div>
                 </div>
             </section>
         </main>

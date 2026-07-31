@@ -1,6 +1,31 @@
 [
   {
     "date": "2026-07-31",
+    "version": "MiscLite Beta 0.8.3",
+    "sections": [
+      {
+        "type": "添加",
+        "items": [
+          "i18n新封装",
+          "Changelog功能"
+        ]
+      },
+      {
+        "type": "修改",
+        "items": [
+          "无"
+        ]
+      },
+      {
+        "type": "修复",
+        "items": [
+          "无 无效的问题"
+        ]
+      }
+    ]
+  },
+  {
+    "date": "2026-07-31",
     "version": "MiscLite Beta 0.8.1",
     "sections": [
       {

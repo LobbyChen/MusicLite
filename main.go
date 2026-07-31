@@ -16,6 +16,8 @@ import (
 var assets embed.FS
 
 func main() {
+	// 单实例控制：若有旧实例运行则 taskkill 后接管
+	ensureSingleInstance()
 	file := getFileInArgs()
 	// 创建应用实例并连接数据库
 	app, err := NewApp(dbFile, file)

@@ -34,6 +34,8 @@ export function ImportSettings():Promise<main.Settings>;
 
 export function LoadSettings():Promise<main.Settings>;
 
+export function OpenAppDataFolder():Promise<void>;
+
 export function ResetSettings():Promise<main.Settings>;
 
 export function SaveSettings(arg1:main.Settings):Promise<void>;

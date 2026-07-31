@@ -62,6 +62,10 @@ export function LoadSettings() {
   return window['go']['main']['App']['LoadSettings']();
 }
 
+export function OpenAppDataFolder() {
+  return window['go']['main']['App']['OpenAppDataFolder']();
+}
+
 export function ResetSettings() {
   return window['go']['main']['App']['ResetSettings']();
 }

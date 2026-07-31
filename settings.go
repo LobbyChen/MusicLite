@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 )
 
 // Settings 应用设置结构体
@@ -124,4 +126,20 @@ func (a *App) SaveSettings(s Settings) error {
 // ResetSettings 返回默认设置（不立即写盘，由前端再次调用 SaveSettings 持久化）
 func (a *App) ResetSettings() Settings {
 	return DefaultSettings()
+}
+
+// OpenAppDataFolder 在系统文件管理器中打开程序数据文件夹（%APPDATA%/MusicLite）
+func (a *App) OpenAppDataFolder() error {
+	dir := settingsDir()
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	switch runtime.GOOS {
+	case "windows":
+		return exec.Command("explorer.exe", dir).Start()
+	case "darwin":
+		return exec.Command("open", dir).Start()
+	default:
+		return exec.Command("xdg-open", dir).Start()
+	}
 }

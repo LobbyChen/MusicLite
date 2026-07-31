@@ -1,4 +1,4 @@
-import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings } from '../../wailsjs/go/main/App.js';
+import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder } from '../../wailsjs/go/main/App.js';
 import { initI18n, t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
@@ -56,6 +56,7 @@ const exportBtn = document.getElementById('export-settings-btn');
 const importBtn = document.getElementById('import-settings-btn');
 const resetBtn = document.getElementById('reset-settings-btn');
 const changelogBtn = document.getElementById('changelog-btn');
+const openDataFolderBtn = document.getElementById('open-data-folder-btn');
 const changelogModal = document.getElementById('changelogModal');
 const changelogClose = document.getElementById('changelogClose');
 const changelogBody = document.getElementById('changelogBody');
@@ -739,6 +740,16 @@ function setupEventListeners() {
         // Changelog button（更新记录）
         if (changelogBtn) {
             changelogBtn.addEventListener('click', openChangelogModal);
+        }
+        // 打开程序数据文件夹（%APPDATA%/MusicLite）
+        if (openDataFolderBtn) {
+            openDataFolderBtn.addEventListener('click', async () => {
+                try {
+                    await OpenAppDataFolder();
+                } catch (e) {
+                    showToast(t('settings.openDataFolderFailed'), 'error');
+                }
+            });
         }
         if (changelogClose) {
             changelogClose.addEventListener('click', closeChangelogModal);
