@@ -2,6 +2,52 @@ import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack ,
 import { OnFileDrop } from '../../wailsjs/runtime/runtime.js';
 import { openPlayer } from './player.js';
 
+// ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
+// 用法：applyMarquee(el) —— el 是承载歌名的容器（如 .mini-title）
+// 用 Web Animations API（element.animate）而非 CSS @keyframes + var()，
+// 因为后者在 WebView2 早期版本对 keyframes 内 var() 解析不可靠。
+function applyMarquee(el) {
+    if (!el) return;
+    const text = el.textContent || '';
+    let span = el.querySelector('.scroll-text');
+    // 文本变化时重新包裹 span
+    if (!span || span.dataset.text !== text) {
+        el.textContent = '';
+        span = document.createElement('span');
+        span.className = 'scroll-text';
+        span.textContent = text;
+        span.dataset.text = text;
+        el.appendChild(span);
+    }
+    // 清除上一次的动画（若有）
+    span.getAnimations().forEach(a => a.cancel());
+    el.classList.remove('marquee');
+    // 双 rAF：确保 display:none→flex 切换后布局完成再测量
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const overflow = span.scrollWidth - el.clientWidth;
+            if (overflow > 4) {
+                el.classList.add('marquee');
+                // 滚动时长随文本长度增长，6~20s
+                const duration = Math.max(6000, Math.min(20000, overflow * 60));
+                span.animate(
+                    [
+                        { transform: 'translateX(0)' },
+                        { transform: `translateX(-${overflow}px)` }
+                    ],
+                    {
+                        duration: duration,
+                        iterations: Infinity,
+                        direction: 'alternate',
+                        easing: 'ease-in-out'
+                    }
+                );
+            }
+        });
+    });
+}
+window.applyMarquee = applyMarquee;
+
 // ============ 标题栏窗口控制 ============
 document.getElementById('minimizeBtn')?.addEventListener('click', () => window.runtime?.WindowMinimise());
 document.getElementById('closeBtn')?.addEventListener('click', () => window.runtime?.Quit());
@@ -12,6 +58,10 @@ const mediaContainer = document.getElementById('media-container');
 const emptyOverlay = document.getElementById("empty-state");
 const dropOverlay = document.getElementById('drop-overlay');
 
+
+// 全局变量
+// 当前track
+var currentTrack;
 // ============ 拖放导入 ============
 // 用计数器区分真正离开窗口（dragenter/leave 会成对触发且嵌套）
 let dragDepth = 0;
@@ -202,14 +252,18 @@ function renderTracks(tracks) {
         `;
 
         // 点击卡片主体 → 打开播放器视图
-        card.addEventListener("click", (e) => {
+        card.addEventListener("click", async (e) => {
             if (e.target.closest('.card-actions')) return; // 点击按钮不打开
-            window.audioManager.loadTrack(track);
-            if (window.audioManager) {
-                // LoadTrack开始播放
+
+            const isCurrent = window.audioManager && track === currentTrack;
+            if (!isCurrent) {
+                // 不同曲目：加载并开始播放
+                window.audioManager.loadTrack(track);
                 window.audioManager.play();
+                currentTrack = track; // 更新当前曲目引用
             }
-            openPlayer(track.id);
+            // 打开播放器 overlay（loadTrack 内部会判断同曲不重载 audio，保持播放连续）
+            await openPlayer(track.id);
         });
 
         // 编辑按钮
@@ -518,7 +572,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (window.audioManager) {
         // 恢复上次播放状态
         window.audioManager.restore();
-        let currentTrack = window.audioManager.currentTrack;
+        currentTrack = window.audioManager.currentTrack;
         // 设置title（兼容 currentTrack 为空，且字段名大小写）
         if (currentTrack) {
             document.title = currentTrack.name || currentTrack.Name || 'MusicLite · 我的音乐库';
@@ -554,6 +608,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             miniPlayer.style.display = 'flex';
             setCover(miniCover, currentTrack.cover);
             miniTitle.textContent = currentTrack.name || '未知';
+            applyMarquee(miniTitle);
             miniArtist.textContent = currentTrack.artist || '--';
         }
 
@@ -587,7 +642,10 @@ document.addEventListener("DOMContentLoaded", async function () {
             miniPlayer.style.display = 'flex';
             setCover(miniCover, track.cover);
             miniTitle.textContent = track.name || '未知';
+            applyMarquee(miniTitle);
             miniArtist.textContent = track.artist || '--';
+            // 同步更新全局当前曲目引用，供卡片点击时判断是否为同一曲目
+            currentTrack = track;
         });
 
         // 曲目被清除时（删除检查）隐藏迷你播放器
@@ -605,7 +663,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         });
     }
 
-    // 展开播放器（SPA overlay，不跳转页面）—— 带删除检查
+    // 展开播放器—— 带删除检查
     if (miniExpand) {
         miniExpand.addEventListener('click', async () => {
             const currentTrack = window.audioManager?.currentTrack;

@@ -1,5 +1,43 @@
 import { LoadSettings, SaveSettings, GetInstalledFonts } from '../../wailsjs/go/main/App.js';
 
+// ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
+function applyMarquee(el) {
+    if (!el) return;
+    const text = el.textContent || '';
+    let span = el.querySelector('.scroll-text');
+    if (!span || span.dataset.text !== text) {
+        el.textContent = '';
+        span = document.createElement('span');
+        span.className = 'scroll-text';
+        span.textContent = text;
+        span.dataset.text = text;
+        el.appendChild(span);
+    }
+    span.getAnimations().forEach(a => a.cancel());
+    el.classList.remove('marquee');
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const overflow = span.scrollWidth - el.clientWidth;
+            if (overflow > 4) {
+                el.classList.add('marquee');
+                const duration = Math.max(6000, Math.min(20000, overflow * 60));
+                span.animate(
+                    [
+                        { transform: 'translateX(0)' },
+                        { transform: `translateX(-${overflow}px)` }
+                    ],
+                    {
+                        duration: duration,
+                        iterations: Infinity,
+                        direction: 'alternate',
+                        easing: 'ease-in-out'
+                    }
+                );
+            }
+        });
+    });
+}
+
 // ============ 标题栏窗口控制 ============
 document.getElementById('minimizeBtn')?.addEventListener('click', () => window.runtime?.WindowMinimise());
 document.getElementById('closeBtn')?.addEventListener('click', () => window.runtime?.Quit());
@@ -9,6 +47,8 @@ const backBtn = document.getElementById('backBtn');
 const themeButtons = document.querySelectorAll('.theme-btn');
 const playerFontSelect = document.getElementById('player-font');
 const lyricsFontSelect = document.getElementById('lyrics-font');
+const playerFontPreview = document.getElementById('player-font-preview');
+const lyricsFontPreview = document.getElementById('lyrics-font-preview');
 const volumeSlider = document.getElementById('volume-slider');
 const volumeValue = document.getElementById('volume-value');
 const baseFontSizeSlider = document.getElementById('base-font-size');
@@ -182,12 +222,19 @@ function initMiniPlayer() {
     const miniExpand = document.getElementById('mini-expand');
     if (!miniPlayer || !window.audioManager) return;
 
+    // 显示 mini-player 时，同步在 body 上打标，让 save-bar 上移避免遮挡
+    const showMiniPlayer = () => {
+        miniPlayer.style.display = 'flex';
+        document.body.classList.add('has-mini-player');
+    };
+
     // 从 localStorage 恢复当前曲目
     window.audioManager.restore();
     const currentTrack = window.audioManager.currentTrack;
     if (currentTrack && currentTrack.src) {
-        miniPlayer.style.display = 'flex';
+        showMiniPlayer();
         miniTitle.textContent = currentTrack.name || '未知';
+        applyMarquee(miniTitle);
         miniArtist.textContent = currentTrack.artist || '--';
         setMiniCover(miniCover, currentTrack.cover);
         // 同步播放按钮图标
@@ -220,8 +267,9 @@ function initMiniPlayer() {
         miniPauseIcon.style.display = 'none';
     });
     window.audioManager.on('trackloaded', (track) => {
-        miniPlayer.style.display = 'flex';
+        showMiniPlayer();
         miniTitle.textContent = track.name || '未知';
+        applyMarquee(miniTitle);
         miniArtist.textContent = track.artist || '--';
         setMiniCover(miniCover, track.cover);
     });
@@ -278,6 +326,9 @@ function applySettingsToUI(s) {
     const lf = normalizeFontOptionValue(s.lyrics_font || "'Consolas', 'Monaco', monospace", lyricsFontSelect);
     playerFontSelect.value = pf;
     lyricsFontSelect.value = lf;
+    // 同步字体预览
+    if (playerFontPreview) playerFontPreview.style.fontFamily = pf + FONT_FALLBACK;
+    if (lyricsFontPreview) lyricsFontPreview.style.fontFamily = lf;
 
     // Volume
     volumeSlider.value = s.volume || 70;
@@ -421,6 +472,8 @@ function setupEventListeners() {
         // 实时预览：同时设置 <html> 和 <body>
         document.documentElement.style.setProperty('--player-font', playerFontSelect.value);
         document.body.style.fontFamily = playerFontSelect.value + FONT_FALLBACK;
+        // 更新字体预览
+        if (playerFontPreview) playerFontPreview.style.fontFamily = playerFontSelect.value + FONT_FALLBACK;
         markChanged();
     });
 
@@ -429,6 +482,8 @@ function setupEventListeners() {
         currentSettings.lyrics_font = lyricsFontSelect.value;
         // 实时预览
         document.documentElement.style.setProperty('--lyrics-font', lyricsFontSelect.value);
+        // 更新字体预览
+        if (lyricsFontPreview) lyricsFontPreview.style.fontFamily = lyricsFontSelect.value;
         markChanged();
     });
 

@@ -68,6 +68,7 @@ class AudioManager {
 	
 	loadTrack(track) {
 		if (!track || !track.src) return;
+        if (track === this.currentTrack ) return;
 		this.currentTrack = track;
         document.title = track.name || track.Name || 'MusicLite';
 		this.audio.src = track.src;

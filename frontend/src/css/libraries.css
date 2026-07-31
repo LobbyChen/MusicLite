@@ -585,6 +585,7 @@ h2 {
 
 .mini-info {
     min-width: 0;
+    overflow: hidden;
 }
 
 .mini-title {
@@ -592,7 +593,8 @@ h2 {
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
+    /* 必须约束宽度，否则 block + nowrap 的 clientWidth 会等于内容宽度 */
+    max-width: 100%;
 }
 
 .mini-artist {
@@ -635,12 +637,13 @@ h2 {
     width: 40px;
     height: 40px;
     background: var(--accent-color);
-    color: white;
+    /* 图标颜色用 bg-color 而非硬编码 white，保证与主题背景反相可见 */
+    color: var(--bg-color);
 }
 
 .mini-play-btn:hover {
-    background: #1ed760;
-    color: white;
+    background: var(--accent-hover, var(--accent-color));
+    color: var(--bg-color);
 }
 
 .mini-player-right {
@@ -894,6 +897,8 @@ body.player-active > .mini-player {
 
 .info-and-controls {
     flex-grow: 1;
+    min-width: 0;
+    /* 注意：不能用 overflow:hidden，否则会裁剪 .btn-play 的 hover scale 和阴影 */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -902,6 +907,9 @@ body.player-active > .mini-player {
 
 .track-info {
     margin-bottom: 12px;
+    /* flex 列子项默认 min-width:auto 会被内容撑开，强制 0 让宽度受父级约束 */
+    min-width: 0;
+    overflow: hidden;
 }
 
 .track-name {
@@ -911,7 +919,8 @@ body.player-active > .mini-player {
     letter-spacing: -0.5px;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
+    /* 必须约束宽度，否则 block + nowrap 的 clientWidth 会等于内容宽度 */
+    max-width: 100%;
 }
 
 .artist-name {
@@ -1012,6 +1021,66 @@ body.player-active > .mini-player {
 
 .lyrics-mode-btn svg {
     fill: currentColor;
+}
+
+/* 歌词翻找按钮组（上一句 / 模式切换 / 下一句） */
+.lyrics-nav-group {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    z-index: 5;
+}
+
+.lyrics-nav-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+
+.lyrics-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.lyrics-nav-btn:active {
+    transform: scale(0.92);
+}
+
+.lyrics-nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.lyrics-nav-btn svg {
+    fill: currentColor;
+}
+
+/* 全屏模式下的按钮组定位（与原 fullscreen-mode-btn 一致） */
+.fullscreen-nav-group {
+    top: 16px;
+    right: 16px;
+    gap: 4px;
+}
+
+.fullscreen-nav-group .lyrics-nav-btn {
+    width: 32px;
+    height: 32px;
+}
+
+/* 当 nav-group 存在时，隐藏原来的独立 mode-btn 定位（mode-btn 在 group 内不再绝对定位） */
+.lyrics-nav-group .lyrics-mode-btn {
+    position: static;
 }
 
 /* 全屏模式下的切换按钮定位 */
@@ -1192,7 +1261,6 @@ body.player-active > .mini-player {
     display: flex;
     align-items: center;
     gap: 25px;
-    margin-left: 0;
 }
 
 /* 播放器内的按钮样式（覆盖模态框 .btn） */
@@ -1228,14 +1296,14 @@ body.player-active > .mini-player {
 .player-overlay .btn-play {
     width: 56px;
     height: 56px;
-    background-color: var(--text-primary);
+    background-color: var(--player-btn-bg, var(--text-primary));
     border-radius: 50%;
-    color: var(--bg-color);
+    color: var(--player-btn-fg, var(--bg-color));
 }
 
 .player-overlay .btn-play:hover {
-    background-color: #e0e0e0;
-    color: var(--bg-color);
+    background-color: var(--player-btn-bg-hover, #e0e0e0);
+    color: var(--player-btn-fg, var(--bg-color));
     transform: scale(1.05);
 }
 
@@ -1402,7 +1470,7 @@ body.player-active > .mini-player {
     margin-bottom: 6px;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
+    /* max-width:600px 约束了宽度，但还需 max-width:100% 避免父容器收缩时溢出 */
     max-width: 600px;
 }
 
@@ -1549,3 +1617,18 @@ body.player-active > .mini-player {
     0% { transform: scale(0.9); }
     100% { transform: scale(1); }
 }
+
+/* ============================================================ */
+/* ============ 长歌名滚动显示 ================================== */
+/* ============================================================ */
+/* 容器内的文本节点统一包裹为 .scroll-text，始终 inline-block 以便准确测量宽度 */
+.mini-title > .scroll-text,
+.track-name > .scroll-text,
+.fullscreen-track-name > .scroll-text {
+    display: inline-block;
+    padding-right: 40px;
+    white-space: nowrap;
+    will-change: transform;
+}
+
+/* 仅当容器带 .marquee 类时，由 JS 用 Web Animations API 驱动 translateX 动画 */

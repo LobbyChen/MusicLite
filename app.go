@@ -26,6 +26,7 @@ import (
 type App struct {
 	ctx             context.Context
 	defaultFile     string
+	defaultTrackId  int64
 	database        *storage.Database
 	audioServerPort int // 独立 HTTP 服务器端口，dev 模式下使用
 	audioServerLn   net.Listener
@@ -91,6 +92,11 @@ func (a *App) startup(ctx context.Context) {
 
 // shutdown 应用退出前触发，关闭数据库连接和音频服务器
 func (a *App) shutdown(ctx context.Context) {
+	// 检查是否有命令行启动的文件
+	if a.defaultFile != "" {
+		// 从库里面剔除
+		a.database.DeleteTrack(a.defaultTrackId)
+	}
 	if a.audioServerLn != nil {
 		a.audioServerLn.Close()
 	}
@@ -180,6 +186,7 @@ func (a *App) GetFileInArgs() format.MscData {
 	if r.CoverMIME != "" {
 		track.CoverURI = base + "/cover/" + strconv.FormatInt(r.ID, 10)
 	}
+	a.defaultTrackId = track.ID
 	return track
 }
 

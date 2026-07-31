@@ -92,7 +92,133 @@ function applyAccentColor(color, theme) {
         root.style.setProperty(k, v);
         if (body) body.style.setProperty(k, v);
     }
+    // 主题色变化后，如果当前有封面，需要重新评估播放器对比度
+    // （因为 --text-primary/--text-secondary 可能变了，但 player-overlay 上的覆盖还在）
+    PlayerContrast.reapply();
+    // 同时调整设置页 save-bar 的文字对比度（save-bar 背景是 accent-color）
+    adjustSaveBarContrast(c);
 }
+
+// 设置页 save-bar 背景是 accent-color，当主题色偏亮时白字看不清
+// 根据主题色亮度决定 save-bar 文字/按钮颜色
+function adjustSaveBarContrast(accentHex) {
+    const saveBar = document.querySelector('.save-bar');
+    if (!saveBar) return;
+    // 简单亮度估算：解析 hex → RGB → Rec.601 灰度
+    let hex = (accentHex || '').trim().replace(/^#/, '');
+    // 展开 3 位短 hex (#abc → #aabbcc)
+    if (hex.length === 3) {
+        hex = hex.split('').map(c => c + c).join('');
+    }
+    let brightness = 0.5;
+    if (/^[0-9a-f]{6}$/i.test(hex)) {
+        const r = parseInt(hex.slice(0, 2), 16) / 255;
+        const g = parseInt(hex.slice(2, 4), 16) / 255;
+        const b = parseInt(hex.slice(4, 6), 16) / 255;
+        brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+    }
+    if (brightness > 0.6) {
+        // 主题色偏亮 → save-bar 用深色文字和深色按钮
+        saveBar.style.setProperty('--save-fg', '#1a1a1a');
+        saveBar.style.setProperty('--save-btn-bg', '#1a1a1a');
+        saveBar.style.setProperty('--save-btn-fg', '#' + hex);
+    } else {
+        // 主题色偏暗 → save-bar 用白色文字和白色按钮（原样式）
+        saveBar.style.setProperty('--save-fg', '#ffffff');
+        saveBar.style.setProperty('--save-btn-bg', '#ffffff');
+        saveBar.style.setProperty('--save-btn-fg', '#' + hex);
+    }
+}
+
+// ============ 播放器对比度自动调整 ============
+// 封面作为 player-overlay 的模糊背景（opacity 0.75），当封面亮度与文字颜色对比度过低时，
+// 在 #player-overlay 上覆盖 --text-primary / --text-secondary，只影响播放器子树。
+const PlayerContrast = {
+    lastCoverUrl: null,
+    lastBrightness: 0.5, // 0=纯黑 1=纯白
+
+    // 分析图片平均亮度（0-1），失败返回 0.5
+    analyzeBrightness(url) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                try {
+                    const size = 32;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = size;
+                    canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, size, size);
+                    const data = ctx.getImageData(0, 0, size, size).data;
+                    let total = 0;
+                    const count = data.length / 4;
+                    for (let i = 0; i < data.length; i += 4) {
+                        // 感知亮度公式（Rec. 601）
+                        total += (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) / 255;
+                    }
+                    resolve(total / count);
+                } catch (e) {
+                    // canvas 被跨域污染，无法读取像素，返回中性值
+                    resolve(0.5);
+                }
+            };
+            img.onerror = () => resolve(0.5);
+            img.src = url;
+        });
+    },
+
+    // 根据亮度（0-1）调整 #player-overlay 上的文字颜色覆盖
+    apply(brightness) {
+        this.lastBrightness = brightness;
+        const overlay = document.getElementById('player-overlay');
+        if (!overlay) return;
+        if (brightness > 0.6) {
+            // 封面偏亮 → 用深色文字保证对比度
+            overlay.style.setProperty('--text-primary', '#1a1a1a');
+            overlay.style.setProperty('--text-secondary', '#555555');
+            // 播放按钮：背景用浅色（与文字反相），图标用深色保证可见
+            overlay.style.setProperty('--player-btn-bg', '#ffffff');
+            overlay.style.setProperty('--player-btn-bg-hover', '#e0e0e0');
+            overlay.style.setProperty('--player-btn-fg', '#1a1a1a');
+        } else if (brightness < 0.4) {
+            // 封面偏暗 → 用浅色文字
+            overlay.style.setProperty('--text-primary', '#ffffff');
+            overlay.style.setProperty('--text-secondary', '#c0c0c0');
+            // 播放按钮：背景用深色（与文字反相），图标用浅色保证可见
+            overlay.style.setProperty('--player-btn-bg', '#1a1a1a');
+            overlay.style.setProperty('--player-btn-bg-hover', '#333333');
+            overlay.style.setProperty('--player-btn-fg', '#ffffff');
+        } else {
+            // 中间区间：清除覆盖，回退到主题色
+            overlay.style.removeProperty('--text-primary');
+            overlay.style.removeProperty('--text-secondary');
+            // 播放按钮回退：背景=text-primary，图标=bg-color（默认主题对比已足够）
+            overlay.style.removeProperty('--player-btn-bg');
+            overlay.style.removeProperty('--player-btn-bg-hover');
+            overlay.style.removeProperty('--player-btn-fg');
+        }
+    },
+
+    // 供 player.js 在 loadTrack 时调用：根据封面 URL 异步调整
+    async adjustFromCover(url) {
+        this.lastCoverUrl = url;
+        if (!url) {
+            // 无封面：清除覆盖，回到主题色
+            this.apply(0.5);
+            return;
+        }
+        const brightness = await this.analyzeBrightness(url);
+        // 封面加载是异步的，若期间又切了歌，以最新的为准
+        if (this.lastCoverUrl !== url) return;
+        this.apply(brightness);
+    },
+
+    // 主题色变化后重新评估（用上次测得的亮度，避免重新读图）
+    reapply() {
+        if (this.lastCoverUrl) this.apply(this.lastBrightness);
+    },
+};
 
 const SettingsManager = {
     cached: null,
@@ -172,6 +298,8 @@ const SettingsManager = {
 };
 
 window.MusicLiteSettings = SettingsManager;
+// 暴露对比度调整器，供 player.js 在 loadTrack 时调用
+window.MusicLiteSettings.PlayerContrast = PlayerContrast;
 
 // 页面加载时自动应用
 if (document.readyState === 'loading') {

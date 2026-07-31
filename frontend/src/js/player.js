@@ -2,6 +2,44 @@
 // 与库视图共享同一个 window.audioManager，切换视图时 audio 不销毁，播放保持连续。
 import { GetTrack, LoadSettings, GetNextTracks,GetPrevTracks, GetRandomTrack } from '../../wailsjs/go/main/App.js';
 
+// ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
+function applyMarquee(el) {
+    if (!el) return;
+    const text = el.textContent || '';
+    let span = el.querySelector('.scroll-text');
+    if (!span || span.dataset.text !== text) {
+        el.textContent = '';
+        span = document.createElement('span');
+        span.className = 'scroll-text';
+        span.textContent = text;
+        span.dataset.text = text;
+        el.appendChild(span);
+    }
+    span.getAnimations().forEach(a => a.cancel());
+    el.classList.remove('marquee');
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const overflow = span.scrollWidth - el.clientWidth;
+            if (overflow > 4) {
+                el.classList.add('marquee');
+                const duration = Math.max(6000, Math.min(20000, overflow * 60));
+                span.animate(
+                    [
+                        { transform: 'translateX(0)' },
+                        { transform: `translateX(-${overflow}px)` }
+                    ],
+                    {
+                        duration: duration,
+                        iterations: Infinity,
+                        direction: 'alternate',
+                        easing: 'ease-in-out'
+                    }
+                );
+            }
+        });
+    });
+}
+
 // ============ DOM 元素（来自 libraries.html 的 player-overlay） ============
 const overlay = document.getElementById('player-overlay');
 const playBtn = document.getElementById('playBtn');
@@ -28,6 +66,11 @@ const nextBtn = document.getElementById('nextBtn');
 // 模式切换按钮
 const expandFullscreenBtn = document.getElementById('expandFullscreenBtn');
 const collapseCardBtn = document.getElementById('collapseCardBtn');
+// 歌词翻找按钮（卡片 + 全屏）
+const lyricPrevBtn = document.getElementById('lyricPrevBtn');
+const lyricNextBtn = document.getElementById('lyricNextBtn');
+const fsLyricPrevBtn = document.getElementById('fsLyricPrevBtn');
+const fsLyricNextBtn = document.getElementById('fsLyricNextBtn');
 
 // 全屏歌词 DOM
 const fullscreenLyricsEl = document.getElementById('fullscreenLyrics');
@@ -160,28 +203,27 @@ function updateLyricsScroll(currentTime) {
     if (newIndex === currentLyricIndex) return;
     currentLyricIndex = newIndex;
 
-    // 小卡片高亮与滚动
+    // 小卡片高亮与滚动（用 offsetTop/offsetHeight 实测精准居中，避免硬编码行高不准）
     lyricsContentEl.querySelectorAll('.lyric-line.active').forEach(el => el.classList.remove('active'));
     if (newIndex >= 0) {
         const activeEl = lyricsContentEl.querySelector(`.lyric-line[data-index="${newIndex}"]`);
         if (activeEl) {
             activeEl.classList.add('active');
-            const lineHeight = 30;
             const wrapperHeight = lyricsWrapperEl.clientHeight;
-            const targetOffset = (newIndex + 2) * lineHeight - wrapperHeight / 2 + lineHeight / 2;
+            // 当前行中心相对于 content 顶部的偏移 - wrapper 高度一半 = 需要的位移
+            const targetOffset = activeEl.offsetTop + activeEl.offsetHeight / 2 - wrapperHeight / 2;
             lyricsContentEl.style.transform = `translateY(${-targetOffset}px)`;
         }
     }
 
-    // 全屏歌词高亮与滚动
+    // 全屏歌词高亮与滚动（同样用实测偏移精准居中）
     fullscreenLyricsContentEl.querySelectorAll('.fs-lyric-line.active').forEach(el => el.classList.remove('active'));
     if (newIndex >= 0) {
         const fsActiveEl = fullscreenLyricsContentEl.querySelector(`.fs-lyric-line[data-index="${newIndex}"]`);
         if (fsActiveEl) {
             fsActiveEl.classList.add('active');
-            const lineHeight = 56;
             const wrapperHeight = fullscreenLyricsWrapperEl.clientHeight;
-            const targetOffset = (newIndex + 4) * lineHeight - wrapperHeight / 2 + lineHeight / 2;
+            const targetOffset = fsActiveEl.offsetTop + fsActiveEl.offsetHeight / 2 - wrapperHeight / 2;
             fullscreenLyricsContentEl.style.transform = `translateY(${-targetOffset}px)`;
         }
     }
@@ -218,6 +260,7 @@ function openFullscreenLyrics() {
     // 切换到全屏前收起卡片
     closeLyricsCard();
     fullscreenTrackNameEl.textContent = currentTrackData.name || '未知';
+    applyMarquee(fullscreenTrackNameEl);
     fullscreenArtistNameEl.textContent = currentTrackData.artist || '--';
     fullscreenBgEl.style.backgroundImage = bgLayerEl.style.backgroundImage;
     fullscreenLyricsEl.classList.add('active');
@@ -238,6 +281,28 @@ function switchFullscreenToCard() {
     openLyricsCard();
 }
 
+// ============ 歌词翻找（上一句 / 下一句） ============
+// direction: -1 = 上一句, +1 = 下一句
+// 跳转 audio.currentTime 到目标歌词时间，并立即手动刷新高亮（不等 timeupdate）
+function seekLyric(direction) {
+    if (!parsedLyrics || parsedLyrics.length === 0) return;
+    let targetIndex;
+    if (direction < 0) {
+        // 上一句：当前未开始或第一句 → 跳到第一句；否则跳到前一句
+        targetIndex = currentLyricIndex <= 0 ? 0 : currentLyricIndex - 1;
+    } else {
+        // 下一句：当前是最后一句 → 停留在最后一句；否则跳到下一句
+        targetIndex = Math.min(currentLyricIndex + 1, parsedLyrics.length - 1);
+        if (currentLyricIndex < 0) targetIndex = 0;
+    }
+    const targetTime = parsedLyrics[targetIndex].time;
+    if (!isNaN(targetTime)) {
+        audio.currentTime = targetTime;
+    }
+    // 手动刷新一次高亮和滚动，避免等待 timeupdate（~250ms 延迟）
+    updateLyricsScroll(targetTime);
+}
+
 // 点击歌词预览区域 → toggle 全屏歌词展开/收起
 lyricsToggleEl.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -256,6 +321,16 @@ collapseCardBtn.addEventListener('click', (e) => {
     switchFullscreenToCard();
 });
 
+// 歌词翻找按钮（卡片 + 全屏，点击不冒泡，避免触发"点击空白收起"逻辑）
+[lyricPrevBtn, lyricNextBtn, fsLyricPrevBtn, fsLyricNextBtn].forEach(btn => {
+    if (!btn) return;
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const direction = (btn === lyricPrevBtn || btn === fsLyricPrevBtn) ? -1 : 1;
+        seekLyric(direction);
+    });
+});
+
 // 点击全屏歌词任意处或按 Esc 退出（回到收起状态）
 fullscreenLyricsEl.addEventListener('click', (e) => {
     // 点击歌词行本身不退出（让跳转逻辑生效）
@@ -263,6 +338,14 @@ fullscreenLyricsEl.addEventListener('click', (e) => {
     // 点击切换按钮不退出
     if (e.target.closest('#collapseCardBtn')) return;
     closeFullscreenLyrics();
+});
+
+// 点击歌词区域外的空白处 → 收起卡片歌词
+overlay.addEventListener('click', (e) => {
+    if (!lyricsCardExpanded) return;
+    // 点击歌词区域内的内容不收起（让卡片内部交互生效）
+    if (e.target.closest('#lyricsArea')) return;
+    closeLyricsCard();
 });
 
 // ============ 进度与音量工具函数 ============
@@ -409,6 +492,36 @@ function updateProgress() {
     if (seekSlider.disabled) seekSlider.disabled = false;
 }
 
+// ============ 进度条平滑滚动（rAF 循环） ============
+// timeupdate 事件约 250ms 触发一次，进度条会"一跳一跳"。
+// 播放期间用 requestAnimationFrame 每帧根据 audio.currentTime 更新 fill 和 thumb，
+// 两者同源（都用 audio.currentTime 计算）保证完全同步。
+let progressRafId = null;
+function startSmoothProgress() {
+    if (progressRafId) return;
+    const tick = () => {
+        // 拖动中或无时长时停止平滑更新，交给 timeupdate
+        if (isSeeking || !audio.duration || isNaN(audio.duration) || audio.paused) {
+            progressRafId = null;
+            return;
+        }
+        const percent = (audio.currentTime / audio.duration) * 100;
+        // fill 和 thumb 同源同步更新
+        seekSlider.value = percent;
+        updateProgressFill('seekProgress', percent);
+        currentTimeEl.textContent = formatTime(audio.currentTime);
+        updateLyricsScroll(audio.currentTime);
+        progressRafId = requestAnimationFrame(tick);
+    };
+    progressRafId = requestAnimationFrame(tick);
+}
+function stopSmoothProgress() {
+    if (progressRafId) {
+        cancelAnimationFrame(progressRafId);
+        progressRafId = null;
+    }
+}
+
 function setProgress() {
     if (!audio.duration || isNaN(audio.duration)) return;
     const newTime = (seekSlider.value / 100) * audio.duration;
@@ -427,6 +540,7 @@ function setVolume() {
 function loadTrack(data) {
     currentTrackData = data;
     trackNameEl.textContent = data.name || "Unknown Title";
+    applyMarquee(trackNameEl);
     document.title = trackNameEl.textContent;
     artistNameEl.textContent = data.artist || "Unknown Artist";
     const imgUrl = data.cover || "";
@@ -438,6 +552,10 @@ function loadTrack(data) {
     coverImgEl.style.display = 'flex';
     bgLayerEl.style.backgroundImage = imgUrl ? `url('${imgUrl}')` : 'none';
 
+    // 根据封面亮度自动调整播放器文字对比度（避免封面背景导致控件看不清）
+    const pc = window.MusicLiteSettings?.PlayerContrast;
+    if (pc) pc.adjustFromCover(imgUrl);
+
     // 共享 audioManager：仅在曲目变化时重新加载，保持同曲播放连续
     if (window.audioManager) {
         const savedTrackJson = localStorage.getItem('currentTrack');
@@ -447,7 +565,6 @@ function loadTrack(data) {
             // 不同曲目：正常加载（会重置播放位置）
             window.audioManager.loadTrack(data);
         }
-        // 同一首曲目：不重新加载，audio 继续保持当前播放状态（无中断）
     }
 
     renderLyrics(parseLyrics(data.lyrics));
@@ -476,10 +593,16 @@ audio.addEventListener('loadedmetadata', () => {
     // overlay 打开时同步一次进度
     if (overlay.classList.contains('active')) updateProgress();
 });
-audio.addEventListener('play', syncPlayState);
+audio.addEventListener('play', () => {
+    syncPlayState();
+    startSmoothProgress(); // 播放时启动平滑进度更新
+});
 nextBtn.addEventListener('click', playNextTrack);
 prevBtn.addEventListener('click', playPrevTrack);
-audio.addEventListener('pause', syncPlayState);
+audio.addEventListener('pause', () => {
+    syncPlayState();
+    stopSmoothProgress(); // 暂停时停止平滑更新，最终状态由 timeupdate 兜底
+});
 audio.addEventListener('error', (e) => {
     console.error("Audio Load Error:", e);
     trackNameEl.textContent = "Load Error";
@@ -512,6 +635,8 @@ seekSlider.addEventListener('input', () => {
 const finishSeeking = () => {
     isSeeking = false;
     setProgress();
+    // 拖动结束后，若仍在播放，重启平滑更新
+    if (!audio.paused) startSmoothProgress();
 };
 seekSlider.addEventListener('change', finishSeeking);
 seekSlider.addEventListener('mouseup', finishSeeking);
@@ -579,6 +704,7 @@ async function openPlayer(trackId) {
 
     try {
         const track = await GetTrack(Number(trackId));
+        // loadTrack 内部会判断同曲不重载 audio，保持同曲播放连续
         loadTrack(track);
         return true;
     } catch (err) {

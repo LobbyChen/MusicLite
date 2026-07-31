@@ -171,6 +171,10 @@ main {
     padding: 0 40px 180px;
     overflow: auto;
 }
+/* 有迷你播放器时，main 再加 72px 底部留白避免被遮挡 */
+body.has-mini-player main {
+    padding-bottom: 252px;
+}
 
 .settings-section {
     margin-bottom: 40px;
@@ -311,18 +315,24 @@ main {
 
 /* Save bar */
 .save-bar {
+    z-index: 999;
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     background: var(--accent-color);
-    color: white;
+    /* 文字颜色自适应：浅色主题色时用深色文字，深色主题色时用白色 */
+    color: var(--save-fg, #ffffff);
     padding: 16px 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 100;
+    transition: bottom 0.2s ease;
+}
+/* 有迷你播放器时，save-bar 上移到 mini-player 上方，避免被遮挡 */
+body.has-mini-player .save-bar {
+    bottom: 72px;
 }
 
 .btn {
@@ -338,12 +348,14 @@ main {
     transform: scale(0.95);
 }
 
-.btn-primary {
-    background-color: white;
-    color: var(--accent-color);
+/* save-bar 内的按钮：背景和文字反相，跟随 save-bar 自适应 */
+/* 用 .save-bar .btn-primary 提高优先级，覆盖 libraries.css 后加载的 .btn-primary */
+.save-bar .btn-primary {
+    background-color: var(--save-btn-bg);
+    color: var(--save-btn-fg);
 }
 
-.btn-primary:hover {
+.save-bar .btn-primary:hover {
     opacity: 0.9;
 }
 
@@ -579,4 +591,22 @@ main {
 .font-select option {
     background: var(--card-bg);
     color: var(--text-primary);
+}
+
+/* ========== 字体预览 ========== */
+.font-preview {
+    margin-top: 10px;
+    padding: 14px 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--accent-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    line-height: 1.6;
+    /* font-family 由 JS 实时设置 */
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    transition: font-family 0.15s;
 }
