@@ -25,6 +25,7 @@ type Settings struct {
 	AnimationLevel int    `json:"animation_level"` // 界面动画级别：0=无 1=基础 2=增强(默认) 3=华丽
 	VolumeMode     string `json:"volume_mode"`     // 音量模式："synth"（合成器，默认）| "master"（系统主音量）
 	MaxLyricLines  int    `json:"max_lyric_lines"` // 同一时间戳最多允许同时显示歌词行数（1-10，默认1）
+	SortMode       string `json:"sort_mode"`       // 音乐库排序方式："recent"（默认）| "title" | "artist"
 }
 
 // DefaultSettings 返回默认设置
@@ -45,6 +46,7 @@ func DefaultSettings() Settings {
 		AnimationLevel: 2,
 		VolumeMode:     "synth",
 		MaxLyricLines:  1,
+		SortMode:       "recent",
 	}
 }
 
@@ -167,6 +169,10 @@ func (a *App) LoadSettings() Settings {
 	}
 	if s.MaxLyricLines > 10 {
 		s.MaxLyricLines = 10
+	}
+	// SortMode 兼容旧版设置文件（缺失或非法时用默认值 "recent"）
+	if s.SortMode != "recent" && s.SortMode != "title" && s.SortMode != "artist" {
+		s.SortMode = def.SortMode
 	}
 
 	return s

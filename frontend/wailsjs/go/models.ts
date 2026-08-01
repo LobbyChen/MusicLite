@@ -8,6 +8,7 @@ export namespace format {
 	    src: string;
 	    cover: string;
 	    lyrics: string;
+	    importedAt: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new MscData(source);
@@ -22,6 +23,7 @@ export namespace format {
 	        this.src = source["src"];
 	        this.cover = source["cover"];
 	        this.lyrics = source["lyrics"];
+	        this.importedAt = source["importedAt"];
 	    }
 	}
 
@@ -115,6 +117,7 @@ export namespace main {
 	    animation_level: number;
 	    volume_mode: string;
 	    max_lyric_lines: number;
+	    sort_mode: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -137,6 +140,7 @@ export namespace main {
 	        this.animation_level = source["animation_level"];
 	        this.volume_mode = source["volume_mode"];
 	        this.max_lyric_lines = source["max_lyric_lines"];
+	        this.sort_mode = source["sort_mode"];
 	    }
 	}
 

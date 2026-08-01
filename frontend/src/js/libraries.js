@@ -1,4 +1,4 @@
-import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths, GetTotalListenTime, PickImageFile, PickLyricsFile, ReadFileForEdit, PackShare } from '../../wailsjs/go/main/App.js';
+import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths, GetTotalListenTime, PickImageFile, PickLyricsFile, ReadFileForEdit, PackShare, GetNextTracks, GetPrevTracks, GetRandomTrack } from '../../wailsjs/go/main/App.js';
 import { OnFileDrop } from '../../wailsjs/runtime/runtime.js';
 import { openPlayer } from './player.js';
 import { initI18n, t } from './i18n.js';
@@ -63,6 +63,13 @@ const dropOverlay = document.getElementById('drop-overlay');
 // 全局变量
 // 当前track
 var currentTrack;
+// 音乐库缓存与视图状态
+let allTracks = [];       // 后端返回的全部曲目（未过滤、未排序）
+let currentQuery = '';    // 当前搜索关键词
+let currentSort = 'recent'; // 当前排序方式：recent | title | artist
+
+// 正在播放的动态条指示器（纯 CSS 动画，无 emoji）
+const NP_BARS_HTML = '<span class="np-bars" aria-hidden="true"><i></i><i></i><i></i></span>';
 // ============ 拖放导入 ============
 // 用计数器区分真正离开窗口（dragenter/leave 会成对触发且嵌套）
 let dragDepth = 0;
@@ -252,6 +259,38 @@ async function getListMode() {
     }
 }
 
+// 同步读取列表模式（仅从缓存，未命中返回 'card'）
+function getListModeSync() {
+    try {
+        const cached = localStorage.getItem('cachedSettings');
+        if (cached) {
+            const s = JSON.parse(cached);
+            if (s.list_mode === 'card' || s.list_mode === 'list') return s.list_mode;
+        }
+    } catch (e) {}
+    return 'card';
+}
+
+// 获取当前排序方式：优先缓存，未命中读后端设置
+async function getSortMode() {
+    try {
+        const cached = localStorage.getItem('cachedSettings');
+        if (cached) {
+            const s = JSON.parse(cached);
+            if (s.sort_mode === 'recent' || s.sort_mode === 'title' || s.sort_mode === 'artist') {
+                return s.sort_mode;
+            }
+        }
+    } catch (e) {}
+    try {
+        const { LoadSettings } = await import('../../wailsjs/go/main/App.js');
+        const s = await LoadSettings();
+        return (s.sort_mode === 'recent' || s.sort_mode === 'title' || s.sort_mode === 'artist') ? s.sort_mode : 'recent';
+    } catch (e) {
+        return 'recent';
+    }
+}
+
 // 同步主页开关 UI 与容器 class 到指定模式（不写设置）
 function applyListMode(mode) {
     const isList = mode === 'list';
@@ -264,11 +303,21 @@ function applyListMode(mode) {
     }
 }
 
-// 切换并持久化模式：保存到后端 + cachedSettings + 即时重渲染
+// 同步排序控件高亮到指定模式
+function applySortMode(mode) {
+    currentSort = mode;
+    const control = document.getElementById('sortControl');
+    if (!control) return;
+    control.querySelectorAll('.sort-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.sort === mode);
+    });
+}
+
+// 切换并持久化列表模式：保存到后端 + cachedSettings + 即时重渲染
 async function setListMode(mode) {
     if (mode !== 'card' && mode !== 'list') return;
     applyListMode(mode);
-    // 写 localStorage 缓存（renderTracks 会读这个）
+    // 写 localStorage 缓存（renderLibrary 会读这个）
     try {
         const cached = localStorage.getItem('cachedSettings');
         const obj = cached ? JSON.parse(cached) : {};
@@ -287,17 +336,92 @@ async function setListMode(mode) {
         console.warn('保存 list_mode 失败:', e);
     }
     // 重渲染列表（结构切换）
-    await refreshList();
+    await renderLibrary();
+}
+
+// 切换并持久化排序方式
+async function setSortMode(mode) {
+    if (mode !== 'recent' && mode !== 'title' && mode !== 'artist') return;
+    applySortMode(mode);
+    try {
+        const cached = localStorage.getItem('cachedSettings');
+        const obj = cached ? JSON.parse(cached) : {};
+        obj.sort_mode = mode;
+        localStorage.setItem('cachedSettings', JSON.stringify(obj));
+    } catch (e) {}
+    try {
+        const { LoadSettings, SaveSettings } = await import('../../wailsjs/go/main/App.js');
+        const s = await LoadSettings();
+        s.sort_mode = mode;
+        await SaveSettings(s);
+        localStorage.setItem('settingsUpdated', Date.now().toString());
+    } catch (e) {
+        console.warn('保存 sort_mode 失败:', e);
+    }
+    await renderLibrary();
 }
 
 async function refreshList() {
     try {
         const tracks = await GetAllTracks();
-        renderTracks(tracks);
+        allTracks = tracks || [];
     } catch (err) {
         console.error("加载列表失败:", err);
-        renderTracks([]);
+        allTracks = [];
     }
+    await renderLibrary();
+}
+
+// 按当前关键词与排序方式过滤、排序
+function applyFilterAndSort(tracks) {
+    const q = currentQuery.trim().toLowerCase();
+    let list = tracks;
+    if (q) {
+        list = list.filter(tr => {
+            const name = (tr.name || '').toLowerCase();
+            const artist = (tr.artist || '').toLowerCase();
+            return name.includes(q) || artist.includes(q);
+        });
+    }
+    const sorted = list.slice();
+    const opts = { sensitivity: 'base', numeric: true };
+    switch (currentSort) {
+        case 'title':
+            sorted.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, opts));
+            break;
+        case 'artist':
+            sorted.sort((a, b) => {
+                const c = (a.artist || '').localeCompare(b.artist || '', undefined, opts);
+                return c !== 0 ? c : (a.name || '').localeCompare(b.name || '', undefined, opts);
+            });
+            break;
+        case 'recent':
+        default:
+            // 后端已按 imported_at DESC 返回；按时间戳降序兜底，保证视图稳定
+            sorted.sort((a, b) => (b.importedAt || 0) - (a.importedAt || 0));
+            break;
+    }
+    return sorted;
+}
+
+// 渲染整个音乐库视图：过滤 + 排序 + 列表 + 空态 + 正在播放指示
+async function renderLibrary() {
+    const mode = await getListMode();
+    applyListMode(mode);
+    const list = applyFilterAndSort(allTracks);
+    renderTracksList(list, mode);
+    updateLibraryEmptyStates(list);
+    applyNowPlayingIndicator();
+}
+
+// 更新空库 / 无搜索结果两种空态的显隐
+function updateLibraryEmptyStates(list) {
+    const hasTracks = allTracks.length > 0;
+    const hasResults = list.length > 0;
+    emptyOverlay.classList.toggle('display', !hasTracks);
+    const noResults = document.getElementById('no-results');
+    if (noResults) noResults.style.display = (!hasResults && hasTracks) ? 'flex' : 'none';
+    mediaContainer.style.display = hasResults ? ((getListModeSync() === 'list') ? 'flex' : 'grid') : 'none';
 }
 
 // 给列表项绑定点击/编辑/删除/右键（与卡片共用）
@@ -339,20 +463,24 @@ function _bindTrackItemListeners(el, track, actionSelector) {
     });
 }
 
-async function renderTracks(tracks) {
-    const mode = await getListMode();
-    applyListMode(mode);
+// 标记当前正在播放的曲目，并同步播放/暂停态用于控制动态条动画
+function applyNowPlayingIndicator() {
+    const cur = window.audioManager && window.audioManager.currentTrack;
+    const curId = cur ? cur.id : null;
+    const isPlaying = !!(window.audioManager && window.audioManager.isPlaying());
+    mediaContainer.classList.toggle('audio-playing', isPlaying);
+    mediaContainer.querySelectorAll('.media-card, .media-list-item').forEach(el => {
+        el.classList.toggle('is-playing', curId != null && Number(el.dataset.id) === curId);
+    });
+}
 
+// 渲染曲目列表（已过滤 + 已排序）
+function renderTracksList(tracks, mode) {
     mediaContainer.innerHTML = '';
 
     if (!tracks || tracks.length === 0) {
-        emptyOverlay.classList.add('display');
-        mediaContainer.style.display = 'none';
         return;
     }
-
-    emptyOverlay.classList.remove('display');
-    mediaContainer.style.display = (mode === 'list') ? 'flex' : 'grid';
 
     const MUSIC_ICON_SVG = '<svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>';
     const EDIT_BTN_SVG = `<svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
@@ -377,7 +505,7 @@ async function renderTracks(tracks) {
             item.innerHTML = `
                 ${coverHTML}
                 <div class="list-item-info">
-                    <div class="list-item-title">${escapeHtml(track.name)}</div>
+                    <div class="list-item-title">${NP_BARS_HTML}${escapeHtml(track.name)}</div>
                     <div class="list-item-artist">${escapeHtml(track.artist || UNKNOWN_ARTIST)}</div>
                 </div>
                 <div class="list-item-actions">
@@ -402,6 +530,7 @@ async function renderTracks(tracks) {
                 : `<div class="card-icon">${MUSIC_ICON_SVG}</div>`;
 
             card.innerHTML = `
+                ${NP_BARS_HTML}
                 ${coverHTML}
                 <div class="card-title">${escapeHtml(track.name)}</div>
                 <div class="card-meta">${escapeHtml(track.artist || UNKNOWN_ARTIST)}</div>
@@ -414,6 +543,55 @@ async function renderTracks(tracks) {
             mediaContainer.appendChild(card);
         }
     }
+}
+
+// ============ 播放全部 / 迷你播放器上一曲下一曲 ============
+// 按"当前播放模式"取下一首/上一首（随机模式走 GetRandomTrack）
+async function pickAdjacentTrack(direction) {
+    const cur = window.audioManager && window.audioManager.currentTrack;
+    if (!cur || cur.id == null) return null;
+    try {
+        const mode = await window.audioManager.fetchPlayMode();
+        if (mode === 'random') {
+            return await GetRandomTrack(cur.id);
+        }
+        return direction < 0 ? await GetPrevTracks(cur.id) : await GetNextTracks(cur.id);
+    } catch (e) {
+        console.warn('pickAdjacentTrack failed:', e);
+        return null;
+    }
+}
+
+async function miniPrevTrack() {
+    const prev = await pickAdjacentTrack(-1);
+    if (prev && prev.id) {
+        window.audioManager.loadTrack(prev);
+        window.audioManager.play();
+        currentTrack = prev;
+    }
+}
+
+async function miniNextTrack() {
+    const next = await pickAdjacentTrack(1);
+    if (next && next.id) {
+        window.audioManager.loadTrack(next);
+        window.audioManager.play();
+        currentTrack = next;
+    }
+}
+
+// 播放当前（过滤+排序后）列表的第一首
+async function playAllFromList() {
+    const list = applyFilterAndSort(allTracks);
+    if (!list.length) {
+        showToast(t('libraries.importNone'), 'info');
+        return;
+    }
+    const first = list[0];
+    window.audioManager.loadTrack(first);
+    window.audioManager.play();
+    currentTrack = first;
+    await openPlayer(first.id);
 }
 
 function escapeHtml(text) {
@@ -803,7 +981,57 @@ document.addEventListener("DOMContentLoaded", async function () {
     // 初始同步开关状态（不重渲染，refreshList 内部会调用 applyListMode）
     const initialMode = await getListMode();
     applyListMode(initialMode);
+    // 初始同步排序方式（refreshList 渲染时会用到 currentSort）
+    const initialSort = await getSortMode();
+    applySortMode(initialSort);
     await refreshList();
+
+    // 搜索框：输入时防抖过滤，回车即时过滤
+    const searchInput = document.getElementById('searchInput');
+    const searchClear = document.getElementById('searchClear');
+    if (searchInput) {
+        let searchTimer = null;
+        const runFilter = () => {
+            currentQuery = searchInput.value || '';
+            if (searchClear) searchClear.style.display = currentQuery ? 'flex' : 'none';
+            renderLibrary();
+        };
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(runFilter, 160);
+        });
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { clearTimeout(searchTimer); runFilter(); }
+            if (e.key === 'Escape') { searchInput.value = ''; runFilter(); searchInput.blur(); }
+        });
+    }
+    if (searchClear) {
+        searchClear.addEventListener('click', () => {
+            if (searchInput) { searchInput.value = ''; searchInput.focus(); }
+            currentQuery = '';
+            searchClear.style.display = 'none';
+            renderLibrary();
+        });
+    }
+
+    // 排序控件
+    const sortControl = document.getElementById('sortControl');
+    if (sortControl) {
+        sortControl.addEventListener('click', (e) => {
+            const btn = e.target.closest('.sort-btn');
+            if (!btn || !btn.dataset.sort) return;
+            setSortMode(btn.dataset.sort);
+        });
+    }
+
+    // 播放全部
+    const playAllBtn = document.getElementById('playAllBtn');
+    if (playAllBtn) {
+        playAllBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            playAllFromList();
+        });
+    }
 
     // 监听设置变化（用户在设置页修改后通过 localStorage 通知）
     window.addEventListener('storage', (e) => {
@@ -891,8 +1119,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         };
 
         // 先绑定事件，再 restore()，避免事件早到
-        window.audioManager.on('play', () => syncPlayIcon());
-        window.audioManager.on('pause', () => syncPlayIcon());
+        window.audioManager.on('play', () => { syncPlayIcon(); applyNowPlayingIndicator(); });
+        window.audioManager.on('pause', () => { syncPlayIcon(); applyNowPlayingIndicator(); });
         window.audioManager.on('trackloaded', (track) => {
             miniPlayer.style.display = 'flex';
             setCover(miniCover, track.cover);
@@ -902,10 +1130,12 @@ document.addEventListener("DOMContentLoaded", async function () {
             // 同步更新全局当前曲目引用，供卡片点击时判断是否为同一曲目
             currentTrack = track;
             syncPlayIcon();
+            applyNowPlayingIndicator();
         });
         // 曲目被清除时（删除检查）隐藏迷你播放器
         window.audioManager.on('trackcleared', () => {
             miniPlayer.style.display = 'none';
+            applyNowPlayingIndicator();
         });
 
         // 恢复上次播放状态（必须在 on() 绑定完成后调用）
@@ -959,6 +1189,22 @@ document.addEventListener("DOMContentLoaded", async function () {
             if (window.audioManager && window.audioManager.currentTrack) {
                 window.audioManager.toggle();
             }
+        });
+    }
+
+    // 迷你播放器上一曲 / 下一曲
+    const miniPrevBtn = document.getElementById('mini-prev');
+    const miniNextBtn = document.getElementById('mini-next');
+    if (miniPrevBtn) {
+        miniPrevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            miniPrevTrack();
+        });
+    }
+    if (miniNextBtn) {
+        miniNextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            miniNextTrack();
         });
     }
 

@@ -567,8 +567,9 @@ function togglePlay() {
     }
 }
 
-function togglePlayMode() {
-    audioManager.togglePlayMode();
+// togglePlayMode：await 后端切换完成再同步 UI，避免读到旧模式
+async function togglePlayMode() {
+    await audioManager.togglePlayMode();
     syncPlayModeState();
 }
 
@@ -578,7 +579,8 @@ async function playPrevTrack() {
         return;
     }
     try {
-        const mode = window.audioManager.getPlayMode();
+        // 从后端确认最新播放模式，避免前端缓存滞后导致走错分支
+        const mode = await window.audioManager.fetchPlayMode();
         let prevTrack = null;
 
         if (mode === 'random') {
@@ -607,7 +609,8 @@ async function playNextTrack() {
     }
 
     try {
-        const mode = window.audioManager.getPlayMode();
+        // 从后端确认最新播放模式，避免前端缓存滞后导致走错分支
+        const mode = await window.audioManager.fetchPlayMode();
         let nextTrack = null;
 
         if (mode === 'random') {
@@ -761,6 +764,11 @@ playBtn.addEventListener('click', togglePlay);
 loopBtn.addEventListener('click', togglePlayMode);
 backBtn.addEventListener('click', closePlayer);
 
+// 后端播放模式变更（其他页面切换或后端主动变更时，同步本页 UI）
+audioManager.on('modechange', () => {
+    syncPlayModeState();
+});
+
 // 后端状态事件（替代原生 audio 元素事件）
 // timeupdate：周期推送播放位置，更新进度并刷新插值锚点
 audioManager.on('timeupdate', () => {
@@ -796,8 +804,8 @@ audioManager.on('error', (e) => {
 
 // ended：后端单曲循环已在 player.go 内处理，此处仅处理顺序/随机模式的下一首
 audioManager.on('ended', async () => {
-    const mode = audioManager.getPlayMode();
-    // 单曲循环由后端处理，不会触发 ended；此处兜底防御
+    // 从后端确认最新模式，避免前端缓存滞后（单曲循环不应到达此处，但防御性检查）
+    const mode = await audioManager.fetchPlayMode();
     if (mode === 'loopOne') {
         return;
     }

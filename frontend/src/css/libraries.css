@@ -201,6 +201,76 @@ h1 {
 .header-actions {
     display: flex;
     gap: 12px;
+    align-items: center;
+}
+
+/* ============ 搜索框 ============ */
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 0 12px;
+    height: 40px;
+    transition: border-color var(--dur-normal) var(--ease-smooth),
+                background-color var(--dur-normal) var(--ease-smooth);
+}
+
+.search-box:focus-within {
+    border-color: var(--accent-color);
+    background: var(--hover-color);
+}
+
+.search-icon {
+    flex-shrink: 0;
+    fill: var(--text-secondary);
+    transition: fill var(--dur-fast);
+}
+
+.search-box:focus-within .search-icon {
+    fill: var(--accent-color);
+}
+
+.search-input {
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-family: inherit;
+    outline: none;
+    width: 200px;
+    min-width: 0;
+}
+
+.search-input::placeholder {
+    color: var(--text-secondary);
+}
+
+.search-clear {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--dur-fast), color var(--dur-fast);
+    padding: 0;
+}
+
+.search-clear:hover {
+    background: var(--hover-color);
+    color: var(--text-primary);
+}
+
+.search-clear svg {
+    fill: currentColor;
 }
 
 .btn-open {
@@ -267,6 +337,185 @@ h2 {
 
 .tracks-header h2 {
     margin-bottom: 0;
+}
+
+/* 标题 + 播放全部按钮 组合 */
+.tracks-title-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+/* 播放全部按钮：小型强调按钮 */
+.btn-play-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-color);
+    color: var(--bg-color);
+    border: none;
+    padding: 6px 14px;
+    border-radius: 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform var(--dur-fast) var(--ease-smooth),
+                box-shadow var(--dur-normal) var(--ease-smooth),
+                background-color var(--dur-normal) var(--ease-smooth);
+}
+
+.btn-play-all:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(29, 185, 84, 0.4);
+}
+
+.btn-play-all:active {
+    transform: scale(0.96);
+}
+
+.btn-play-all svg {
+    fill: currentColor;
+}
+
+/* 控件容器：排序 + 视图开关 */
+.tracks-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+/* 排序控件：分段按钮组 */
+.sort-control {
+    display: inline-flex;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.sort-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 5px 12px;
+    border-radius: 13px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: color var(--dur-fast) var(--ease-smooth),
+                background-color var(--dur-fast) var(--ease-smooth);
+    white-space: nowrap;
+}
+
+.sort-btn:hover {
+    color: var(--text-primary);
+}
+
+.sort-btn.active {
+    background: var(--accent-color);
+    color: var(--bg-color);
+    font-weight: 600;
+}
+
+/* ============ 正在播放指示器（纯 CSS 动态条，无 emoji） ============
+ * 3 根竖条，仅当容器带 .audio-playing 且曲目项带 .is-playing 时才动画。
+ * 暂停时显示为 3 根等高静止竖条，提供"已加载但暂停"的视觉提示。
+ */
+.np-bars {
+    display: none;
+    align-items: flex-end;
+    gap: 2px;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+.np-bars i {
+    display: block;
+    width: 3px;
+    height: 100%;
+    background: var(--accent-color);
+    border-radius: 1px;
+    transform-origin: bottom;
+    /* 暂停态：等高静止，透明度略降 */
+    opacity: 0.55;
+    transform: scaleY(0.5);
+    transition: opacity var(--dur-normal) var(--ease-smooth);
+}
+
+/* 仅当前正在播放的曲目显示指示器 */
+.is-playing .np-bars {
+    display: inline-flex;
+}
+
+/* 播放中：竖条透明度提升 */
+.audio-playing .is-playing .np-bars i {
+    opacity: 1;
+    animation: npBarsAnim 1s ease-in-out infinite;
+}
+
+.audio-playing .is-playing .np-bars i:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.audio-playing .is-playing .np-bars i:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes npBarsAnim {
+    0%, 100% { transform: scaleY(0.4); }
+    50%      { transform: scaleY(1); }
+}
+
+/* 正在播放的卡片/列表项：标题着色为主题强调色 */
+.media-card.is-playing .card-title,
+.media-list-item.is-playing .list-item-title {
+    color: var(--accent-color);
+}
+
+/* 卡片模式下指示器悬浮于封面左上角 */
+.media-card .np-bars {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 2;
+    width: 16px;
+    height: 16px;
+    padding: 3px;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+}
+
+.media-card .np-bars i {
+    background: #fff;
+}
+
+/* 列表模式下指示器内嵌于标题前 */
+.media-list-item .list-item-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.media-list-item .np-bars {
+    width: 12px;
+    height: 12px;
+}
+
+/* 无搜索结果空态 */
+.empty-state.no-results {
+    display: none;
+}
+
+.empty-state.no-results.display {
+    display: flex;
 }
 
 /* 卡片/列表 视图开关 */

@@ -20,11 +20,12 @@ const coversizeBytesLim uint = 1024 * 512 // 500KB
 type base64img string
 
 type MscData struct {
-	ID       int64           `json:"id"`     // 曲目ID
-	Name     string          `json:"name"`   // 曲名
-	Author   string          `json:"artist"` // 作曲家
-	Format   NormalMscFormat `json:"format"` // 格式
-	AudioURI string          `json:"src"`    // 音频URI (/audio/<id>)
-	CoverURI string          `json:"cover"`  // 封面URI (/cover/<id>)
-	Lyrics   string          `json:"lyrics"` // 歌词
+	ID         int64           `json:"id"`         // 曲目ID
+	Name       string          `json:"name"`       // 曲名
+	Author     string          `json:"artist"`     // 作曲家
+	Format     NormalMscFormat `json:"format"`     // 格式
+	AudioURI   string          `json:"src"`        // 音频URI (/audio/<id>)
+	CoverURI   string          `json:"cover"`      // 封面URI (/cover/<id>)
+	Lyrics     string          `json:"lyrics"`     // 歌词
+	ImportedAt int64           `json:"importedAt"` // 入库时间戳（Unix 秒），供前端排序用
 }

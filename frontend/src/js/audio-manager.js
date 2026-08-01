@@ -241,6 +241,23 @@ class AudioManager {
 		return this.playMode;
 	}
 
+	// 从后端实时查询最新播放模式并同步缓存（用于 playNextTrack 等关键决策点）
+	// 避免 togglePlayMode 异步未完成或跨页状态不同步时读到旧值
+	async fetchPlayMode() {
+		try {
+			const mode = await PlayerGetPlayMode();
+			if (mode && mode !== this.playMode) {
+				this.playMode = mode;
+				try { localStorage.setItem('playMode', mode); } catch (e) {}
+				this.emit('modechange', mode);
+			}
+			return mode;
+		} catch (e) {
+			console.warn('fetchPlayMode failed:', e);
+			return this.playMode;
+		}
+	}
+
 	// 清除当前曲目（曲目被删除等场景）
 	clearTrack() {
 		try { PlayerStop(); } catch (e) { console.warn('PlayerStop failed:', e); }

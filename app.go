@@ -200,12 +200,13 @@ func (a *App) GetFileInArgs() format.MscData {
 		return format.MscData{}
 	}
 	track := format.MscData{
-		ID:       r.ID,
-		Name:     r.Title,
-		Author:   r.Artist,
-		Format:   format.NormalMscFormat(r.Format),
-		AudioURI: base + "/audio/" + strconv.FormatInt(r.ID, 10),
-		Lyrics:   r.Lyrics,
+		ID:         r.ID,
+		Name:       r.Title,
+		Author:     r.Artist,
+		Format:     format.NormalMscFormat(r.Format),
+		AudioURI:   base + "/audio/" + strconv.FormatInt(r.ID, 10),
+		Lyrics:     r.Lyrics,
+		ImportedAt: r.ImportedAt,
 	}
 	if r.CoverMIME != "" {
 		track.CoverURI = base + "/cover/" + strconv.FormatInt(r.ID, 10)
@@ -248,7 +249,7 @@ func (a *App) ImportFiles() (int, error) {
 		Filters: []runtime.FileFilter{
 			{
 				DisplayName: strs.MusicFileFilter,
-				Pattern:     "*.mp3;*.ogg;*.flac;*.wav;*.ape",
+				Pattern:     "*.mp3;*.flac;*.wav",
 			},
 		},
 	})
@@ -266,9 +267,10 @@ func (a *App) ImportFilesFromPaths(paths []string) (int, error) {
 
 // importFromPaths 共享的导入逻辑：遍历路径、提取元数据、入库
 func (a *App) importFromPaths(paths []string) (int, error) {
-	// 支持的音频扩展名（小写）
+	// 后端可播放的音频扩展名（小写）。ogg/ape 自 0.10.1 起不再支持后端播放，
+	// 故导入时即排除，避免入库后无法播放造成困惑。
 	allowed := map[string]bool{
-		".mp3": true, ".ogg": true, ".flac": true, ".wav": true, ".ape": true,
+		".mp3": true, ".flac": true, ".wav": true,
 	}
 
 	count := 0
@@ -334,12 +336,13 @@ func (a *App) GetAllTracks() ([]format.MscData, error) {
 	result := make([]format.MscData, 0, len(records))
 	for _, r := range records {
 		track := format.MscData{
-			ID:       r.ID,
-			Name:     r.Title,
-			Author:   r.Artist,
-			Format:   format.NormalMscFormat(r.Format),
-			AudioURI: base + "/audio/" + strconv.FormatInt(r.ID, 10),
-			Lyrics:   r.Lyrics,
+			ID:         r.ID,
+			Name:       r.Title,
+			Author:     r.Artist,
+			Format:     format.NormalMscFormat(r.Format),
+			AudioURI:   base + "/audio/" + strconv.FormatInt(r.ID, 10),
+			Lyrics:     r.Lyrics,
+			ImportedAt: r.ImportedAt,
 		}
 		// 有封面才设 cover URI
 		if r.CoverMIME != "" {
@@ -414,12 +417,13 @@ func (a *App) GetTrack(id int64) (format.MscData, error) {
 
 	base := a.mediaBaseURL()
 	track := format.MscData{
-		ID:       rec.ID,
-		Name:     rec.Title,
-		Author:   rec.Artist,
-		Format:   format.NormalMscFormat(rec.Format),
-		AudioURI: base + "/audio/" + strconv.FormatInt(rec.ID, 10),
-		Lyrics:   rec.Lyrics,
+		ID:         rec.ID,
+		Name:       rec.Title,
+		Author:     rec.Artist,
+		Format:     format.NormalMscFormat(rec.Format),
+		AudioURI:   base + "/audio/" + strconv.FormatInt(rec.ID, 10),
+		Lyrics:     rec.Lyrics,
+		ImportedAt: rec.ImportedAt,
 	}
 	if rec.CoverMIME != "" {
 		track.CoverURI = base + "/cover/" + strconv.FormatInt(rec.ID, 10)
