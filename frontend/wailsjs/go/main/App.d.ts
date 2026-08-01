@@ -54,6 +54,26 @@ export function PickImageFile():Promise<main.PickedFile>;
 
 export function PickLyricsFile():Promise<string>;
 
+export function PlayerGetPlayMode():Promise<string>;
+
+export function PlayerGetState():Promise<main.PlayerState>;
+
+export function PlayerLoad(arg1:format.MscData):Promise<void>;
+
+export function PlayerPause():Promise<void>;
+
+export function PlayerPlay():Promise<void>;
+
+export function PlayerRestart():Promise<void>;
+
+export function PlayerSeek(arg1:number):Promise<void>;
+
+export function PlayerStop():Promise<void>;
+
+export function PlayerToggle():Promise<void>;
+
+export function PlayerTogglePlayMode():Promise<string>;
+
 export function ReadFileForEdit(arg1:string):Promise<main.PickedFile>;
 
 export function RecordPlayPause(arg1:number):Promise<void>;

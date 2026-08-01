@@ -28,7 +28,8 @@ type App struct {
 	defaultFile     string
 	defaultTrackId  int64
 	database        *storage.Database
-	audioServerPort int // 独立 HTTP 服务器端口，dev 模式下使用
+	player          *Player // 后端音频播放器
+	audioServerPort int     // 独立 HTTP 服务器端口，dev 模式下使用
 	audioServerLn   net.Listener
 	trayQuitting    bool // 托盘"退出"时置 true，让 OnBeforeClose 放行
 }
@@ -62,7 +63,10 @@ func NewApp(sqlite3FilePath string, defaultFile string) (*App, error) {
 		return nil, err
 	}
 
-	return &App{database: db, defaultFile: defaultFile}, nil
+	app := &App{database: db, defaultFile: defaultFile}
+	// 创建后端播放器（实际初始化在 startup 拿到 ctx 后进行）
+	app.player = NewPlayer(db, app)
+	return app, nil
 }
 
 // startup 前端创建后、加载 index.html 前触发
@@ -93,12 +97,21 @@ func (a *App) startup(ctx context.Context) {
 	// 初始化系统托盘（独立 goroutine，systray.Run 会阻塞）
 	go a.initTray()
 
+	// 启动后端音频播放器（初始化 speaker + timeupdate 推送循环）
+	a.player.Start(ctx)
+	// 从设置同步初始音量到播放器
+	a.player.SetInitialVolume(a.LoadSettings().Volume)
+
 	// 启动听歌时长 heartbeat（定期提交 pending 到注册表）
 	StartListenTimeHeartbeat()
 }
 
 // shutdown 应用退出前触发，关闭数据库连接和音频服务器
 func (a *App) shutdown(ctx context.Context) {
+	// 先停止后端播放器，释放音频设备并提交听歌时长
+	if a.player != nil {
+		a.player.Stop()
+	}
 	// 退出系统托盘
 	systray.Quit()
 	// 持久化未写入的听歌时长到注册表

@@ -1,30 +1,29 @@
 package main
 
-// ============ Windows 系统音量合成器控制（按进程树匹配音频会话）============
+// ============ Windows 音量合成器控制（按 PID 直接匹配音频会话）============
 //
-// MusicLite 自身不发声，音频由 Wails 启动的 WebView2 子进程输出。
-// WebView2 有多个子进程（Manager/Page/GPU/Network/Storage/Audio/CrashPad），
-// 其中只有 Audio Service 进程持有音频会话。该进程懒启动（播放时才创建），
-// 因此不能在启动时缓存 PID。
+// 播放迁移到 Go 后端后，音频由本 Go 进程直接输出，Windows 音量合成器中
+// 对应的音频会话 PID 就是本进程自身。因此用 os.Getpid() 拿到 PID，
+// 枚举所有音频会话，通过 IAudioSessionControl2::GetProcessId 直接比较 PID
+// 即可命中，无需进程树匹配。
 //
-// 策略：每次 Set/Get 调用时，枚举系统所有音频会话，对每个会话取其 PID，
-// 用 CreateToolhelp32Snapshot 检查该 PID 是否为本进程的子孙进程。
-// 这样不论音频服务何时启动、叫什么名字，都能正确命中。
-//
-// CGO 在 C 层完成全部 COM + 进程树调用，Go 只传入本进程 PID 和整数音量值。
+// CGO 在 C 层完成全部 COM 调用，Go 只传入 PID 和整数音量值。
+// 每个 C 函数内部用 CoInitializeEx 初始化 COM（cgo 线程需独立初始化），
+// 返回 S_OK 时配对 CoUninitialize。
 //
 // 各接口 vtable 索引（IUnknown 前三位固定为 QI/AddRef/Release）：
 //   IAudioSessionManager2:     [5]GetSessionEnumerator
 //   IAudioSessionEnumerator:   [3]GetCount [4]GetSession
 //   IAudioSessionControl2:     [14]GetProcessId
 //   ISimpleAudioVolume:        [3]SetMasterVolume [4]GetMasterVolume
+//   IMMDeviceEnumerator:       [4]GetDefaultAudioEndpoint
+//   IMMDevice:                 [3]Activate
 
 /*
 #cgo LDFLAGS: -lole32
 
 #include <windows.h>
 #include <objbase.h>
-#include <tlhelp32.h>
 
 // GUID（对照 audiopolicy.idl / audioclient.h 核实）
 static const GUID CLSID_MMDeviceEnumerator_v   = {0xBCDE0395, 0xE52F, 0x467C, {0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E}};
@@ -43,56 +42,16 @@ static void COM_Release(void* obj) {
     }
 }
 
-// IsDescendantOf: 检查 targetPid 是否是 ancestorPid 的子孙进程（沿父进程链向上走）
-static int IsDescendantOf(DWORD targetPid, DWORD ancestorPid) {
-    if (targetPid == 0 || targetPid == ancestorPid) return 0;
-
-    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (snap == INVALID_HANDLE_VALUE) return 0;
-
-    // 构建 PID → ParentPID 映射（容量足够覆盖系统中所有进程）
-    int cap = 4096, count = 0;
-    DWORD* pids  = (DWORD*)malloc(cap * sizeof(DWORD));
-    DWORD* ppids = (DWORD*)malloc(cap * sizeof(DWORD));
-    if (!pids || !ppids) { free(pids); free(ppids); CloseHandle(snap); return 0; }
-
-    PROCESSENTRY32W pe;
-    pe.dwSize = sizeof(pe);
-    if (Process32FirstW(snap, &pe)) {
-        do {
-            if (count >= cap) break;
-            pids[count]  = pe.th32ProcessID;
-            ppids[count] = pe.th32ParentProcessID;
-            count++;
-        } while (Process32NextW(snap, &pe));
-    }
-    CloseHandle(snap);
-
-    // 从 targetPid 沿父进程链向上走
-    DWORD cur = targetPid;
-    int result = 0;
-    for (int step = 0; step < 128; step++) {
-        int idx = -1;
-        for (int j = 0; j < count; j++) {
-            if (pids[j] == cur) { idx = j; break; }
-        }
-        if (idx < 0) break;
-        DWORD pp = ppids[idx];
-        if (pp == ancestorPid) { result = 1; break; }
-        if (pp == 0 || pp == cur) break;
-        cur = pp;
-    }
-
-    free(pids); free(ppids);
-    return result;
-}
-
-// SetAppVolumeByTree: 枚举音频会话，对 PID 属于 parentPid 子孙的会话设置音量
+// SetAppVolumeByPid: 枚举音频会话，对 PID 等于 pid 的会话设置音量
 // 返回 0=成功，其他=HRESULT 错误码
-static int SetAppVolumeByTree(DWORD parentPid, int volume) {
+static int SetAppVolumeByPid(DWORD pid, int volume) {
     if (volume < 0) volume = 0;
     if (volume > 100) volume = 100;
     float level = (float)volume / 100.0f;
+
+    // cgo 线程需独立初始化 COM；S_OK 时配对 CoUninitialize
+    // S_FALSE=已初始化，RPC_E_CHANGED_MODE=已用不同模型初始化，这两种情况不调用 CoUninitialize
+    HRESULT hrInit = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
     void* pEnum = NULL;
     void* pDevice = NULL;
@@ -100,10 +59,12 @@ static int SetAppVolumeByTree(DWORD parentPid, int volume) {
     void* pSessionEnum = NULL;
     HRESULT hr;
     int applied = 0;
+    int sessionCount = 0;
+    int i;
 
     hr = CoCreateInstance(&CLSID_MMDeviceEnumerator_v, NULL, CLSCTX_ALL,
                           &IID_IMMDeviceEnumerator_v, &pEnum);
-    if (FAILED(hr)) return (int)hr;
+    if (FAILED(hr)) goto done;
 
     {
         typedef HRESULT (__stdcall *Fn)(void*, int, int, void**);
@@ -123,33 +84,33 @@ static int SetAppVolumeByTree(DWORD parentPid, int volume) {
     }
     if (FAILED(hr)) goto cleanup_mgr;
 
-    int sessionCount = 0;
     {
         typedef HRESULT (__stdcall *Fn)(void*, int*);
         hr = ((Fn)VTBL(pSessionEnum, 3))(pSessionEnum, &sessionCount);
     }
     if (FAILED(hr)) goto cleanup_enum2;
 
-    for (int i = 0; i < sessionCount; i++) {
+    for (i = 0; i < sessionCount; i++) {
         void* pSession = NULL;
+        void* pCtrl2 = NULL;
+        void* pVol = NULL;
         typedef HRESULT (__stdcall *GetSessionFn)(void*, int, void**);
         hr = ((GetSessionFn)VTBL(pSessionEnum, 4))(pSessionEnum, i, &pSession);
         if (FAILED(hr) || !pSession) continue;
 
         // QI IAudioSessionControl2 拿 PID
-        void* pCtrl2 = NULL;
         {
             typedef HRESULT (__stdcall *Fn)(void*, const GUID*, void**);
             hr = ((Fn)VTBL(pSession, 0))(pSession, &IID_IAudioSessionControl2_v, &pCtrl2);
         }
         if (SUCCEEDED(hr) && pCtrl2) {
-            DWORD pid = 0;
+            DWORD sessPid = 0;
             typedef HRESULT (__stdcall *GetPidFn)(void*, DWORD*);
-            hr = ((GetPidFn)VTBL(pCtrl2, 14))(pCtrl2, &pid);
+            hr = ((GetPidFn)VTBL(pCtrl2, 14))(pCtrl2, &sessPid);
             COM_Release(pCtrl2);
-            if (SUCCEEDED(hr) && IsDescendantOf(pid, parentPid)) {
+            // 直接 PID 比较：音频由本 Go 进程输出，会话 PID == 传入 pid
+            if (SUCCEEDED(hr) && sessPid == pid) {
                 // QI ISimpleAudioVolume 并 SetMasterVolume
-                void* pVol = NULL;
                 typedef HRESULT (__stdcall *QIFn)(void*, const GUID*, void**);
                 hr = ((QIFn)VTBL(pSession, 0))(pSession, &IID_ISimpleAudioVolume_v, &pVol);
                 if (SUCCEEDED(hr) && pVol) {
@@ -161,6 +122,7 @@ static int SetAppVolumeByTree(DWORD parentPid, int volume) {
             }
         }
         COM_Release(pSession);
+        if (applied) break;
     }
 
 cleanup_enum2:
@@ -172,23 +134,31 @@ cleanup_device:
 cleanup_enum:
     COM_Release(pEnum);
 
+done:
+    if (hrInit == S_OK) CoUninitialize();
+
     if (applied) return 0;
     if (FAILED(hr)) return (int)hr;
     return (int)0x80004005; // E_FAIL：未匹配到任何会话
 }
 
-// GetAppVolumeByTree: 枚举音频会话，取第一个 PID 属于 parentPid 子孙的会话音量
-static int GetAppVolumeByTree(DWORD parentPid, int* outVolume) {
+// GetAppVolumeByPid: 枚举音频会话，取第一个 PID 等于 pid 的会话音量
+// 返回 0=成功，其他=HRESULT 错误码
+static int GetAppVolumeByPid(DWORD pid, int* outVolume) {
+    HRESULT hrInit = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+
     void* pEnum = NULL;
     void* pDevice = NULL;
     void* pSessionMgr = NULL;
     void* pSessionEnum = NULL;
     HRESULT hr;
     int got = 0;
+    int sessionCount = 0;
+    int i;
 
     hr = CoCreateInstance(&CLSID_MMDeviceEnumerator_v, NULL, CLSCTX_ALL,
                           &IID_IMMDeviceEnumerator_v, &pEnum);
-    if (FAILED(hr)) return (int)hr;
+    if (FAILED(hr)) goto done;
 
     {
         typedef HRESULT (__stdcall *Fn)(void*, int, int, void**);
@@ -208,31 +178,30 @@ static int GetAppVolumeByTree(DWORD parentPid, int* outVolume) {
     }
     if (FAILED(hr)) goto cleanup_mgr;
 
-    int sessionCount = 0;
     {
         typedef HRESULT (__stdcall *Fn)(void*, int*);
         hr = ((Fn)VTBL(pSessionEnum, 3))(pSessionEnum, &sessionCount);
     }
     if (FAILED(hr)) goto cleanup_enum2;
 
-    for (int i = 0; i < sessionCount && !got; i++) {
+    for (i = 0; i < sessionCount && !got; i++) {
         void* pSession = NULL;
+        void* pCtrl2 = NULL;
+        void* pVol = NULL;
         typedef HRESULT (__stdcall *GetSessionFn)(void*, int, void**);
         hr = ((GetSessionFn)VTBL(pSessionEnum, 4))(pSessionEnum, i, &pSession);
         if (FAILED(hr) || !pSession) continue;
 
-        void* pCtrl2 = NULL;
         {
             typedef HRESULT (__stdcall *Fn)(void*, const GUID*, void**);
             hr = ((Fn)VTBL(pSession, 0))(pSession, &IID_IAudioSessionControl2_v, &pCtrl2);
         }
         if (SUCCEEDED(hr) && pCtrl2) {
-            DWORD pid = 0;
+            DWORD sessPid = 0;
             typedef HRESULT (__stdcall *GetPidFn)(void*, DWORD*);
-            hr = ((GetPidFn)VTBL(pCtrl2, 14))(pCtrl2, &pid);
+            hr = ((GetPidFn)VTBL(pCtrl2, 14))(pCtrl2, &sessPid);
             COM_Release(pCtrl2);
-            if (SUCCEEDED(hr) && IsDescendantOf(pid, parentPid)) {
-                void* pVol = NULL;
+            if (SUCCEEDED(hr) && sessPid == pid) {
                 typedef HRESULT (__stdcall *QIFn)(void*, const GUID*, void**);
                 hr = ((QIFn)VTBL(pSession, 0))(pSession, &IID_ISimpleAudioVolume_v, &pVol);
                 if (SUCCEEDED(hr) && pVol) {
@@ -262,6 +231,9 @@ cleanup_device:
 cleanup_enum:
     COM_Release(pEnum);
 
+done:
+    if (hrInit == S_OK) CoUninitialize();
+
     if (got) return 0;
     if (FAILED(hr)) return (int)hr;
     return (int)0x80004005;
@@ -273,60 +245,35 @@ import "C"
 import (
 	"fmt"
 	"log"
-	goruntime "runtime"
 
 	volume "github.com/itchyny/volume-go"
 )
 
-// SetApplicationVolume 设置 WebView2 音频子进程在 Windows 系统音量合成器中的音量 (0-100)
-func (a *App) SetApplicationVolume(volume int) error {
-	errCh := make(chan error, 1)
-	go func() {
-		goruntime.LockOSThread()
-		defer goruntime.UnlockOSThread()
-		C.CoInitializeEx(nil, C.COINIT_MULTITHREADED)
-		defer C.CoUninitialize()
+// 注：播放已迁移到 Go 后端（player.go），音频由本 Go 进程直接输出。
+// synth 模式下，Windows 音量合成器中的音频会话 PID 就是本进程自身，
+// 因此 SetApplicationVolume/GetApplicationVolume 用 os.Getpid() 拿到 PID，
+// 传给 C 函数 SetAppVolumeByPid/GetAppVolumeByPid 做直接 PID 匹配。
+// master 模式走 SetSystemMasterVolume/GetSystemMasterVolume（itchyny/volume-go）。
 
-		hr := C.SetAppVolumeByTree(C.DWORD(uint32(getCurrentPID())), C.int(volume))
-		if hr != 0 {
-			errCh <- fmt.Errorf("设置系统音量失败: 0x%08X", uint32(hr))
-		} else {
-			errCh <- nil
-		}
-	}()
-	return <-errCh
+// setAppVolumeByPid 设置指定进程在 Windows 音量合成器中的音量（0-100）
+// 用于 synth 模式：传入 os.Getpid() 命中本进程音频会话
+func setAppVolumeByPid(pid int, volume int) error {
+	rc := C.SetAppVolumeByPid(C.DWORD(pid), C.int(volume))
+	if rc != 0 {
+		return fmt.Errorf("SetAppVolumeByPid 失败 HRESULT=0x%08X", uint32(rc))
+	}
+	return nil
 }
 
-// GetApplicationVolume 获取 WebView2 音频子进程在 Windows 系统音量合成器中的音量 (0-100)
-func (a *App) GetApplicationVolume() (int, error) {
-	resCh := make(chan struct {
-		vol int
-		err error
-	}, 1)
-	go func() {
-		goruntime.LockOSThread()
-		defer goruntime.UnlockOSThread()
-		C.CoInitializeEx(nil, C.COINIT_MULTITHREADED)
-		defer C.CoUninitialize()
-
-		var vol C.int
-		hr := C.GetAppVolumeByTree(C.DWORD(uint32(getCurrentPID())), &vol)
-		var err error
-		if hr != 0 {
-			err = fmt.Errorf("获取系统音量失败: 0x%08X", uint32(hr))
-		}
-		resCh <- struct {
-			vol int
-			err error
-		}{int(vol), err}
-	}()
-	r := <-resCh
-	return r.vol, r.err
-}
-
-// GetCurrentPID 返回当前进程 PID
-func getCurrentPID() int {
-	return int(C.GetCurrentProcessId())
+// getAppVolumeByPid 读取指定进程在 Windows 音量合成器中的音量（0-100）
+// 用于 synth 模式：传入 os.Getpid() 命中本进程音频会话
+func getAppVolumeByPid(pid int) (int, error) {
+	var out C.int
+	rc := C.GetAppVolumeByPid(C.DWORD(pid), &out)
+	if rc != 0 {
+		return 0, fmt.Errorf("GetAppVolumeByPid 失败 HRESULT=0x%08X", uint32(rc))
+	}
+	return int(out), nil
 }
 
 // SetSystemMasterVolume 设置系统主音量 (0-100)

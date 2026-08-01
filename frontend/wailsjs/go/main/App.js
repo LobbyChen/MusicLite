@@ -102,6 +102,46 @@ export function PickLyricsFile() {
   return window['go']['main']['App']['PickLyricsFile']();
 }
 
+export function PlayerGetPlayMode() {
+  return window['go']['main']['App']['PlayerGetPlayMode']();
+}
+
+export function PlayerGetState() {
+  return window['go']['main']['App']['PlayerGetState']();
+}
+
+export function PlayerLoad(arg1) {
+  return window['go']['main']['App']['PlayerLoad'](arg1);
+}
+
+export function PlayerPause() {
+  return window['go']['main']['App']['PlayerPause']();
+}
+
+export function PlayerPlay() {
+  return window['go']['main']['App']['PlayerPlay']();
+}
+
+export function PlayerRestart() {
+  return window['go']['main']['App']['PlayerRestart']();
+}
+
+export function PlayerSeek(arg1) {
+  return window['go']['main']['App']['PlayerSeek'](arg1);
+}
+
+export function PlayerStop() {
+  return window['go']['main']['App']['PlayerStop']();
+}
+
+export function PlayerToggle() {
+  return window['go']['main']['App']['PlayerToggle']();
+}
+
+export function PlayerTogglePlayMode() {
+  return window['go']['main']['App']['PlayerTogglePlayMode']();
+}
+
 export function ReadFileForEdit(arg1) {
   return window['go']['main']['App']['ReadFileForEdit'](arg1);
 }

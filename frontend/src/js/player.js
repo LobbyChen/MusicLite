@@ -1,6 +1,8 @@
 // player.js — 播放器视图（SPA overlay 模块）
-// 与库视图共享同一个 window.audioManager，切换视图时 audio 不销毁，播放保持连续。
-import { GetTrack, LoadSettings, GetNextTracks,GetPrevTracks, GetRandomTrack, RecordPlayStart, RecordPlayPause, SetApplicationVolume, GetApplicationVolume } from '../../wailsjs/go/main/App.js';
+// 与库视图共享同一个 window.audioManager，切换视图时后端播放不中断，保持连续。
+// 音频解码与输出全部在 Go 后端完成，本视图只负责 UI 控制与状态展示，
+// 通过 audioManager（订阅后端 Wails Events）获取播放状态。
+import { GetTrack, GetNextTracks, GetPrevTracks, GetRandomTrack } from '../../wailsjs/go/main/App.js';
 import { initI18n, t } from './i18n.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
@@ -88,8 +90,9 @@ let parsedLyrics = [];
 let currentLyricIndex = -1;
 let lyricsCardExpanded = false; // 卡片歌词展开状态
 
-// 使用全局音频管理器（与库页面共享同一个 audio 实例，跨视图持久）
-const audio = window.audioManager.audio;
+// 使用全局音频管理器（后端驱动的播放状态，跨视图持久）
+// audioManager 是后端播放状态的唯一前端入口：getCurrentTime/getDuration/isPlaying/play/pause/seek 等
+const audioManager = window.audioManager;
 
 // ============ LRC 解析 ============
 function parseLyrics(lrcText) {
@@ -158,8 +161,8 @@ function renderLyrics(lyricsArray) {
         el.addEventListener('click', (e) => {
             e.stopPropagation();
             const time = parseFloat(el.dataset.time);
-            if (!isNaN(time) && audio.duration) {
-                audio.currentTime = time;
+            if (!isNaN(time) && audioManager.getDuration()) {
+                audioManager.seek(time);
             }
         });
     });
@@ -169,14 +172,14 @@ function renderLyrics(lyricsArray) {
         el.addEventListener('click', (e) => {
             e.stopPropagation();
             const time = parseFloat(el.dataset.time);
-            if (!isNaN(time) && audio.duration) {
-                audio.currentTime = time;
+            if (!isNaN(time) && audioManager.getDuration()) {
+                audioManager.seek(time);
             }
         });
     });
 
     currentLyricIndex = -1;
-    updateLyricsScroll(audio.currentTime || 0);
+    updateLyricsScroll(audioManager.getCurrentTime() || 0);
 }
 
 // ============ 歌词行切换动画（Web Animations API） ============
@@ -383,7 +386,7 @@ function openLyricsCard() {
     // 同步一次滚动位置
     if (parsedLyrics.length > 0) {
         currentLyricIndex = -1;
-        updateLyricsScroll(audio.currentTime || 0);
+        updateLyricsScroll(audioManager.getCurrentTime() || 0);
     }
 }
 
@@ -422,7 +425,7 @@ function openFullscreenLyrics() {
     // 立即同步一次滚动位置
     if (parsedLyrics.length > 0) {
         currentLyricIndex = -1;
-        updateLyricsScroll(audio.currentTime || 0);
+        updateLyricsScroll(audioManager.getCurrentTime() || 0);
     }
 }
 
@@ -438,7 +441,7 @@ function switchFullscreenToCard() {
 
 // ============ 歌词翻找（上一句 / 下一句） ============
 // direction: -1 = 上一句, +1 = 下一句
-// 跳转 audio.currentTime 到目标歌词时间，并立即手动刷新高亮（不等 timeupdate）
+// 跳转到目标歌词时间，并立即手动刷新高亮（不等 timeupdate）
 function seekLyric(direction) {
     if (!parsedLyrics || parsedLyrics.length === 0) return;
     let targetIndex;
@@ -452,7 +455,7 @@ function seekLyric(direction) {
     }
     const targetTime = parsedLyrics[targetIndex].time;
     if (!isNaN(targetTime)) {
-        audio.currentTime = targetTime;
+        audioManager.seek(targetTime);
     }
     // 手动刷新一次高亮和滚动，避免等待 timeupdate（~250ms 延迟）
     updateLyricsScroll(targetTime);
@@ -520,9 +523,9 @@ function updateProgressFill(elementId, percent) {
     fillEl.style.width = `${percent}%`;
 }
 
-// 同步 audio 实际播放状态到 UI
+// 同步播放状态到 UI（基于后端 audioManager 状态，前端只读）
 function syncPlayState() {
-    if (!audio.paused && audio.src) {
+    if (audioManager.isPlaying() && audioManager.currentTrack) {
         playIcon.style.display = 'none';
         pauseIcon.style.display = 'block';
         playBtn.classList.add('btn-pause');
@@ -535,7 +538,7 @@ function syncPlayState() {
 
 // 同步播放模式按钮状态
 function syncPlayModeState() {
-    const mode = window.audioManager.getPlayMode();
+    const mode = audioManager.getPlayMode();
 
     // 重置类名
     loopBtn.classList.remove('active-loop-one', 'active-random');
@@ -551,30 +554,21 @@ function syncPlayModeState() {
     }
 }
 
+// playAudio：恢复播放（后端处理听歌时长记录，前端无需调用 RecordPlayStart）
 function playAudio() {
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-        playPromise.then(_ => {
-            syncPlayState();
-        }).catch(error => {
-            if (error.name !== 'AbortError') {
-                console.error("Playback failed:", error);
-            }
-            syncPlayState();
-        });
-    }
+    audioManager.play();
 }
 
 function togglePlay() {
-    if (audio.paused) {
-        playAudio();
+    if (audioManager.isPlaying()) {
+        audioManager.pause();
     } else {
-        audio.pause();
+        playAudio();
     }
 }
 
 function togglePlayMode() {
-    window.audioManager.togglePlayMode();
+    audioManager.togglePlayMode();
     syncPlayModeState();
 }
 
@@ -637,35 +631,46 @@ async function playNextTrack() {
 }
 
 function updateProgress() {
-    if (isSeeking || !audio.duration || isNaN(audio.duration)) return;
-    const progressPercent = (audio.currentTime / audio.duration) * 100;
+    const duration = audioManager.getDuration();
+    const currentTime = audioManager.getCurrentTime();
+    if (isSeeking || !duration || isNaN(duration)) return;
+    const progressPercent = (currentTime / duration) * 100;
     seekSlider.value = progressPercent;
-    currentTimeEl.textContent = formatTime(audio.currentTime);
-    totalDurationEl.textContent = formatTime(audio.duration);
+    currentTimeEl.textContent = formatTime(currentTime);
+    totalDurationEl.textContent = formatTime(duration);
     updateProgressFill('seekProgress', progressPercent);
-    updateLyricsScroll(audio.currentTime);
+    updateLyricsScroll(currentTime);
     if (seekSlider.disabled) seekSlider.disabled = false;
 }
 
 // ============ 进度条平滑滚动（rAF 循环） ============
-// timeupdate 事件约 250ms 触发一次，进度条会"一跳一跳"。
-// 播放期间用 requestAnimationFrame 每帧根据 audio.currentTime 更新 fill 和 thumb，
-// 两者同源（都用 audio.currentTime 计算）保证完全同步。
+// 后端 player:timeupdate 事件约 250ms 推送一次，进度条会"一跳一跳"。
+// 播放期间用 requestAnimationFrame 每帧根据本地插值估算位置更新 fill 和 thumb，
+// 每 250ms 用后端推送的真实位置校正一次（timeupdate 事件触发 updateProgress）。
 let progressRafId = null;
+// 上次后端推送的位置与时间戳，用于帧间线性插值
+let lastSyncPos = 0;
+let lastSyncTs = 0;
 function startSmoothProgress() {
     if (progressRafId) return;
+    lastSyncPos = audioManager.getCurrentTime();
+    lastSyncTs = performance.now();
     const tick = () => {
-        // 拖动中或无时长时停止平滑更新，交给 timeupdate
-        if (isSeeking || !audio.duration || isNaN(audio.duration) || audio.paused) {
+        // 拖动中 / 无时长 / 暂停时停止平滑更新，交给 timeupdate
+        const duration = audioManager.getDuration();
+        if (isSeeking || !duration || isNaN(duration) || !audioManager.isPlaying()) {
             progressRafId = null;
             return;
         }
-        const percent = (audio.currentTime / audio.duration) * 100;
-        // fill 和 thumb 同源同步更新
+        // 帧间插值：按经过真实时间估算当前位置
+        const elapsed = (performance.now() - lastSyncTs) / 1000;
+        const estimated = lastSyncPos + elapsed;
+        const clamped = Math.min(estimated, duration);
+        const percent = (clamped / duration) * 100;
         seekSlider.value = percent;
         updateProgressFill('seekProgress', percent);
-        currentTimeEl.textContent = formatTime(audio.currentTime);
-        updateLyricsScroll(audio.currentTime);
+        currentTimeEl.textContent = formatTime(clamped);
+        updateLyricsScroll(clamped);
         progressRafId = requestAnimationFrame(tick);
     };
     progressRafId = requestAnimationFrame(tick);
@@ -677,21 +682,39 @@ function stopSmoothProgress() {
     }
 }
 
+// 后端推送 timeupdate 时，刷新插值锚点（让下一帧从真实位置继续估算）
+function syncProgressAnchor() {
+    lastSyncPos = audioManager.getCurrentTime();
+    lastSyncTs = performance.now();
+}
+
 function setProgress() {
-    if (!audio.duration || isNaN(audio.duration)) return;
-    const newTime = (seekSlider.value / 100) * audio.duration;
-    audio.currentTime = newTime;
+    const duration = audioManager.getDuration();
+    if (!duration || isNaN(duration)) return;
+    const newTime = (seekSlider.value / 100) * duration;
+    audioManager.seek(newTime);
+    // seek 后立即更新插值锚点，避免平滑滚动回跳
+    lastSyncPos = newTime;
+    lastSyncTs = performance.now();
 }
 
 function setVolume() {
     const vol = parseInt(volSlider.value, 10);
     updateProgressFill('volProgress', volSlider.value);
-    // 控制 Windows 系统合成器本程序音量（不再是 audio.volume）
-    SetApplicationVolume(vol).catch(() => {});
-    if (window.audioManager) {
-        localStorage.setItem('volume', vol.toString());
-    }
+    // 按 volume_mode 路由（synth→后端 Player / master→系统主音量），由 audioManager 统一处理
+    audioManager.setVolume(vol);
 }
+
+// 监听音量模式切换（设置页切换 synth/master 后，同步滑块到新模式下的真实音量）
+audioManager.on('volumemodechange', () => {
+    const realVol = audioManager.getVolume();
+    volSlider.value = realVol;
+    updateProgressFill('volProgress', volSlider.value);
+});
+audioManager.on('volumechange', (vol) => {
+    volSlider.value = vol;
+    updateProgressFill('volProgress', volSlider.value);
+});
 
 // ============ 核心：加载单个轨道 ============
 function loadTrack(data) {
@@ -713,16 +736,9 @@ function loadTrack(data) {
     const pc = window.MusicLiteSettings?.PlayerContrast;
     if (pc) pc.adjustFromCover(imgUrl);
 
-    // 共享 audioManager：仅在曲目变化时重新加载，保持同曲播放连续
-    if (window.audioManager) {
-        const savedTrackJson = localStorage.getItem('currentTrack');
-        const savedTrack = savedTrackJson ? JSON.parse(savedTrackJson) : null;
-        const isAlreadyLoaded = savedTrack && savedTrack.id === data.id;
-        if (!isAlreadyLoaded) {
-            // 不同曲目：正常加载（会重置播放位置）
-            window.audioManager.loadTrack(data);
-        }
-    }
+    // 委托后端加载：audioManager.loadTrack 内部会判断同曲不重载（保持同曲播放连续）
+    // 加载后处于暂停态，需调用 playAudio() 开始播放
+    audioManager.loadTrack(data);
 
     renderLyrics(parseLyrics(data.lyrics));
     seekSlider.value = 0;
@@ -731,9 +747,11 @@ function loadTrack(data) {
     updateProgressFill('seekProgress', 0);
     syncPlayState();
     syncPlayModeState();
-    if (audio.duration && !isNaN(audio.duration)) {
+    // 若后端已有该曲目时长（同曲重入），立即同步
+    const dur = audioManager.getDuration();
+    if (dur && !isNaN(dur)) {
         seekSlider.disabled = false;
-        totalDurationEl.textContent = formatTime(audio.duration);
+        totalDurationEl.textContent = formatTime(dur);
         updateProgress();
     }
 }
@@ -743,55 +761,62 @@ playBtn.addEventListener('click', togglePlay);
 loopBtn.addEventListener('click', togglePlayMode);
 backBtn.addEventListener('click', closePlayer);
 
-audio.addEventListener('timeupdate', updateProgress);
-audio.addEventListener('loadedmetadata', () => {
-    totalDurationEl.textContent = formatTime(audio.duration);
-    if (!audio.paused) seekSlider.disabled = false;
+// 后端状态事件（替代原生 audio 元素事件）
+// timeupdate：周期推送播放位置，更新进度并刷新插值锚点
+audioManager.on('timeupdate', () => {
+    syncProgressAnchor();
+    updateProgress();
+});
+// loadedmetadata：后端解码完成，时长就绪
+audioManager.on('loadedmetadata', () => {
+    const dur = audioManager.getDuration();
+    totalDurationEl.textContent = formatTime(dur);
+    if (audioManager.isPlaying()) seekSlider.disabled = false;
     // overlay 打开时同步一次进度
     if (overlay.classList.contains('active')) updateProgress();
 });
-audio.addEventListener('play', () => {
+// play：后端进入播放态（听歌时长由后端 RecordPlayStart 记录，前端无需调用）
+audioManager.on('play', () => {
     syncPlayState();
-    startSmoothProgress(); // 播放时启动平滑进度更新
-    // 听歌时长统计：记录开始播放时间
-    // 优先使用 currentTrackData，回退到 audioManager.currentTrack（恢复播放时 currentTrackData 可能为 null）
-    const track = currentTrackData || (window.audioManager && window.audioManager.currentTrack);
-    if (track && track.id) {
-        RecordPlayStart(track.id).catch((e) => console.warn('RecordPlayStart failed:', e));
-    }
+    startSmoothProgress();
 });
 nextBtn.addEventListener('click', playNextTrack);
 prevBtn.addEventListener('click', playPrevTrack);
-audio.addEventListener('pause', () => {
+// pause：后端进入暂停态（听歌时长由后端 RecordPlayPause 记录）
+audioManager.on('pause', () => {
     syncPlayState();
-    stopSmoothProgress(); // 暂停时停止平滑更新，最终状态由 timeupdate 兜底
-    // 听歌时长统计：计算本次播放时长并写入注册表
-    const track = currentTrackData || (window.audioManager && window.audioManager.currentTrack);
-    if (track && track.id) {
-        RecordPlayPause(track.id).catch((e) => console.warn('RecordPlayPause failed:', e));
-    }
+    stopSmoothProgress();
 });
-audio.addEventListener('error', (e) => {
-    console.error("Audio Load Error:", e);
+// error：后端解码/播放错误
+audioManager.on('error', (e) => {
+    console.error("Playback Error:", e);
     trackNameEl.textContent = "Load Error";
     seekSlider.disabled = true;
 });
 
-audio.addEventListener('ended', async () => {
-    // 听歌时长统计：播放结束也需记录（ended 不会触发 pause 事件）
-    const track = currentTrackData || (window.audioManager && window.audioManager.currentTrack);
-    if (track && track.id) {
-        RecordPlayPause(track.id).catch((e) => console.warn('RecordPlayPause failed:', e));
-    }
-    const mode = window.audioManager.getPlayMode();
-
-    // 单曲循环由 audioManager 内部处理，这里不需要操作
+// ended：后端单曲循环已在 player.go 内处理，此处仅处理顺序/随机模式的下一首
+audioManager.on('ended', async () => {
+    const mode = audioManager.getPlayMode();
+    // 单曲循环由后端处理，不会触发 ended；此处兜底防御
     if (mode === 'loopOne') {
         return;
     }
-
     // 随机或顺序模式下，自动播放下一首
     await playNextTrack();
+});
+
+// trackloaded：后端加载新曲完成，同步 UI（封面/标题已在 loadTrack 设置，此处主要兜底）
+audioManager.on('trackloaded', (track) => {
+    if (!track) return;
+    // 同步 currentTrackData（切页恢复或后端主动加载时）
+    if (!currentTrackData || currentTrackData.id !== track.id) {
+        currentTrackData = track;
+        trackNameEl.textContent = track.name || t('common.unknown');
+        applyMarquee(trackNameEl);
+        artistNameEl.textContent = track.artist || t('common.unknownArtist');
+    }
+    syncPlayState();
+    syncPlayModeState();
 });
 
 seekSlider.addEventListener('mousedown', () => { isSeeking = true; });
@@ -799,8 +824,9 @@ seekSlider.addEventListener('touchstart', () => { isSeeking = true; });
 seekSlider.addEventListener('input', () => {
     const percent = seekSlider.value;
     updateProgressFill('seekProgress', percent);
-    if (audio.duration && !isNaN(audio.duration)) {
-        const previewTime = (percent / 100) * audio.duration;
+    const dur = audioManager.getDuration();
+    if (dur && !isNaN(dur)) {
+        const previewTime = (percent / 100) * dur;
         currentTimeEl.textContent = formatTime(previewTime);
     }
 });
@@ -809,7 +835,7 @@ const finishSeeking = () => {
     isSeeking = false;
     setProgress();
     // 拖动结束后，若仍在播放，重启平滑更新
-    if (!audio.paused) startSmoothProgress();
+    if (audioManager.isPlaying()) startSmoothProgress();
 };
 seekSlider.addEventListener('change', finishSeeking);
 seekSlider.addEventListener('mouseup', finishSeeking);
@@ -866,18 +892,11 @@ async function openPlayer(trackId) {
     document.body.classList.add('player-active');
     syncPlayModeState();
 
-    // 同步音量到滑块 — 从 Windows 系统合成器读取本程序音量
-    try {
-        const sysVol = await GetApplicationVolume();
-        volSlider.value = sysVol;
-        updateProgressFill('volProgress', volSlider.value);
-        localStorage.setItem('volume', sysVol.toString());
-    } catch (e) {
-        // 读取系统音量失败，回退到 localStorage 或默认值
-        const savedVolume = localStorage.getItem('volume');
-        volSlider.value = savedVolume ? parseInt(savedVolume, 10) : 70;
-        updateProgressFill('volProgress', volSlider.value);
-    }
+    // 同步音量到滑块 — 从后端 Player 读取当前音量（synth 模式由后端控制）
+    const curVol = audioManager.getVolume();
+    volSlider.value = curVol;
+    updateProgressFill('volProgress', volSlider.value);
+    try { localStorage.setItem('volume', curVol.toString()); } catch (e) {}
 
     if (!trackId) {
         trackNameEl.textContent = "未指定曲目";
@@ -887,8 +906,13 @@ async function openPlayer(trackId) {
 
     try {
         const track = await GetTrack(Number(trackId));
-        // loadTrack 内部会判断同曲不重载 audio，保持同曲播放连续
+        // loadTrack 内部委托 audioManager.loadTrack，同曲不重载，保持同曲播放连续
         loadTrack(track);
+        // 若后端已在播放该曲目（跨页恢复），同步一次进度与状态
+        if (audioManager.isPlaying()) {
+            updateProgress();
+            startSmoothProgress();
+        }
         return true;
     } catch (err) {
         console.error("加载曲目失败:", err);

@@ -869,7 +869,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     // 使用全局音频管理器
     if (window.audioManager) {
-        // 单一可信源：根据 audio.paused 同步按钮图标
+        // 单一可信源：根据后端播放状态同步按钮图标
         const syncPlayIcon = () => {
             if (!miniPlayIcon || !miniPauseIcon) return;
             if (window.audioManager.isPlaying()) {
@@ -908,23 +908,8 @@ document.addEventListener("DOMContentLoaded", async function () {
             miniPlayer.style.display = 'none';
         });
 
-        // 应用保存的音量（优先使用 localStorage 中实时调整的音量，其次使用设置中的默认音量）
-        try {
-            const savedVolume = localStorage.getItem('volume');
-            if (savedVolume !== null) {
-                let vol = parseFloat(savedVolume);
-                if (vol > 1) vol = vol / 100; // 兼容 0~100 范围
-                window.audioManager.audio.volume = Math.max(0, Math.min(1, vol));
-            } else {
-                const { LoadSettings } = await import('../../wailsjs/go/main/App.js');
-                const settings = await LoadSettings();
-                window.audioManager.audio.volume = (settings.volume || 70) / 100;
-            }
-        } catch (e) {
-            console.warn('Failed to load volume settings:', e);
-        }
-
         // 恢复上次播放状态（必须在 on() 绑定完成后调用）
+        // restore() 会按 volume_mode 从对应音源（synth/master）读取真实音量并同步缓存
         window.audioManager.restore();
         currentTrack = window.audioManager.currentTrack;
         if (currentTrack) {

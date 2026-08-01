@@ -1,223 +1,257 @@
-// audio-manager.js — 音频播放管理器（单一可信源：this.audio.paused）
-// 每个页面独立实例，通过 localStorage 同步曲目、播放位置、播放状态
-// 切换页面时新页面会从上次位置自动续播
+// audio-manager.js — 音频播放管理器（后端驱动版）
+//
+// 重构后音频解码与输出全部在 Go 后端完成（player.go），前端只负责控制。
+// Go 后端是播放状态的唯一可信源，通过 Wails Events 推送状态；本类是前端的
+// 薄封装，对外保留与旧版相同的事件接口（play/pause/timeupdate/loadedmetadata/
+// ended/trackloaded/trackcleared/modechange），让 player.js / libraries.js
+// 以最小改动迁移。
+//
+// 跨页连续性：Go 进程在前端切页时持续播放，本类在构造时订阅后端事件，
+// restore() 时向后端查询一次状态快照并同步 UI，无需依赖 localStorage 续播。
+import { PlayerLoad, PlayerPlay, PlayerPause, PlayerSeek, PlayerStop, PlayerGetState, PlayerTogglePlayMode, PlayerGetPlayMode, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume } from '../../wailsjs/go/main/App.js';
+import { EventsOn } from '../../wailsjs/runtime/runtime.js';
+
 class AudioManager {
 	constructor() {
-		this.audio = document.createElement('audio');
-		this.audio.preload = 'auto'; // 切页续播时提前缓冲，避免 play() 因 readyState 不够挂死
 		this.currentTrack = null;
 		this.listeners = new Map();
 
-		// 状态标志：屏蔽切页 / reload 等场景的假 play/pause 事件
-		this._unloading = false;      // 页面卸载中（beforeunload/pagehide）
-		this._restoring = false;      // restore() 过程中（屏蔽 load 产生的假 pause）
-		this._loadingTrack = false;   // loadTrack() 过程中
+		// 播放状态缓存（来自后端事件，前端只读）
+		this._isPlaying = false;
+		this._currentTime = 0;
+		this._duration = 0;
+		this._volume = 70;
 
-		// 播放模式: 'none' (顺序/默认), 'loopOne' (单曲循环), 'random' (随机)
+		// 音量模式：'synth'（合成器，由后端 Player 控制）| 'master'（系统主音量）
+		// 与 settings.js 共享 localStorage key 'musicLite.volumeMode'
+		this._volumeMode = localStorage.getItem('musicLite.volumeMode') || 'synth';
+
+		// 播放模式: 'none' | 'loopOne' | 'random'（缓存后端值，localStorage 用于即时 UI）
 		this.playMode = localStorage.getItem('playMode') || 'none';
 
-		// 音频事件监听
-		this.audio.addEventListener('play', () => {
-			if (this._unloading || this._restoring || this._loadingTrack) {
-				// 屏蔽过程性 play 事件，但仍然同步 localStorage 真实状态
-				localStorage.setItem('isPlaying', '1');
-				this.emit('play');
-				return;
-			}
-			localStorage.setItem('isPlaying', '1');
-			this.emit('play');
-		});
-		this.audio.addEventListener('pause', () => {
-			// 假 pause：卸载 / restore 中 reload / loadTrack 中 load
-			// → 不要写入 isPlaying='0' 覆盖真实状态
-			if (this._unloading || this._restoring || this._loadingTrack) {
-				localStorage.setItem('currentTime', this.audio.currentTime.toString());
-				this.emit('pause');
-				return;
-			}
-			localStorage.setItem('isPlaying', '0');
-			localStorage.setItem('currentTime', this.audio.currentTime.toString());
-			this.emit('pause');
-		});
-		this.audio.addEventListener('ended', () => {
-			// 单曲循环：播放结束后自动回到开头重播
-			if (this.playMode === 'loopOne') {
-				this.audio.currentTime = 0;
-				this.audio.play().catch(e => console.warn('Loop replay failed:', e));
-				return; // 不触发 ended 事件，保持播放
-			}
+		// 加载中标记：loadTrack 返回的 Promise，play() 需等待它完成避免空播放
+		this._pendingLoad = null;
 
-			localStorage.setItem('isPlaying', '0');
-			localStorage.setItem('currentTime', '0');
-			this.emit('ended');
-		});
-		this.audio.addEventListener('timeupdate', () => {
-			const t = Math.floor(this.audio.currentTime);
-			if (t !== this._lastSavedTime) {
-				this._lastSavedTime = t;
-				localStorage.setItem('currentTime', t.toString());
-			}
-			this.emit('timeupdate', {
-				currentTime: this.audio.currentTime,
-				duration: this.audio.duration
-			});
-		});
-		this.audio.addEventListener('loadedmetadata', () => this.emit('loadedmetadata', {
-			duration: this.audio.duration
-		}));
-		// 页面卸载前保存当前位置和播放状态
-		// 用 pagehide + beforeunload 双保险，确保跨页时状态被保存
-		const saveStateOnUnload = () => {
-			this._unloading = true;
-			if (this.audio && !isNaN(this.audio.currentTime)) {
-				localStorage.setItem('currentTime', this.audio.currentTime.toString());
-			}
-			// 保存当前播放状态，供下个页面 restore 判断是否续播
-			localStorage.setItem('isPlaying', this.isPlaying() ? '1' : '0');
-		};
-		window.addEventListener('beforeunload', saveStateOnUnload);
-		window.addEventListener('pagehide', saveStateOnUnload);
+		this._bindBackendEvents();
 	}
 
-	// 比较 src 路径（去掉 file:// 前缀）和 id 判断是否同一曲目
+	// 订阅后端推送的播放器事件
+	_bindBackendEvents() {
+		// 曲目加载完成：同步元数据与时长
+		EventsOn('player:trackloaded', (data) => {
+			if (!data) return;
+			const track = data.track;
+			if (track) {
+				this.currentTrack = track;
+				try { localStorage.setItem('currentTrack', JSON.stringify(track)); } catch (e) {}
+				document.title = track.name || track.Name || 'MusicLite';
+				this.emit('trackloaded', track);
+			}
+			if (data.duration && data.duration !== this._duration) {
+				this._duration = data.duration;
+				this.emit('loadedmetadata', { duration: this._duration });
+			}
+		});
+
+		// 状态变更：播放/暂停/停止
+		EventsOn('player:state', (data) => {
+			if (!data) return;
+			if (typeof data.duration === 'number' && data.duration > 0 && data.duration !== this._duration) {
+				this._duration = data.duration;
+				this.emit('loadedmetadata', { duration: this._duration });
+			}
+			if (typeof data.position === 'number') {
+				this._currentTime = data.position;
+			}
+			const wasPlaying = this._isPlaying;
+			this._isPlaying = !!data.isPlaying;
+			if (this._isPlaying && !wasPlaying) {
+				this.emit('play');
+			} else if (!this._isPlaying && wasPlaying) {
+				this.emit('pause');
+			}
+		});
+
+		// 周期位置更新（仅播放中）
+		EventsOn('player:timeupdate', (data) => {
+			if (!data) return;
+			if (typeof data.position === 'number') this._currentTime = data.position;
+			if (typeof data.duration === 'number' && data.duration > 0 && data.duration !== this._duration) {
+				this._duration = data.duration;
+				this.emit('loadedmetadata', { duration: this._duration });
+			}
+			this.emit('timeupdate', {
+				currentTime: this._currentTime,
+				duration: this._duration
+			});
+		});
+
+		// 曲目自然结束（后端已处理单曲循环，这里仅顺序/随机模式触发）
+		EventsOn('player:ended', () => {
+			this._isPlaying = false;
+			this._currentTime = 0;
+			this.emit('ended');
+		});
+
+		// 播放模式变更
+		EventsOn('player:modechange', (mode) => {
+			this.playMode = mode;
+			try { localStorage.setItem('playMode', mode); } catch (e) {}
+			this.emit('modechange', mode);
+		});
+	}
+
+	// 比较曲目是否相同（按 id）
 	_sameTrack(track) {
-		if (!track || !track.src || !this.currentTrack || !this.currentTrack.src) return false;
+		if (!track || !this.currentTrack) return false;
 		if (track.id !== undefined && this.currentTrack.id !== undefined) {
 			return track.id === this.currentTrack.id;
 		}
-		const normalize = s => String(s).replace(/^file:\/\//i, '').replace(/\\/g, '/').toLowerCase();
-		return normalize(track.src) === normalize(this.currentTrack.src);
+		return false;
 	}
 
+	// 加载曲目：调用后端解码并构建播放管线（加载后处于暂停态）
 	loadTrack(track) {
-		if (!track || !track.src) return;
-		// 同 src/id 直接跳过，避免 load() 打断正在的播放
+		if (!track || track.id === undefined || track.id === null) return;
+		// 同曲目跳过，避免重复解码打断后端播放
 		if (this._sameTrack(track)) {
+			this.currentTrack = track; // 更新可能变更的字段
+			try { localStorage.setItem('currentTrack', JSON.stringify(track)); } catch (e) {}
+			this.emit('trackloaded', track);
 			return;
 		}
-		this._loadingTrack = true;
-		try {
-			this.currentTrack = track;
-			document.title = track.name || track.Name || 'MusicLite';
-			this.audio.src = track.src;
-			this.audio.load();
-			// 保存到 localStorage 以便其他页面恢复
-			localStorage.setItem('currentTrack', JSON.stringify(track));
-			localStorage.setItem('currentTime', '0');
-			localStorage.setItem('isPlaying', '0');
-			this.emit('trackloaded', track);
-		} finally {
-			// 延迟清除标志，给 load() 触发的 pause 事件留出时间
-			setTimeout(() => { this._loadingTrack = false; }, 100);
-		}
-	}
+		this.currentTrack = track;
+		this._currentTime = 0;
+		this._duration = 0;
+		this._isPlaying = false;
+		try { localStorage.setItem('currentTrack', JSON.stringify(track)); } catch (e) {}
+		document.title = track.name || track.Name || 'MusicLite';
+		this.emit('trackloaded', track);
 
-	// 确保 readyState 足够后再 play，避免浏览器因缓冲未到而挂死
-	_ensureCanPlayThenPlay() {
-		return new Promise((resolve, reject) => {
-			const doPlay = () => {
-				this.audio.play().then(resolve).catch(reject);
-			};
-			// readyState 2 = HAVE_CURRENT_DATA，已可以播放
-			if (this.audio.readyState >= 2 || !this.audio.src) {
-				doPlay();
-				return;
-			}
-			const onCanPlay = () => {
-				this.audio.removeEventListener('canplay', onCanPlay);
-				doPlay();
-			};
-			const onErr = (e) => {
-				this.audio.removeEventListener('canplay', onCanPlay);
-				this.audio.removeEventListener('error', onErr);
-				reject(e);
-			};
-			this.audio.addEventListener('canplay', onCanPlay);
-			this.audio.addEventListener('error', onErr, { once: true });
-			// 超时兜底 8s
-			setTimeout(() => {
-				this.audio.removeEventListener('canplay', onCanPlay);
-				this.audio.removeEventListener('error', onErr);
-				doPlay();
-			}, 8000);
-		});
+		// 提交到后端解码；记录 pending 以便 play() 等待
+		this._pendingLoad = PlayerLoad(track)
+			.then(() => { this._pendingLoad = null; })
+			.catch((e) => {
+				this._pendingLoad = null;
+				console.error('PlayerLoad 失败:', e);
+				this.emit('error', e);
+			});
 	}
 
 	play() {
-		if (!this.audio.src) return;
-		this._ensureCanPlayThenPlay().catch(e => console.warn('Play failed:', e));
+		const doPlay = () => { try { PlayerPlay(); } catch (e) { console.warn('PlayerPlay failed:', e); } };
+		if (this._pendingLoad) {
+			this._pendingLoad.then(doPlay);
+		} else {
+			doPlay();
+		}
 	}
 
 	pause() {
-		this.audio.pause();
+		try { PlayerPause(); } catch (e) { console.warn('PlayerPause failed:', e); }
 	}
 
 	toggle() {
-		if (this.audio.paused) {
-			this.play();
-		} else {
+		if (this._isPlaying) {
 			this.pause();
+		} else {
+			this.play();
 		}
 	}
 
 	seek(time) {
-		if (this.audio.duration && time >= 0 && time <= this.audio.duration) {
-			this.audio.currentTime = time;
-		}
+		if (typeof time !== 'number' || time < 0) return;
+		try { PlayerSeek(time); } catch (e) { console.warn('PlayerSeek failed:', e); }
 	}
 
+	// 设置音量（按当前 volume_mode 路由到对应后端接口）
+	// synth 模式 → SetApplicationVolume（后端 Player beep effects.Volume）
+	// master 模式 → SetSystemMasterVolume（Windows 系统主音量）
 	setVolume(value) {
-		this.audio.volume = Math.max(0, Math.min(1, value));
-		localStorage.setItem('volume', this.audio.volume.toString());
+		const vol = Math.max(0, Math.min(100, Math.round(value)));
+		this._volume = vol;
+		try { localStorage.setItem('volume', vol.toString()); } catch (e) {}
+		try {
+			if (this._volumeMode === 'master') {
+				SetSystemMasterVolume(vol);
+			} else {
+				SetApplicationVolume(vol);
+			}
+		} catch (e) { console.warn('setVolume failed:', e); }
 	}
 
 	getVolume() {
-		return this.audio.volume;
+		return this._volume;
+	}
+
+	// 切换音量模式（设置页点击 synth/master 时调用）
+	// 切换后从对应音源读取真实音量并更新缓存，让播放器滑块立即反映新模式
+	async setVolumeMode(mode) {
+		if (mode !== 'synth' && mode !== 'master') return;
+		this._volumeMode = mode;
+		try { localStorage.setItem('musicLite.volumeMode', mode); } catch (e) {}
+		// 读取新模式下的真实音量并更新缓存
+		try {
+			const realVol = mode === 'master'
+				? await GetSystemMasterVolume()
+				: await GetApplicationVolume();
+			if (typeof realVol === 'number' && !isNaN(realVol)) {
+				this._volume = realVol;
+				try { localStorage.setItem('volume', realVol.toString()); } catch (e) {}
+			}
+		} catch (e) {
+			console.warn('setVolumeMode 读取音量失败:', e);
+		}
+		this.emit('volumemodechange', mode);
+		this.emit('volumechange', this._volume);
+	}
+
+	getVolumeMode() {
+		return this._volumeMode;
 	}
 
 	getCurrentTime() {
-		return this.audio.currentTime;
+		return this._currentTime;
 	}
 
 	getDuration() {
-		return this.audio.duration || 0;
+		return this._duration;
 	}
 
 	isPlaying() {
-		return !this.audio.paused;
+		return this._isPlaying;
 	}
 
-	// 切换播放模式
-	togglePlayMode() {
-		const modes = ['none', 'loopOne', 'random'];
-		const currentIndex = modes.indexOf(this.playMode);
-		const nextIndex = (currentIndex + 1) % modes.length;
-		this.playMode = modes[nextIndex];
-
-		localStorage.setItem('playMode', this.playMode);
-		this.emit('modechange', this.playMode);
-		return this.playMode;
+	// 切换播放模式（委托后端，后端处理单曲循环）
+	// 后端会通过 player:modechange 事件同步，这里也乐观更新返回值
+	async togglePlayMode() {
+		try {
+			const mode = await PlayerTogglePlayMode();
+			this.playMode = mode;
+			try { localStorage.setItem('playMode', mode); } catch (e) {}
+			this.emit('modechange', mode);
+			return mode;
+		} catch (e) {
+			console.warn('togglePlayMode failed:', e);
+			return this.playMode;
+		}
 	}
 
 	getPlayMode() {
 		return this.playMode;
 	}
 
-	// 清除当前曲目（用于曲目已删除的场景）
+	// 清除当前曲目（曲目被删除等场景）
 	clearTrack() {
-		this._loadingTrack = true;
-		try {
-			this.audio.pause();
-			this.audio.removeAttribute('src');
-			this.audio.load();
-			this.currentTrack = null;
-			localStorage.removeItem('currentTrack');
-			localStorage.removeItem('currentTime');
-			localStorage.setItem('isPlaying', '0');
-			this.emit('trackcleared');
-		} finally {
-			setTimeout(() => { this._loadingTrack = false; }, 100);
-		}
+		try { PlayerStop(); } catch (e) { console.warn('PlayerStop failed:', e); }
+		this.currentTrack = null;
+		this._isPlaying = false;
+		this._currentTime = 0;
+		this._duration = 0;
+		try { localStorage.removeItem('currentTrack'); } catch (e) {}
+		try { localStorage.removeItem('currentTime'); } catch (e) {}
+		try { localStorage.setItem('isPlaying', '0'); } catch (e) {}
+		this.emit('trackcleared');
 	}
 
 	// 事件系统
@@ -244,79 +278,48 @@ class AudioManager {
 		}
 	}
 
-	// 从 localStorage 恢复曲目信息
-	// - 同 src/id 的曲目：只 seek + play，不重新 load，避免打断正在的播放
-	restore() {
-		const savedTrack = localStorage.getItem('currentTrack');
-		const wasPlaying = localStorage.getItem('isPlaying') === '1';
-		const savedTime = parseFloat(localStorage.getItem('currentTime') || '0');
-		const savedVolume = localStorage.getItem('volume');
-
-		if (savedVolume) {
-			let vol = parseFloat(savedVolume);
-			if (vol > 1) vol = vol / 100;
-			this.audio.volume = Math.max(0, Math.min(1, vol));
-		}
-
-		if (!savedTrack) return;
-
+	// 从后端恢复播放状态（页面加载时调用一次）
+	// Go 进程跨页持久播放，这里只查询快照并同步 UI
+	async restore() {
 		try {
-			const track = JSON.parse(savedTrack);
-			// 同 src/id：只应用 currentTrack + seek + 按 wasPlaying 续播
-			if (this._sameTrack(track)) {
-				this.currentTrack = track; // 更新字段（title/artist 可能更新了）
-				this._restoring = true;
-				const tryFinish = () => {
-					if (savedTime > 0 && (!this.audio.duration || savedTime < this.audio.duration)) {
-						try { this.audio.currentTime = savedTime; } catch (e) {}
-					}
-					if (wasPlaying) {
-						this.play();
-					} else {
-						if (!this.isPlaying()) localStorage.setItem('isPlaying', '0');
-					}
-					setTimeout(() => { this._restoring = false; }, 100);
-					this.emit('trackloaded', track);
-				};
-				if (this.audio.readyState >= 2) {
-					tryFinish();
-				} else {
-					const onReady = () => {
-						this.audio.removeEventListener('loadedmetadata', onReady);
-						tryFinish();
-					};
-					this.audio.addEventListener('loadedmetadata', onReady);
-					setTimeout(onReady, 5000); // 兜底避免一直不触发
+			const state = await PlayerGetState();
+			if (state && state.track) {
+				this.currentTrack = state.track;
+				this._isPlaying = !!state.isPlaying;
+				this._currentTime = state.position || 0;
+				this._duration = state.duration || 0;
+				// 音量按 volume_mode 从对应音源读取真实值（master 模式下 PlayerGetState 的 volume 不代表系统音量）
+				try {
+					this._volume = this._volumeMode === 'master'
+						? await GetSystemMasterVolume()
+						: (state.volume || await GetApplicationVolume());
+					if (typeof this._volume !== 'number' || isNaN(this._volume)) this._volume = 70;
+					try { localStorage.setItem('volume', this._volume.toString()); } catch (e) {}
+				} catch (e) {
+					this._volume = state.volume || 70;
 				}
-				return;
+				try { localStorage.setItem('currentTrack', JSON.stringify(state.track)); } catch (e) {}
+				document.title = state.track.name || state.track.Name || 'MusicLite';
+				this.emit('trackloaded', state.track);
+				if (this._duration > 0) {
+					this.emit('loadedmetadata', { duration: this._duration });
+				}
+				if (this._isPlaying) {
+					this.emit('play');
+				} else {
+					this.emit('pause');
+				}
 			}
-
-			// 不同 src/id：走标准 load + restore
-			this._restoring = true;
-			this.currentTrack = track;
-			this.audio.src = track.src;
-			this.audio.load();
-			const onMeta = () => {
-				if (savedTime > 0 && savedTime < this.audio.duration) {
-					try { this.audio.currentTime = savedTime; } catch (e) {}
+			// 同步播放模式
+			try {
+				const mode = await PlayerGetPlayMode();
+				if (mode) {
+					this.playMode = mode;
+					try { localStorage.setItem('playMode', mode); } catch (e) {}
 				}
-				if (wasPlaying) {
-					this.play();
-				} else {
-					localStorage.setItem('isPlaying', '0');
-				}
-				this.audio.removeEventListener('loadedmetadata', onMeta);
-				setTimeout(() => { this._restoring = false; }, 100);
-				this.emit('trackloaded', track);
-			};
-			this.audio.addEventListener('loadedmetadata', onMeta);
-			setTimeout(() => {
-				this.audio.removeEventListener('loadedmetadata', onMeta);
-				this._restoring = false;
-			}, 10000);
+			} catch (e) {}
 		} catch (e) {
-			this._restoring = false;
-			console.warn('Failed to restore track:', e);
+			console.warn('restore 查询后端状态失败:', e);
 		}
 	}
 }

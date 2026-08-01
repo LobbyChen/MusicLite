@@ -739,17 +739,23 @@ function setupEventListeners() {
         markChanged();
     });
 
-    // Volume slider — 控制 Windows 系统合成器本程序音量
+    // Volume slider — 按 volume_mode 路由到合成器/系统主音量
     volumeSlider.addEventListener('input', () => {
         const vol = parseInt(volumeSlider.value, 10);
         volumeValue.textContent = vol + '%';
         currentSettings.volume = vol;
-        // 根据 volume_mode 实时设置音量
-        const mode = currentSettings.volume_mode || 'synth';
-        if (mode === 'master') {
-            SetSystemMasterVolume(vol).catch(() => {});
+        // 通过 audioManager 统一路由（它会按 _volumeMode 选择 SetApplicationVolume 或 SetSystemMasterVolume）
+        // 同时更新 audioManager._volume 缓存，让播放器页滑块保持一致
+        if (window.audioManager && typeof window.audioManager.setVolume === 'function') {
+            window.audioManager.setVolume(vol);
         } else {
-            SetApplicationVolume(vol).catch(() => {});
+            // audioManager 尚未初始化时的兜底（理论上不会发生）
+            const mode = currentSettings.volume_mode || 'synth';
+            if (mode === 'master') {
+                SetSystemMasterVolume(vol).catch(() => {});
+            } else {
+                SetApplicationVolume(vol).catch(() => {});
+            }
         }
         markChanged();
     });
@@ -761,6 +767,10 @@ function setupEventListeners() {
             currentSettings.volume_mode = mode;
             volumeModeBtns.forEach(b => b.classList.toggle('active', b === btn));
             try { localStorage.setItem('musicLite.volumeMode', mode); } catch (e) {}
+            // 通知 audioManager 切换模式（它会从对应音源读取真实音量并更新缓存）
+            if (window.audioManager && typeof window.audioManager.setVolumeMode === 'function') {
+                await window.audioManager.setVolumeMode(mode);
+            }
             // 切换后读取对应音量值更新滑块
             try {
                 const vol = mode === 'master'
