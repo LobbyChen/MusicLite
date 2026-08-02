@@ -103,6 +103,49 @@ function applyLyricAnimation(mode) {
     try { localStorage.setItem('musicLite.lyricAnimation', m); } catch (e) {}
 }
 
+// 应用视觉设计令牌（圆角 / 毛玻璃模糊 / 动画速度 / 阴影 / 辉光 / 字体晕影）
+// 写到 <html> 和 <body> inline style，覆盖 :root 上的默认值，让设计器实时生效。
+// 同时派生 sm/lg 圆角，保持比例协调。
+function applyDesignTokens(radius, blur, animMult, shadow, glow, textGlow) {
+    const r = Math.max(0, Math.min(28, Number(radius) || 10));
+    const b = Math.max(0, Math.min(40, Number(blur) || 16));
+    const m = Math.max(0.3, Math.min(2.5, Number(animMult) || 1));
+    const sh = Math.max(0, Math.min(1, Number(shadow) || 0));
+    const gl = Math.max(0, Math.min(1, Number(glow) || 0));
+    const tg = Math.max(0, Math.min(1, Number(textGlow) || 0));
+    // 阴影：强度 0-1 → rgba 透明度 0-1，并派生 strong 变体
+    const shadowStr = `0 8px 32px rgba(0, 0, 0, ${sh.toFixed(3)})`;
+    const shadowStrongStr = `0 16px 48px rgba(0, 0, 0, ${Math.min(sh * 1.3, 1).toFixed(3)})`;
+    // 主题色辉光：强度 0-1 → 扩散范围 0-64px
+    const glowStr = `0 0 ${(gl * 64).toFixed(0)}px var(--accent-glow, rgba(29, 185, 84, 0.35))`;
+    // 字体晕影：强度 0-1 → text-shadow 0-16px（0 时为 none）
+    const textGlowStr = tg > 0.001
+        ? `0 0 ${(tg * 16).toFixed(0)}px var(--accent-color)`
+        : 'none';
+    const targets = [document.documentElement, document.body];
+    for (const el of targets) {
+        if (!el) continue;
+        el.style.setProperty('--design-radius', r + 'px');
+        el.style.setProperty('--design-radius-sm', (r * 0.6).toFixed(2) + 'px');
+        el.style.setProperty('--design-radius-lg', (r * 1.6).toFixed(2) + 'px');
+        el.style.setProperty('--design-blur', b + 'px');
+        el.style.setProperty('--design-anim-mult', String(m));
+        el.style.setProperty('--design-shadow', shadowStr);
+        el.style.setProperty('--design-shadow-strong', shadowStrongStr);
+        el.style.setProperty('--design-glow', glowStr);
+        el.style.setProperty('--design-text-glow', textGlowStr);
+    }
+    // 持久化到 localStorage，供首屏快速恢复（避免闪到默认值）
+    try {
+        localStorage.setItem('musicLite.designRadius', String(r));
+        localStorage.setItem('musicLite.designBlur', String(b));
+        localStorage.setItem('musicLite.designAnimMult', String(m));
+        localStorage.setItem('musicLite.designShadow', String(sh));
+        localStorage.setItem('musicLite.designGlow', String(gl));
+        localStorage.setItem('musicLite.designTextGlow', String(tg));
+    } catch (e) {}
+}
+
 // 应用界面动画级别（0-3）：设置 body[data-anim] 与兼容的 .no-anim 类
 function applyAnimationLevel(level) {
     if (!document.body) return;
@@ -480,6 +523,9 @@ const SettingsManager = {
             : (s.enable_animations === false ? 0 : 2);
         applyAnimationLevel(animLvl);
 
+        // 视觉设计令牌（圆角 / 模糊 / 动画速度 / 阴影 / 辉光 / 字体晕影）
+        applyDesignTokens(s.design_radius, s.design_blur, s.design_anim_mult, s.design_shadow, s.design_glow, s.design_text_glow);
+
         // 同一时间戳歌词行数（同步到 localStorage，供 player.js 读取）
         const maxLines = (typeof s.max_lyric_lines === 'number' && s.max_lyric_lines >= 1 && s.max_lyric_lines <= 10)
             ? s.max_lyric_lines
@@ -488,6 +534,10 @@ const SettingsManager = {
 
         // 应用 i18n 翻译（在 DOM 和语言都就绪后）
         applyTranslations();
+
+        // 自定义标题栏文字
+        const titlebarText = (s.titlebar_text && s.titlebar_text.trim()) || 'MusicLite Cuckoo';
+        document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = titlebarText; });
 
         return s;
     },
@@ -523,17 +573,34 @@ const SettingsManager = {
                 : (this.cached.enable_animations === false ? 0 : 2);
             applyAnimationLevel(animLvl);
 
+            // 视觉设计令牌（圆角 / 模糊 / 动画速度 / 阴影 / 辉光 / 字体晕影）
+            applyDesignTokens(this.cached.design_radius, this.cached.design_blur, this.cached.design_anim_mult, this.cached.design_shadow, this.cached.design_glow, this.cached.design_text_glow);
+
             // 同一时间戳歌词行数（同步到 localStorage）
             const maxLines = (typeof this.cached.max_lyric_lines === 'number' && this.cached.max_lyric_lines >= 1 && this.cached.max_lyric_lines <= 10)
                 ? this.cached.max_lyric_lines
                 : 1;
             try { localStorage.setItem('musicLite.maxLyricLines', maxLines.toString()); } catch (e) {}
+
+            // 自定义标题栏文字
+            const titlebarText = (this.cached.titlebar_text && this.cached.titlebar_text.trim()) || 'MusicLite Cuckoo';
+            document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = titlebarText; });
         }
     },
 
     // 暴露给外部调用：仅更新主题色（设置页颜色选择器实时预览用）
     applyAccentColor(color, theme) {
         applyAccentColor(color, theme);
+    },
+
+    // 暴露给设计器实时预览：单独应用设计令牌（不读后端）
+    applyDesignTokens(radius, blur, animMult, shadow, glow, textGlow) {
+        applyDesignTokens(radius, blur, animMult, shadow, glow, textGlow);
+    },
+
+    // 暴露给设计器实时预览：单独应用动画级别（不读后端）
+    applyAnimationLevel(level) {
+        return applyAnimationLevel(level);
     }
 };
 
@@ -586,5 +653,28 @@ if (document.readyState === 'loading') {
         }
         body.setAttribute('data-anim', lvl.toString());
         body.classList.toggle('no-anim', lvl === 0);
+    } catch (e) {}
+})();
+
+// 同步应用视觉设计令牌（在 DOMContentLoaded 之前应用，避免圆角/模糊首屏闪烁到默认值）
+// 从 localStorage 读取上次的设计器设置，等 SettingsManager.apply() 完成后再用后端设置覆盖
+(function syncApplyDesignTokens() {
+    try {
+        const r = localStorage.getItem('musicLite.designRadius');
+        const b = localStorage.getItem('musicLite.designBlur');
+        const m = localStorage.getItem('musicLite.designAnimMult');
+        const sh = localStorage.getItem('musicLite.designShadow');
+        const gl = localStorage.getItem('musicLite.designGlow');
+        const tg = localStorage.getItem('musicLite.designTextGlow');
+        if (r !== null || b !== null || m !== null || sh !== null || gl !== null || tg !== null) {
+            applyDesignTokens(
+                r !== null ? parseFloat(r) : 10,
+                b !== null ? parseInt(b, 10) : 16,
+                m !== null ? parseFloat(m) : 1,
+                sh !== null ? parseFloat(sh) : 0.45,
+                gl !== null ? parseFloat(gl) : 0.35,
+                tg !== null ? parseFloat(tg) : 0
+            );
+        }
     } catch (e) {}
 })();

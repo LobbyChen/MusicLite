@@ -10,22 +10,30 @@ import (
 
 // Settings 应用设置结构体
 type Settings struct {
-	Theme          string `json:"theme"`           // "dark" | "light" | "accent" | "custom"
-	PlayerFont     string `json:"player_font"`     // 播放器字体
-	LyricsFont     string `json:"lyrics_font"`     // 歌词字体
-	UIScale        int    `json:"ui_scale"`        // 界面缩放比例 (20-500)，默认 100
-	LyricsScale    int    `json:"lyrics_scale"`    // 歌词缩放比例 (20-500)，默认 100
-	LastTrackID    int64  `json:"last_track_id"`   // 上次播放的曲目ID
-	LastPosition   int64  `json:"last_position"`   // 上次播放位置（秒）
-	Volume         int    `json:"volume"`          // 音量 0-100
-	AccentColor    string `json:"accent_color"`    // 自定义主题色（十六进制，如 #1DB954）
-	Language       string `json:"language"`        // 界面语言："zh-CN" | "en"
-	LyricAnimation string `json:"lyric_animation"` // 全屏歌词切换动画："fade" | "slide-up" | "slide-left" | "zoom" | "none"
-	ListMode       string `json:"list_mode"`       // 音乐库列表模式："card" | "list"
-	AnimationLevel int    `json:"animation_level"` // 界面动画级别：0=无 1=基础 2=增强(默认) 3=华丽
-	VolumeMode     string `json:"volume_mode"`     // 音量模式："synth"（合成器，默认）| "master"（系统主音量）
-	MaxLyricLines  int    `json:"max_lyric_lines"` // 同一时间戳最多允许同时显示歌词行数（1-10，默认1）
-	SortMode       string `json:"sort_mode"`       // 音乐库排序方式："recent"（默认）| "title" | "artist"
+	Theme          string  `json:"theme"`           // "dark" | "light" | "accent" | "custom"
+	PlayerFont     string  `json:"player_font"`     // 播放器字体
+	LyricsFont     string  `json:"lyrics_font"`     // 歌词字体
+	UIScale        int     `json:"ui_scale"`        // 界面缩放比例 (20-500)，默认 100
+	LyricsScale    int     `json:"lyrics_scale"`    // 歌词缩放比例 (20-500)，默认 100
+	LastTrackID    int64   `json:"last_track_id"`   // 上次播放的曲目ID
+	LastPosition   int64   `json:"last_position"`   // 上次播放位置（秒）
+	Volume         int     `json:"volume"`          // 音量 0-100
+	AccentColor    string  `json:"accent_color"`    // 自定义主题色（十六进制，如 #1DB954）
+	Language       string  `json:"language"`        // 界面语言："zh-CN" | "en"
+	LyricAnimation string  `json:"lyric_animation"` // 全屏歌词切换动画："fade" | "slide-up" | "slide-left" | "zoom" | "none"
+	ListMode       string  `json:"list_mode"`       // 音乐库列表模式："card" | "list"
+	AnimationLevel int     `json:"animation_level"` // 界面动画级别：0=无 1=基础 2=增强(默认) 3=华丽
+	VolumeMode     string  `json:"volume_mode"`     // 音量模式："synth"（合成器，默认）| "master"（系统主音量）
+	MaxLyricLines  int     `json:"max_lyric_lines"` // 同一时间戳最多允许同时显示歌词行数（1-10，默认1）
+	SortMode       string  `json:"sort_mode"`       // 音乐库排序方式："recent"（默认）| "title" | "artist"
+	// 设计令牌（设计器实时调整，持久化到 settings.json）
+	DesignRadius    float64 `json:"design_radius"`     // 圆角（px，0-28，默认 10）
+	DesignBlur      int     `json:"design_blur"`       // 毛玻璃模糊量（px，0-40，默认 16）
+	DesignAnimMult  float64 `json:"design_anim_mult"`  // 动画速度倍率（0.3-2.5，默认 1.0）
+	DesignShadow    float64 `json:"design_shadow"`     // 浮层阴影强度（0-1，默认 0.45）
+	DesignGlow      float64 `json:"design_glow"`        // 主题色辉光范围（0-1，默认 0.35）
+	DesignTextGlow  float64 `json:"design_text_glow"`  // 字体晕影强度（0-1，默认 0）
+	TitlebarText   string  `json:"titlebar_text"`     // 自定义标题栏文字（空则使用默认 "MusicLite Cuckoo"）
 }
 
 // DefaultSettings 返回默认设置
@@ -47,6 +55,13 @@ func DefaultSettings() Settings {
 		VolumeMode:     "synth",
 		MaxLyricLines:  1,
 		SortMode:       "recent",
+		DesignRadius:   10,
+		DesignBlur:     16,
+		DesignAnimMult: 1.0,
+		DesignShadow:   0.45,
+		DesignGlow:     0.35,
+		DesignTextGlow: 0,
+		TitlebarText:   "MusicLite Cuckoo",
 	}
 }
 
@@ -173,6 +188,43 @@ func (a *App) LoadSettings() Settings {
 	// SortMode 兼容旧版设置文件（缺失或非法时用默认值 "recent"）
 	if s.SortMode != "recent" && s.SortMode != "title" && s.SortMode != "artist" {
 		s.SortMode = def.SortMode
+	}
+	// 设计令牌：兼容旧版设置文件（缺失时用默认值补齐，越界时钳制到合法范围）
+	// 用 raw map 检测字段是否存在，避免把"用户主动设为 0"误判为缺失
+	{
+		var raw2 map[string]json.RawMessage
+		_ = json.Unmarshal(data, &raw2)
+		has := func(key string) bool { _, ok := raw2[key]; return ok }
+		if !has("design_radius") {
+			s.DesignRadius = def.DesignRadius
+		} else if s.DesignRadius < 0 || s.DesignRadius > 28 {
+			s.DesignRadius = def.DesignRadius
+		}
+		if !has("design_blur") {
+			s.DesignBlur = def.DesignBlur
+		} else if s.DesignBlur < 0 || s.DesignBlur > 40 {
+			s.DesignBlur = def.DesignBlur
+		}
+		if !has("design_anim_mult") {
+			s.DesignAnimMult = def.DesignAnimMult
+		} else if s.DesignAnimMult < 0.3 || s.DesignAnimMult > 2.5 {
+			s.DesignAnimMult = def.DesignAnimMult
+		}
+		if !has("design_shadow") {
+			s.DesignShadow = def.DesignShadow
+		} else if s.DesignShadow < 0 || s.DesignShadow > 1 {
+			s.DesignShadow = def.DesignShadow
+		}
+		if !has("design_glow") {
+			s.DesignGlow = def.DesignGlow
+		} else if s.DesignGlow < 0 || s.DesignGlow > 1 {
+			s.DesignGlow = def.DesignGlow
+		}
+		if !has("design_text_glow") {
+			s.DesignTextGlow = def.DesignTextGlow
+		} else if s.DesignTextGlow < 0 || s.DesignTextGlow > 1 {
+			s.DesignTextGlow = def.DesignTextGlow
+		}
 	}
 
 	return s

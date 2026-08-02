@@ -52,6 +52,7 @@ const lyricsFontSelect = document.getElementById('lyrics-font');
 const playerFontPreview = document.getElementById('player-font-preview');
 const lyricsFontPreview = document.getElementById('lyrics-font-preview');
 const languageSelect = document.getElementById('language-select');
+const titlebarTextInput = document.getElementById('titlebar-text');
 const exportBtn = document.getElementById('export-settings-btn');
 const importBtn = document.getElementById('import-settings-btn');
 const resetBtn = document.getElementById('reset-settings-btn');
@@ -553,6 +554,9 @@ function applySettingsToUI(s) {
     setLanguage(lang);
     applyTranslations();
 
+    // 标题栏文字
+    if (titlebarTextInput) titlebarTextInput.value = s.titlebar_text || '';
+
     // Scale
     const uiScale = (s.ui_scale && s.ui_scale >= 20 && s.ui_scale <= 500) ? s.ui_scale : 135;
     const lyricsScale = (s.lyrics_scale && s.lyrics_scale >= 20 && s.lyrics_scale <= 500) ? s.lyrics_scale : 135;
@@ -866,6 +870,17 @@ function setupEventListeners() {
         });
     }
 
+    // 标题栏文字
+    if (titlebarTextInput) {
+        titlebarTextInput.addEventListener('input', () => {
+            currentSettings.titlebar_text = titlebarTextInput.value;
+            // 实时预览：立即更新当前页标题栏
+            const txt = (titlebarTextInput.value && titlebarTextInput.value.trim()) || 'MusicLite Cuckoo';
+            document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = txt; });
+            markChanged();
+        });
+    }
+
     // Export settings button
     if (exportBtn) {
         exportBtn.addEventListener('click', async () => {
@@ -1034,6 +1049,9 @@ async function saveSettings() {
             setLanguage(currentSettings.language);
             applyTranslations();
         }
+        // 应用标题栏文字
+        const titlebarText = (currentSettings.titlebar_text && currentSettings.titlebar_text.trim()) || 'MusicLite Cuckoo';
+        document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = titlebarText; });
         showToast(t('libraries.saved'), 'success');
     } catch (err) {
         console.error('Failed to save settings:', err);

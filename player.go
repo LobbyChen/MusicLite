@@ -72,21 +72,35 @@ type Player struct {
 	decoded  beep.StreamSeekCloser // 解码器（可 Seek）
 	srcFmt   beep.Format           // 原始格式（用于采样换算）
 	ctrl     *beep.Ctrl            // 暂停/恢复
+	eq       *Equalizer            // 10 频段均衡器（管线中的 DSP 节点）
 	vol      *effects.Volume       // 音量
 	paused   bool                  // 是否处于暂停态
 	volume   int                   // 0-100
 	playMode string                // none | loopOne | random
+	queue    *PlayQueue             // 播放队列（非空时优先驱动进曲）
 }
 
 // NewPlayer 创建播放器实例（不初始化设备，等 startup 拿到 ctx 后调用 Start）
 func NewPlayer(db *storage.Database, app *App) *Player {
-	return &Player{
+	p := &Player{
 		db:       db,
 		app:      app,
 		volume:   70,
 		playMode: "none",
 		closed:   make(chan struct{}),
 	}
+	p.queue = NewPlayQueue(db, app)
+	return p
+}
+
+// Queue 返回播放队列实例（供 App 绑定方法调用）
+func (p *Player) Queue() *PlayQueue {
+	return p.queue
+}
+
+// Equalizer 返回均衡器实例（供 App 绑定方法调用）
+func (p *Player) Equalizer() *Equalizer {
+	return p.eq
 }
 
 // Start 初始化音频设备并启动 timeupdate 推送循环（在 app.startup 中调用）
@@ -172,6 +186,150 @@ func (a *App) PlayerRestart() error {
 	return a.player.restart()
 }
 
+// ============ 均衡器绑定方法 ============
+
+// EqBandCount 常量前端不可见，前端通过 PlayerGetEqBandCount 获取
+// PlayerGetEqBandCount 返回频段数量
+func (a *App) PlayerGetEqBandCount() int {
+	return EqBandCount
+}
+
+// PlayerGetEqFreqs 返回各频段中心频率（Hz）
+func (a *App) PlayerGetEqFreqs() []float64 {
+	freqs := make([]float64, EqBandCount)
+	copy(freqs, EqCenterFreqs[:])
+	return freqs
+}
+
+// PlayerSetEqBand 设置某频段增益（dB，-12~+12）
+func (a *App) PlayerSetEqBand(index int, gainDB float64) {
+	eq := a.player.Equalizer()
+	if eq != nil {
+		eq.SetBand(index, gainDB)
+	}
+}
+
+// PlayerSetEqGains 一次性设置全部频段增益（长度须等于频段数）
+func (a *App) PlayerSetEqGains(gains []float64) {
+	eq := a.player.Equalizer()
+	if eq != nil {
+		eq.SetGains(gains)
+	}
+}
+
+// PlayerGetEqGains 返回当前各频段增益（dB）
+func (a *App) PlayerGetEqGains() []float64 {
+	eq := a.player.Equalizer()
+	if eq == nil {
+		return make([]float64, EqBandCount)
+	}
+	g := eq.GetGains()
+	out := make([]float64, EqBandCount)
+	copy(out, g[:])
+	return out
+}
+
+// PlayerSetEqEnabled 启用/旁路均衡器
+func (a *App) PlayerSetEqEnabled(on bool) {
+	eq := a.player.Equalizer()
+	if eq != nil {
+		eq.SetEnabled(on)
+	}
+}
+
+// PlayerGetEqEnabled 返回均衡器启用状态
+func (a *App) PlayerGetEqEnabled() bool {
+	eq := a.player.Equalizer()
+	if eq == nil {
+		return false
+	}
+	return eq.IsEnabled()
+}
+
+// PlayerResetEq 重置全部频段为 0 dB（不平路状态，仍保持启用/旁路）
+func (a *App) PlayerResetEq() {
+	eq := a.player.Equalizer()
+	if eq != nil {
+		eq.SetGains(make([]float64, EqBandCount))
+	}
+}
+
+// ============ 播放队列绑定方法 ============
+
+// QueueAddTrack 按曲目 ID 加入队列尾部，返回加入的项（失败返回空项）
+func (a *App) QueueAddTrack(id int64) QueueItem {
+	item, _ := a.player.queue.AddTrack(id)
+	return item
+}
+
+// QueueAddAll 批量加入队列
+func (a *App) QueueAddAll(ids []int64) int {
+	return a.player.queue.AddAll(ids)
+}
+
+// QueueAddAllFromLibrary 把整个音乐库加入队列（"播放全部"用）
+func (a *App) QueueAddAllFromLibrary() int {
+	return a.player.queue.AddAllFromLibrary()
+}
+
+// QueueRemoveAt 删除指定下标的队列项
+func (a *App) QueueRemoveAt(index int) bool {
+	return a.player.queue.RemoveAt(index)
+}
+
+// QueueClear 清空队列
+func (a *App) QueueClear() {
+	a.player.queue.Clear()
+}
+
+// QueueShuffle 洗牌（保留当前播放项位置）
+func (a *App) QueueShuffle() {
+	a.player.queue.Shuffle()
+}
+
+// QueueMove 拖拽排序：from → to
+func (a *App) QueueMove(from, to int) bool {
+	return a.player.queue.Move(from, to)
+}
+
+// QueueJumpTo 跳转到指定下标并播放该项
+func (a *App) QueueJumpTo(index int) error {
+	if item, ok := a.player.queue.JumpTo(index); ok {
+		// 同曲不重载：若点击的正是当前播放的曲目，仅恢复播放，避免重复解码导致撕裂/加速
+		a.player.mu.Lock()
+		curTrack := a.player.track
+		isSame := curTrack != nil && curTrack.ID == item.Track.ID
+		a.player.mu.Unlock()
+		if isSame {
+			a.player.resume()
+			return nil
+		}
+		if err := a.player.loadTrack(item.Track); err != nil {
+			return err
+		}
+		a.player.resume()
+		return nil
+	}
+	return fmt.Errorf("队列下标越界")
+}
+
+// QueueGetStatus 返回队列快照
+func (a *App) QueueGetStatus() QueueStatus {
+	return a.player.queue.Status()
+}
+
+// QueueGetNext 取下一项（不前进指针），用于前端手动"下一首"决策；无则返回空项
+func (a *App) QueueGetNext() QueueItem {
+	item, _ := a.player.queue.GetNext(true)
+	return item
+}
+
+// QueueGetPrev 取上一项；无则返回空项
+func (a *App) QueueGetPrev() QueueItem {
+	item, _ := a.player.queue.GetPrev(true)
+	return item
+}
+
 // SetApplicationVolume 设置应用音量（synth 模式：控制 Windows 音量合成器中本进程的音量）
 // 播放迁移到 Go 后端后，音频由 Go 进程直接输出，音量合成器里的会话 PID 就是本进程自身，
 // 因此用 os.Getpid() 匹配音频会话即可命中。同时同步更新后端 Player 的 beep 增益，
@@ -247,8 +405,13 @@ func (p *Player) loadTrack(track format.MscData) error {
 	p.paused = true
 	p.mu.Unlock()
 
-	// 构建管线：decoded -> resample -> ctrl(paused) -> volume -> speaker
+	// 构建管线：decoded -> resample -> equalizer -> ctrl(paused) -> volume -> speaker
 	p.rebuildPipeline(true)
+
+	// 同步队列：确保当前播放的曲目在队列中（不在则自动加入），并标记为当前项
+	if p.queue != nil {
+		p.queue.EnsureCurrent(track.ID)
+	}
 
 	// 推送加载完成 + 暂停态
 	p.emitTrackLoaded()
@@ -272,6 +435,7 @@ func (p *Player) decode(fmtStr format.NormalMscFormat, f *os.File) (beep.StreamS
 }
 
 // rebuildPipeline 重建播放管线并提交到 speaker（startPaused 控制初始暂停态）
+// 管线：decoded → resample → equalizer → ctrl(paused) → volume → speaker
 // 调用前需确保 p.decoded 已设置；调用者持有或未持有 p.mu 均可（内部不取锁）
 func (p *Player) rebuildPipeline(startPaused bool) {
 	p.mu.Lock()
@@ -286,7 +450,18 @@ func (p *Player) rebuildPipeline(startPaused bool) {
 	p.mu.Unlock()
 
 	resampled := beep.Resample(4, srcFmt.SampleRate, playerSampleRate, decoded)
-	ctrl := &beep.Ctrl{Streamer: resampled, Paused: paused}
+	// 均衡器插入在 resample 之后、ctrl 之前：EQ 在最终输出采样率上工作
+	// 复用同一个 EQ 实例（保留用户设置的增益），仅重新指向上游 streamer
+	p.mu.Lock()
+	eq := p.eq
+	p.mu.Unlock()
+	if eq == nil {
+		eq = NewEqualizer(resampled, playerSampleRate)
+	} else {
+		eq.SetSource(resampled)
+		eq.Reset() // 切歌时清空滤波器状态，避免上一首的瞬态残留
+	}
+	ctrl := &beep.Ctrl{Streamer: eq, Paused: paused}
 	volEff := &effects.Volume{
 		Streamer: ctrl,
 		Base:     2,
@@ -296,6 +471,7 @@ func (p *Player) rebuildPipeline(startPaused bool) {
 
 	p.mu.Lock()
 	p.ctrl = ctrl
+	p.eq = eq
 	p.vol = volEff
 	p.paused = paused
 	p.mu.Unlock()
@@ -403,6 +579,7 @@ func (p *Player) seek(seconds float64) error {
 	p.mu.Lock()
 	decoded := p.decoded
 	srcFmt := p.srcFmt
+	eq := p.eq
 	if decoded == nil {
 		p.mu.Unlock()
 		return fmt.Errorf("无曲目加载")
@@ -417,6 +594,10 @@ func (p *Player) seek(seconds float64) error {
 	p.mu.Unlock()
 	if err != nil {
 		return fmt.Errorf("跳转失败: %w", err)
+	}
+	// 跳转后清空 EQ 滤波器状态，避免位置不连续带来的瞬态伪影
+	if eq != nil {
+		eq.Reset()
 	}
 	p.emitTimeUpdate()
 	return nil
@@ -515,6 +696,7 @@ func (p *Player) handleEnded() {
 	if track != nil {
 		trackID = track.ID
 	}
+	queue := p.queue
 	p.mu.Unlock()
 
 	// 单曲循环：从头重播（后端无缝处理，不通知前端 ended）
@@ -525,10 +707,32 @@ func (p *Player) handleEnded() {
 		return
 	}
 
-	// 其它模式：记录听歌时长并通知前端选下一首
+	// 记录听歌时长
 	if trackID > 0 && p.app != nil {
 		p.app.RecordPlayPause(trackID)
 	}
+
+	// 队列驱动进曲：队列非空时自动推进到下一首（循环队列），
+	// 由后端直接加载并播放，前端通过 player:queuenext 同步队列高亮
+	if queue != nil && !queue.IsEmpty() {
+		if item, ok := queue.AdvanceNext(true); ok {
+			if err := p.loadTrack(item.Track); err != nil {
+				log.Printf("[Player] 队列下一首加载失败: %v", err)
+			} else {
+				p.resume()
+				if p.ctx != nil {
+					status := queue.Status()
+					runtime.EventsEmit(p.ctx, "player:queuenext", map[string]any{
+						"trackId":    item.Track.ID,
+						"queueIndex": status.CurrentIndex,
+					})
+				}
+			}
+			return
+		}
+	}
+
+	// 队列为空：通知前端选下一首（顺序/随机从音乐库选）
 	if p.ctx != nil {
 		runtime.EventsEmit(p.ctx, "player:ended", trackID)
 		runtime.EventsEmit(p.ctx, "player:state", map[string]any{

@@ -1,0 +1,305 @@
+/* designer.css — 设计器页面专属样式
+ * 通用控件（滑块、主题按钮、颜色选择器、save-bar、modal、toast）复用 settings.css，
+ * 此文件补充设计器特有的左右分栏布局与预览区。 */
+
+/* ============ 左右分栏布局 ============
+ * 左侧：控件区（可滚动）
+ * 右侧：实时预览区（fixed，固定不随滚动移动） */
+.designer-main {
+    display: flex;
+    gap: 32px;
+    padding: 0 380px 120px 40px;
+    align-items: flex-start;
+    /* 禁用 mainFadeIn 动画：该动画的 transform: translateY(0) 会为
+     * position:fixed 的后代创建包含块，导致预览区随页面滚动而非固定。 */
+    animation: none !important;
+    transform: none !important;
+}
+
+.designer-controls {
+    flex: 1;
+    min-width: 0;
+    max-width: 560px;
+}
+
+/* 底部恢复默认按钮 */
+.designer-bottom-actions {
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+}
+
+.designer-reset-btn {
+    width: 100%;
+    justify-content: center;
+}
+
+.designer-preview-aside {
+    flex-shrink: 0;
+    width: 320px;
+    position: fixed;
+    top: 92px;
+    right: 40px;
+    bottom: 80px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.designer-preview-aside h2 {
+    margin-bottom: 0;
+    font-size: 1.2rem;
+    color: var(--text-primary);
+}
+
+/* ============ 预览卡片：圆角 / 阴影 / 字体晕影 ============ */
+.designer-preview-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    background: var(--hover-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--design-radius);
+    box-shadow: var(--design-shadow);
+}
+
+.designer-preview-cover {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--design-radius-sm);
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-hover, var(--accent-color)));
+    box-shadow: var(--design-glow);
+    flex-shrink: 0;
+}
+
+.designer-preview-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.designer-preview-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    /* 字体晕影在此处可见 */
+}
+
+.designer-preview-artist {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+/* ============ 预览按钮：强调色按钮 ============ */
+.designer-preview-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 22px;
+    border: none;
+    border-radius: var(--design-radius-sm);
+    background: var(--accent-color);
+    color: var(--bg-color);
+    font-size: 0.88rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: var(--design-glow);
+    transition: transform var(--dur-fast) var(--ease-smooth);
+}
+
+.designer-preview-btn:hover {
+    transform: translateY(-1px);
+}
+
+.designer-preview-btn:active {
+    transform: scale(0.97);
+}
+
+/* ============ 预览玻璃面板：毛玻璃模糊 ============ */
+.designer-preview-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 22px;
+    border-radius: var(--design-radius);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--design-border-glass);
+    backdrop-filter: blur(var(--design-blur));
+    -webkit-backdrop-filter: blur(var(--design-blur));
+    box-shadow: var(--design-shadow);
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+
+/* ============ 动画预览区 ============
+ * 持续运行的动画演示，直观反映动画速度倍率与级别。
+ * - 小球左右弹跳：受 --design-anim-mult 影响的 CSS animation
+ * - 音频条：与播放器 np-bars 一致的竖条动画
+ * - 重播按钮：点击后触发入场动画 */
+.designer-anim-demo {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--design-radius);
+    box-shadow: var(--design-shadow);
+}
+
+.designer-anim-demo-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* 小球弹跳轨道 */
+.designer-anim-track {
+    height: 28px;
+    border-radius: var(--design-radius-sm);
+    background: var(--hover-color);
+    overflow: hidden;
+    position: relative;
+}
+
+.designer-anim-ball {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    box-shadow: var(--design-glow);
+    transform: translateY(-50%);
+    animation: designerBallBounce calc(2s * var(--design-anim-mult, 1)) var(--ease-smooth) infinite alternate;
+}
+
+@keyframes designerBallBounce {
+    from { left: 4%; }
+    to   { left: calc(100% - 22px); }
+}
+
+/* 音频竖条 */
+.designer-anim-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 32px;
+}
+
+.designer-anim-bars i {
+    flex: 1;
+    display: block;
+    background: var(--accent-color);
+    border-radius: 2px;
+    transform-origin: bottom;
+    animation: designerBarPulse calc(0.9s * var(--design-anim-mult, 1)) ease-in-out infinite;
+}
+
+.designer-anim-bars i:nth-child(1) { animation-delay: 0s; }
+.designer-anim-bars i:nth-child(2) { animation-delay: calc(0.15s * var(--design-anim-mult, 1)); }
+.designer-anim-bars i:nth-child(3) { animation-delay: calc(0.3s * var(--design-anim-mult, 1)); }
+.designer-anim-bars i:nth-child(4) { animation-delay: calc(0.45s * var(--design-anim-mult, 1)); }
+.designer-anim-bars i:nth-child(5) { animation-delay: calc(0.6s * var(--design-anim-mult, 1)); }
+
+@keyframes designerBarPulse {
+    0%, 100% { height: 30%; }
+    50%      { height: 100%; }
+}
+
+/* 重播按钮 */
+.designer-anim-replay {
+    align-self: flex-end;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: var(--design-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color var(--dur-fast), background var(--dur-fast);
+}
+
+.designer-anim-replay:hover {
+    color: var(--accent-color);
+    background: var(--hover-color);
+}
+
+.designer-anim-replay svg {
+    fill: currentColor;
+}
+
+/* 入场动画类（由 JS 在重播时添加） */
+.designer-anim-demo.replay .designer-anim-ball {
+    animation: designerBallBounce calc(2s * var(--design-anim-mult, 1)) var(--ease-smooth) infinite alternate,
+               designerEntrance calc(0.5s * var(--design-anim-mult, 1)) var(--ease-spring);
+}
+
+@keyframes designerEntrance {
+    from { opacity: 0; transform: translateY(-50%) scale(0.3); }
+    to   { opacity: 1; transform: translateY(-50%) scale(1); }
+}
+
+/* 动画级别 0：禁用预览动画 */
+body[data-anim="0"] .designer-anim-ball,
+body[data-anim="0"] .designer-anim-bars i {
+    animation: none !important;
+}
+body[data-anim="0"] .designer-anim-ball {
+    left: 50%;
+}
+body[data-anim="0"] .designer-anim-bars i {
+    height: 50%;
+}
+
+/* 动画级别 1：仅保留基础过渡，禁用 keyframes */
+body[data-anim="1"] .designer-anim-ball,
+body[data-anim="1"] .designer-anim-bars i {
+    animation: none !important;
+}
+body[data-anim="1"] .designer-anim-ball {
+    left: 50%;
+}
+body[data-anim="1"] .designer-anim-bars i {
+    height: 60%;
+}
+
+/* 滑块值右侧固定宽度，避免数值变化时布局抖动 */
+.slider-row .slider-value {
+    min-width: 52px;
+    text-align: right;
+}
+
+/* ============ 响应式：窄屏退化为单列 ============ */
+@media (max-width: 900px) {
+    .designer-main {
+        flex-direction: column;
+        padding: 0 20px 120px 20px;
+    }
+    .designer-preview-aside {
+        width: auto;
+        position: static;
+        top: auto;
+        right: auto;
+        bottom: auto;
+        overflow-y: visible;
+    }
+}
+
+/* 宽度刚好容纳固定预览时也确保不重叠 */
+@media (min-width: 901px) and (max-width: 1100px) {
+    .designer-preview-aside {
+        width: 280px;
+    }
+    .designer-main {
+        padding-right: 340px;
+    }
+}

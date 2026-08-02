@@ -392,6 +392,29 @@ body.has-mini-player main {
     border-color: var(--accent-color);
 }
 
+/* 文本输入框 */
+.text-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.text-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.text-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
 /* Slider */
 .slider-row {
     display: flex;

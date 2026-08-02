@@ -102,6 +102,22 @@ export function PickLyricsFile() {
   return window['go']['main']['App']['PickLyricsFile']();
 }
 
+export function PlayerGetEqBandCount() {
+  return window['go']['main']['App']['PlayerGetEqBandCount']();
+}
+
+export function PlayerGetEqEnabled() {
+  return window['go']['main']['App']['PlayerGetEqEnabled']();
+}
+
+export function PlayerGetEqFreqs() {
+  return window['go']['main']['App']['PlayerGetEqFreqs']();
+}
+
+export function PlayerGetEqGains() {
+  return window['go']['main']['App']['PlayerGetEqGains']();
+}
+
 export function PlayerGetPlayMode() {
   return window['go']['main']['App']['PlayerGetPlayMode']();
 }
@@ -122,12 +138,28 @@ export function PlayerPlay() {
   return window['go']['main']['App']['PlayerPlay']();
 }
 
+export function PlayerResetEq() {
+  return window['go']['main']['App']['PlayerResetEq']();
+}
+
 export function PlayerRestart() {
   return window['go']['main']['App']['PlayerRestart']();
 }
 
 export function PlayerSeek(arg1) {
   return window['go']['main']['App']['PlayerSeek'](arg1);
+}
+
+export function PlayerSetEqBand(arg1, arg2) {
+  return window['go']['main']['App']['PlayerSetEqBand'](arg1, arg2);
+}
+
+export function PlayerSetEqEnabled(arg1) {
+  return window['go']['main']['App']['PlayerSetEqEnabled'](arg1);
+}
+
+export function PlayerSetEqGains(arg1) {
+  return window['go']['main']['App']['PlayerSetEqGains'](arg1);
 }
 
 export function PlayerStop() {
@@ -140,6 +172,50 @@ export function PlayerToggle() {
 
 export function PlayerTogglePlayMode() {
   return window['go']['main']['App']['PlayerTogglePlayMode']();
+}
+
+export function QueueAddAll(arg1) {
+  return window['go']['main']['App']['QueueAddAll'](arg1);
+}
+
+export function QueueAddAllFromLibrary() {
+  return window['go']['main']['App']['QueueAddAllFromLibrary']();
+}
+
+export function QueueAddTrack(arg1) {
+  return window['go']['main']['App']['QueueAddTrack'](arg1);
+}
+
+export function QueueClear() {
+  return window['go']['main']['App']['QueueClear']();
+}
+
+export function QueueGetNext() {
+  return window['go']['main']['App']['QueueGetNext']();
+}
+
+export function QueueGetPrev() {
+  return window['go']['main']['App']['QueueGetPrev']();
+}
+
+export function QueueGetStatus() {
+  return window['go']['main']['App']['QueueGetStatus']();
+}
+
+export function QueueJumpTo(arg1) {
+  return window['go']['main']['App']['QueueJumpTo'](arg1);
+}
+
+export function QueueMove(arg1, arg2) {
+  return window['go']['main']['App']['QueueMove'](arg1, arg2);
+}
+
+export function QueueRemoveAt(arg1) {
+  return window['go']['main']['App']['QueueRemoveAt'](arg1);
+}
+
+export function QueueShuffle() {
+  return window['go']['main']['App']['QueueShuffle']();
 }
 
 export function ReadFileForEdit(arg1) {

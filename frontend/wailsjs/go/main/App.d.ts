@@ -54,6 +54,14 @@ export function PickImageFile():Promise<main.PickedFile>;
 
 export function PickLyricsFile():Promise<string>;
 
+export function PlayerGetEqBandCount():Promise<number>;
+
+export function PlayerGetEqEnabled():Promise<boolean>;
+
+export function PlayerGetEqFreqs():Promise<Array<number>>;
+
+export function PlayerGetEqGains():Promise<Array<number>>;
+
 export function PlayerGetPlayMode():Promise<string>;
 
 export function PlayerGetState():Promise<main.PlayerState>;
@@ -64,15 +72,45 @@ export function PlayerPause():Promise<void>;
 
 export function PlayerPlay():Promise<void>;
 
+export function PlayerResetEq():Promise<void>;
+
 export function PlayerRestart():Promise<void>;
 
 export function PlayerSeek(arg1:number):Promise<void>;
+
+export function PlayerSetEqBand(arg1:number,arg2:number):Promise<void>;
+
+export function PlayerSetEqEnabled(arg1:boolean):Promise<void>;
+
+export function PlayerSetEqGains(arg1:Array<number>):Promise<void>;
 
 export function PlayerStop():Promise<void>;
 
 export function PlayerToggle():Promise<void>;
 
 export function PlayerTogglePlayMode():Promise<string>;
+
+export function QueueAddAll(arg1:Array<number>):Promise<number>;
+
+export function QueueAddAllFromLibrary():Promise<number>;
+
+export function QueueAddTrack(arg1:number):Promise<main.QueueItem>;
+
+export function QueueClear():Promise<void>;
+
+export function QueueGetNext():Promise<main.QueueItem>;
+
+export function QueueGetPrev():Promise<main.QueueItem>;
+
+export function QueueGetStatus():Promise<main.QueueStatus>;
+
+export function QueueJumpTo(arg1:number):Promise<void>;
+
+export function QueueMove(arg1:number,arg2:number):Promise<boolean>;
+
+export function QueueRemoveAt(arg1:number):Promise<boolean>;
+
+export function QueueShuffle():Promise<void>;
 
 export function ReadFileForEdit(arg1:string):Promise<main.PickedFile>;
 

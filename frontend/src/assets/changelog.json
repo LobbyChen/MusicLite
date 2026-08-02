@@ -19,7 +19,8 @@
         "items": [
           "重构库页面列表渲染，统一过滤、排序与渲染逻辑",
           "后端 MscData 新增 ImportedAt 字段供前端排序",
-          "Settings 新增 SortMode 设置项"
+          "Settings 新增 SortMode 设置项",
+          "将Cuckoo添加到标题栏"
         ]
       },
       {

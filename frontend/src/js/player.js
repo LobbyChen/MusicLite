@@ -2,8 +2,10 @@
 // 与库视图共享同一个 window.audioManager，切换视图时后端播放不中断，保持连续。
 // 音频解码与输出全部在 Go 后端完成，本视图只负责 UI 控制与状态展示，
 // 通过 audioManager（订阅后端 Wails Events）获取播放状态。
-import { GetTrack, GetNextTracks, GetPrevTracks, GetRandomTrack } from '../../wailsjs/go/main/App.js';
+import { GetTrack, GetNextTracks, GetPrevTracks, GetRandomTrack, QueueGetStatus } from '../../wailsjs/go/main/App.js';
 import { initI18n, t } from './i18n.js';
+import { EqualizerPanel } from './equalizer.js';
+import { QueuePanel } from './queue.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
 function applyMarquee(el) {
@@ -813,18 +815,17 @@ audioManager.on('ended', async () => {
     await playNextTrack();
 });
 
-// trackloaded：后端加载新曲完成，同步 UI（封面/标题已在 loadTrack 设置，此处主要兜底）
+// trackloaded：后端加载新曲完成，同步 UI
 audioManager.on('trackloaded', (track) => {
     if (!track) return;
-    // 同步 currentTrackData（切页恢复或后端主动加载时）
+    // 后端主动加载（如 QueueJumpTo）时，前端需完整更新封面/背景/歌词/信息
     if (!currentTrackData || currentTrackData.id !== track.id) {
-        currentTrackData = track;
-        trackNameEl.textContent = track.name || t('common.unknown');
-        applyMarquee(trackNameEl);
-        artistNameEl.textContent = track.artist || t('common.unknownArtist');
+        loadTrack(track);
     }
     syncPlayState();
     syncPlayModeState();
+    // 同步队列当前指针（切歌时高亮新的当前项）
+    try { QueuePanel.refresh(); } catch (e) {}
 });
 
 seekSlider.addEventListener('mousedown', () => { isSeeking = true; });
@@ -856,16 +857,35 @@ document.addEventListener('keydown', (e) => {
     // 仅在播放器视图激活时响应快捷键
     if (!overlay.classList.contains('active')) return;
     if (e.code === 'Space') {
-        e.preventDefault();
-        togglePlay();
+        // 浮层面板打开时，空格不触发播放（避免与滑块/按钮冲突）
+        if (!EqualizerPanel.getIsOpen() && !QueuePanel.getIsOpen()) {
+            e.preventDefault();
+            togglePlay();
+        }
     }
     if (e.code === 'Escape') {
+        // 优先关闭浮层（均衡器/队列），其次全屏歌词/卡片歌词
+        if (EqualizerPanel.getIsOpen()) { EqualizerPanel.close(); e.preventDefault(); return; }
+        if (QueuePanel.getIsOpen()) { QueuePanel.close(); e.preventDefault(); return; }
         if (fullscreenLyricsEl.classList.contains('active')) {
             closeFullscreenLyrics();
         } else if (lyricsCardExpanded) {
             closeLyricsCard();
         }
     }
+});
+
+// ============ 浮层（EQ / 队列）空白区域关闭 ============
+// 点击 overlay 内、但不在任何浮层或交互控件上时，关闭已打开的浮层
+overlay.addEventListener('click', (e) => {
+    // 只在浮层打开时才拦截
+    if (!EqualizerPanel.getIsOpen() && !QueuePanel.getIsOpen()) return;
+    // 点击在浮层内部 → 不关闭（各面板自身 stopPropagation 兜底）
+    if (e.target.closest('#eqPanel') || e.target.closest('#queuePanel')) return;
+    // 点击在触发按钮上 → 不关闭（按钮自身会 toggle）
+    if (e.target.closest('#eqBtn') || e.target.closest('#queueBtn')) return;
+    EqualizerPanel.close();
+    QueuePanel.close();
 });
 
 // ============ 导出：打开/关闭播放器视图 ============
@@ -899,6 +919,12 @@ async function openPlayer(trackId) {
     overlay.classList.add('active');
     document.body.classList.add('player-active');
     syncPlayModeState();
+
+    // 初始化均衡器与队列面板（仅首次打开时初始化一次）
+    try { await EqualizerPanel.init(); } catch (e) { console.warn('EqualizerPanel init:', e); }
+    try { await QueuePanel.init(); } catch (e) { console.warn('QueuePanel init:', e); }
+    // 每次打开播放器时刷新队列（显示最新状态）
+    try { await QueuePanel.refresh(); } catch (e) {}
 
     // 同步音量到滑块 — 从后端 Player 读取当前音量（synth 模式由后端控制）
     const curVol = audioManager.getVolume();
@@ -935,6 +961,8 @@ function closePlayer() {
     document.body.classList.remove('player-active');
     closeFullscreenLyrics();
     closeLyricsCard();
+    EqualizerPanel.close();
+    QueuePanel.close();
 }
 
 export { openPlayer, closePlayer };

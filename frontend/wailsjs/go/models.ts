@@ -101,6 +101,72 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class QueueItem {
+	    track: format.MscData;
+	    source: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new QueueItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.track = this.convertValues(source["track"], format.MscData);
+	        this.source = source["source"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class QueueStatus {
+	    items: QueueItem[];
+	    currentIndex: number;
+	    count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new QueueStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.items = this.convertValues(source["items"], QueueItem);
+	        this.currentIndex = source["currentIndex"];
+	        this.count = source["count"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class Settings {
 	    theme: string;
 	    player_font: string;
@@ -118,6 +184,13 @@ export namespace main {
 	    volume_mode: string;
 	    max_lyric_lines: number;
 	    sort_mode: string;
+	    design_radius: number;
+	    design_blur: number;
+	    design_anim_mult: number;
+	    design_shadow: number;
+	    design_glow: number;
+	    design_text_glow: number;
+	    titlebar_text: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -141,6 +214,13 @@ export namespace main {
 	        this.volume_mode = source["volume_mode"];
 	        this.max_lyric_lines = source["max_lyric_lines"];
 	        this.sort_mode = source["sort_mode"];
+	        this.design_radius = source["design_radius"];
+	        this.design_blur = source["design_blur"];
+	        this.design_anim_mult = source["design_anim_mult"];
+	        this.design_shadow = source["design_shadow"];
+	        this.design_glow = source["design_glow"];
+	        this.design_text_glow = source["design_text_glow"];
+	        this.titlebar_text = source["titlebar_text"];
 	    }
 	}
 

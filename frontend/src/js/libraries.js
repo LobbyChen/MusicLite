@@ -1,4 +1,4 @@
-import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths, GetTotalListenTime, PickImageFile, PickLyricsFile, ReadFileForEdit, PackShare, GetNextTracks, GetPrevTracks, GetRandomTrack } from '../../wailsjs/go/main/App.js';
+import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths, GetTotalListenTime, PickImageFile, PickLyricsFile, ReadFileForEdit, PackShare, GetNextTracks, GetPrevTracks, GetRandomTrack, QueueAddTrack, QueueAddAll, QueueClear, QueueGetStatus, QueueRemoveAt, QueueShuffle, QueueMove, QueueJumpTo } from '../../wailsjs/go/main/App.js';
 import { OnFileDrop } from '../../wailsjs/runtime/runtime.js';
 import { openPlayer } from './player.js';
 import { initI18n, t } from './i18n.js';
@@ -514,6 +514,7 @@ function renderTracksList(tracks, mode) {
                 </div>
             `;
             _bindTrackItemListeners(item, track, '.list-item-actions');
+            makeTrackDraggable(item, track);
             mediaContainer.appendChild(item);
         }
     } else {
@@ -540,6 +541,7 @@ function renderTracksList(tracks, mode) {
                 </div>
             `;
             _bindTrackItemListeners(card, track, '.card-actions');
+            makeTrackDraggable(card, track);
             mediaContainer.appendChild(card);
         }
     }
@@ -580,12 +582,20 @@ async function miniNextTrack() {
     }
 }
 
-// 播放当前（过滤+排序后）列表的第一首
+// 播放当前（过滤+排序后）列表：填充队列并播放第一首
 async function playAllFromList() {
     const list = applyFilterAndSort(allTracks);
     if (!list.length) {
         showToast(t('libraries.importNone'), 'info');
         return;
+    }
+    // 用当前可见列表填充播放队列，确保"播放全部"的进曲顺序与列表一致
+    try {
+        await QueueClear();
+        const ids = list.map(tr => Number(tr.id)).filter(id => !isNaN(id) && id > 0);
+        await QueueAddAll(ids);
+    } catch (e) {
+        console.warn('填充队列失败，回退到单曲播放:', e);
     }
     const first = list[0];
     window.audioManager.loadTrack(first);
@@ -621,21 +631,28 @@ function showContextMenu(e, track) {
     contextMenuEl = document.createElement('div');
     contextMenuEl.className = 'context-menu';
     contextMenuEl.innerHTML = `
-        <div class="context-item" data-action="edit" style="--ctx-i:0">
+        <div class="context-item" data-action="play" style="--ctx-i:0">
+            ${t('common.play')}
+        </div>
+        <div class="context-item" data-action="addToQueue" style="--ctx-i:1">
+            ${t('libraries.addToQueue')}
+        </div>
+        <div class="context-divider"></div>
+        <div class="context-item" data-action="edit" style="--ctx-i:2">
             ${t('libraries.editInfo')}
         </div>
-        <div class="context-item" data-action="share" style="--ctx-i:1">
+        <div class="context-item" data-action="share" style="--ctx-i:3">
             ${t('libraries.packShare')}
         </div>
         <div class="context-divider"></div>
-        <div class="context-item danger" data-action="delete" style="--ctx-i:2">
+        <div class="context-item danger" data-action="delete" style="--ctx-i:4">
             ${t('common.delete')}
         </div>
     `;
 
     // 定位到点击位置
     const x = Math.min(e.clientX, window.innerWidth - 160);
-    const y = Math.min(e.clientY, window.innerHeight - 180);
+    const y = Math.min(e.clientY, window.innerHeight - 220);
     contextMenuEl.style.left = x + 'px';
     contextMenuEl.style.top = y + 'px';
 
@@ -667,6 +684,15 @@ document.addEventListener("click", (e) => {
 
 function handleContextAction(action, track) {
     switch (action) {
+        case 'play':
+            window.audioManager.loadTrack(track);
+            window.audioManager.play();
+            currentTrack = track;
+            openPlayer(track.id);
+            break;
+        case 'addToQueue':
+            doAddToQueue(track);
+            break;
         case 'edit':
             openEditModal(track);
             break;
@@ -684,6 +710,303 @@ function handleContextAction(action, track) {
             });
             break;
     }
+}
+
+// ============ 加入队列 ============
+async function doAddToQueue(track) {
+    try {
+        await QueueAddTrack(Number(track.id));
+        showToast(t('libraries.addedToQueue', track.name), 'success');
+        refreshLibQueue();
+    } catch (err) {
+        console.error('加入队列失败:', err);
+        showToast(t('libraries.addToQueueFailed'), 'error');
+    }
+}
+
+// ============ 主页播放队列侧栏 ============
+const NP_BARS_HTML_Q = '<span class="np-bars" aria-hidden="true"><i></i><i></i><i></i></span>';
+const MUSIC_ICON_SVG_Q = '<svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>';
+const DRAG_ICON_SVG_Q = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>';
+const REMOVE_ICON_SVG_Q = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+
+let libQueueSidebar = null;
+let libQueueList = null;
+let libQueueBadge = null;
+let libQueueOpen = false;
+let libQueueDragFromIndex = -1;
+
+function escapeHtmlQ(text) {
+    const div = document.createElement('div');
+    div.textContent = text == null ? '' : text;
+    return div.innerHTML;
+}
+
+function renderLibQueueCover(coverUrl) {
+    if (coverUrl) return `<img src="${coverUrl}" alt="" />`;
+    return `<div class="card-icon">${MUSIC_ICON_SVG_Q}</div>`;
+}
+
+function renderLibQueueList(status) {
+    if (!libQueueList) return;
+    const items = (status && status.items) || [];
+    // 注意：不能用 `|| -1`，因为 currentIndex===0（第一首）会被当成 falsy
+    const curIdx = (status && typeof status.currentIndex === 'number') ? status.currentIndex : -1;
+
+    // 更新角标
+    if (libQueueBadge) {
+        const n = items.length;
+        libQueueBadge.textContent = String(n);
+        libQueueBadge.style.display = n > 0 ? '' : 'none';
+    }
+
+    if (items.length === 0) {
+        libQueueList.innerHTML = `<div class="queue-empty">${t('player.queueEmpty')}</div>`;
+        return;
+    }
+
+    let html = '';
+    for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const track = it.track || {};
+        const isCurrent = (i === curIdx);
+        const cover = track.cover || '';
+        html += `
+            <div class="queue-item${isCurrent ? ' is-current' : ''}" data-index="${i}" draggable="true">
+                <span class="queue-item-drag" title="${t('player.queueDragHint')}">${DRAG_ICON_SVG_Q}</span>
+                <div class="queue-item-cover">${renderLibQueueCover(cover)}</div>
+                <div class="queue-item-info">
+                    <div class="queue-item-title">${escapeHtmlQ(track.name || t('common.unknown'))}</div>
+                    <div class="queue-item-artist">${escapeHtmlQ(track.artist || t('common.unknownArtist'))}</div>
+                </div>
+                ${isCurrent ? NP_BARS_HTML_Q : ''}
+                <button class="queue-item-remove" title="${t('common.delete')}">${REMOVE_ICON_SVG_Q}</button>
+            </div>
+        `;
+    }
+    libQueueList.innerHTML = html;
+
+    // 滚动到当前项
+    if (curIdx >= 0) {
+        const curEl = libQueueList.querySelector(`.queue-item[data-index="${curIdx}"]`);
+        if (curEl) curEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    bindLibQueueItemEvents();
+    restartLibNpBars();
+}
+
+// ========== JS 驱动主页队列 np-bars 动画（同 queue.js 逻辑，避免纯 CSS 选择器不可靠） ==========
+function restartLibNpBars() {
+    if (!libQueueList) return;
+    libQueueList.querySelectorAll('.np-bars').forEach(barEl => {
+        barEl.querySelectorAll('i').forEach(iEl => {
+            try { iEl.getAnimations().forEach(a => a.cancel()); } catch (_) {}
+        });
+        const item = barEl.closest('.queue-item');
+        if (!item || !item.classList.contains('is-current')) return;
+        barEl.querySelectorAll('i').forEach((iEl, k) => {
+            try {
+                iEl.animate(
+                    [
+                        { transform: 'scaleY(0.4)' },
+                        { transform: 'scaleY(1)', offset: 0.5 },
+                        { transform: 'scaleY(0.4)' }
+                    ],
+                    {
+                        duration: 1000,
+                        delay: k * 200,
+                        iterations: Infinity,
+                        easing: 'ease-in-out'
+                    }
+                );
+            } catch (_) {}
+        });
+    });
+}
+
+function bindLibQueueItemEvents() {
+    if (!libQueueList) return;
+    libQueueList.querySelectorAll('.queue-item').forEach(el => {
+        const idx = parseInt(el.dataset.index, 10);
+        if (isNaN(idx)) return;
+
+        // 点击 → 跳转播放
+        el.addEventListener('click', (e) => {
+            if (e.target.closest('.queue-item-remove')) return;
+            if (e.target.closest('.queue-item-drag')) return;
+            e.stopPropagation();
+            QueueJumpTo(idx).catch(err => console.warn('QueueJumpTo failed:', err));
+        });
+
+        // 删除
+        const removeBtn = el.querySelector('.queue-item-remove');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                QueueRemoveAt(idx).then(ok => { if (ok) refreshLibQueue(); }).catch(err => console.warn('QueueRemoveAt failed:', err));
+            });
+        }
+
+        // 拖拽排序
+        el.addEventListener('dragstart', (e) => {
+            libQueueDragFromIndex = idx;
+            el.classList.add('dragging');
+            try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(idx)); } catch (_) {}
+        });
+        el.addEventListener('dragend', () => {
+            el.classList.remove('dragging');
+            libQueueList.querySelectorAll('.queue-item.drag-over').forEach(n => n.classList.remove('drag-over'));
+            libQueueDragFromIndex = -1;
+        });
+        el.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            try { e.dataTransfer.dropEffect = 'move'; } catch (_) {}
+            if (libQueueDragFromIndex < 0 || libQueueDragFromIndex === idx) return;
+            libQueueList.querySelectorAll('.queue-item.drag-over').forEach(n => n.classList.remove('drag-over'));
+            el.classList.add('drag-over');
+        });
+        el.addEventListener('drop', (e) => {
+            e.preventDefault();
+            el.classList.remove('drag-over');
+            const from = libQueueDragFromIndex;
+            if (from < 0 || from === idx) return;
+            QueueMove(from, idx).then(ok => { if (ok) refreshLibQueue(); }).catch(err => console.warn('QueueMove failed:', err));
+        });
+    });
+}
+
+async function refreshLibQueue() {
+    try {
+        const status = await QueueGetStatus();
+        renderLibQueueList(status);
+    } catch (e) {
+        console.warn('QueueGetStatus failed:', e);
+    }
+}
+
+function openLibQueue() {
+    if (!libQueueSidebar) return;
+    libQueueSidebar.classList.add('active');
+    document.body.classList.add('has-lib-queue');
+    libQueueOpen = true;
+    refreshLibQueue();
+}
+
+function closeLibQueue() {
+    if (!libQueueSidebar) return;
+    libQueueSidebar.classList.remove('active');
+    document.body.classList.remove('has-lib-queue');
+    libQueueOpen = false;
+}
+
+function toggleLibQueue() {
+    if (libQueueOpen) closeLibQueue(); else openLibQueue();
+}
+
+// 让媒体卡片/列表项可拖拽到队列（设置 dataTransfer 携带曲目 ID）
+function makeTrackDraggable(el, track) {
+    if (!el) return;
+    el.setAttribute('draggable', 'true');
+    el.addEventListener('dragstart', (e) => {
+        el.classList.add('dragging-queue');
+        try {
+            e.dataTransfer.effectAllowed = 'copy';
+            e.dataTransfer.setData('application/x-track-id', String(track.id));
+            e.dataTransfer.setData('text/plain', String(track.id));
+        } catch (_) {}
+    });
+    el.addEventListener('dragend', () => {
+        el.classList.remove('dragging-queue');
+    });
+}
+
+function initLibQueueSidebar() {
+    libQueueSidebar = document.getElementById('libQueueSidebar');
+    libQueueList = document.getElementById('libQueueList');
+    libQueueBadge = document.getElementById('libQueueBadge');
+    if (!libQueueSidebar || !libQueueList) return;
+
+    // 切换按钮
+    const toggleBtn = document.getElementById('libQueueBtn');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleLibQueue();
+        });
+    }
+
+    // 关闭按钮
+    const closeBtn = document.getElementById('libQueueCloseBtn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeLibQueue(); });
+    }
+
+    // 洗牌
+    const shuffleBtn = document.getElementById('libQueueShuffleBtn');
+    if (shuffleBtn) {
+        shuffleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            QueueShuffle().then(refreshLibQueue).catch(err => console.warn('QueueShuffle failed:', err));
+        });
+    }
+
+    // 清空
+    const clearBtn = document.getElementById('libQueueClearBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            QueueClear().then(refreshLibQueue).catch(err => console.warn('QueueClear failed:', err));
+        });
+    }
+
+    // 整个列表作为拖放目标（从媒体库拖曲目入队）
+    libQueueList.addEventListener('dragover', (e) => {
+        // 仅接受来自媒体库的拖拽（非队列内部排序）
+        if (libQueueDragFromIndex >= 0) return;
+        e.preventDefault();
+        try { e.dataTransfer.dropEffect = 'copy'; } catch (_) {}
+        libQueueList.classList.add('drag-over');
+    });
+    libQueueList.addEventListener('dragleave', (e) => {
+        if (e.target === libQueueList) libQueueList.classList.remove('drag-over');
+    });
+    libQueueList.addEventListener('drop', async (e) => {
+        if (libQueueDragFromIndex >= 0) return; // 队列内排序由 item 自己处理
+        e.preventDefault();
+        libQueueList.classList.remove('drag-over');
+        const trackId = e.dataTransfer.getData('application/x-track-id') || e.dataTransfer.getData('text/plain');
+        const id = Number(trackId);
+        if (id > 0) {
+            try {
+                await QueueAddTrack(id);
+                refreshLibQueue();
+            } catch (err) {
+                console.warn('QueueAddTrack (drop) failed:', err);
+            }
+        }
+    });
+
+    // ESC 关闭
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && libQueueOpen) {
+            closeLibQueue();
+        }
+    });
+
+    // 点击空白区域关闭（侧栏内部和切换按钮的点击不触发）
+    document.addEventListener('click', (e) => {
+        if (!libQueueOpen) return;
+        // 点击侧栏内部 → 不关闭
+        if (libQueueSidebar.contains(e.target)) return;
+        // 点击切换按钮 → 不关闭（由 toggleLibQueue 自行处理）
+        const toggleBtn = document.getElementById('libQueueBtn');
+        if (toggleBtn && toggleBtn.contains(e.target)) return;
+        closeLibQueue();
+    });
+
+    // 初始拉取一次
+    refreshLibQueue();
 }
 
 // ============ 打包分享 ============
@@ -986,6 +1309,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     applySortMode(initialSort);
     await refreshList();
 
+    // 初始化主页播放队列侧栏（切换按钮、拖拽入队、洗牌、清空等）
+    initLibQueueSidebar();
+
     // 搜索框：输入时防抖过滤，回车即时过滤
     const searchInput = document.getElementById('searchInput');
     const searchClear = document.getElementById('searchClear');
@@ -1067,6 +1393,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (settingsBtn) {
         settingsBtn.addEventListener('click', () => {
             window.location.href = '/src/html/settings.html';
+        });
+    }
+
+    // 设计器按钮
+    const designerBtn = document.getElementById('designerBtn');
+    if (designerBtn) {
+        designerBtn.addEventListener('click', () => {
+            window.location.href = '/src/html/designer.html';
         });
     }
 

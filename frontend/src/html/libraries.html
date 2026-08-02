@@ -77,6 +77,18 @@
                     <path d="M12 20V10M18 20V4M6 20v-4"/>
                 </svg>
             </button>
+            <button class="btn-designer" id="designerBtn" title="设计器" data-i18n-title="common.designer">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/>
+                </svg>
+            </button>
+            <button class="btn-queue-toggle" id="libQueueBtn" title="播放队列" data-i18n-title="player.queue">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 5h18v2H3V5zm0 6h18v2H3v-2zm0 6h12v2H3v-2zm14-2l4 3-4 3v-6z"/>
+                </svg>
+                <span class="queue-badge lib-queue-badge" id="libQueueBadge" style="display:none;">0</span>
+            </button>
             <button class="btn-settings" id="settingsBtn" title="设置" data-i18n-title="common.settings">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path
@@ -135,6 +147,28 @@
             <p data-i18n="libraries.noResultsHint">试试其他关键词</p>
         </div>
     </main>
+
+    <!-- 主页播放队列侧栏（浮层：脱离文档流，不挤压主内容） -->
+    <div class="lib-queue-overlay" id="libQueueOverlay"></div>
+    <aside class="lib-queue-sidebar" id="libQueueSidebar">
+        <div class="lib-queue-header">
+            <h3 data-i18n="player.queue">播放队列</h3>
+            <div class="lib-queue-actions">
+                <button class="queue-action-btn" id="libQueueShuffleBtn" title="洗牌" data-i18n-title="player.queueShuffle">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+                </button>
+                <button class="queue-action-btn" id="libQueueClearBtn" title="清空" data-i18n-title="player.queueClear">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                </button>
+                <button class="queue-action-btn" id="libQueueCloseBtn" title="关闭" data-i18n-title="common.close">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="lib-queue-dropzone" id="libQueueList">
+            <div class="queue-empty" data-i18n="player.queueEmpty">队列为空，右键曲目加入队列</div>
+        </div>
+    </aside>
 
     <!-- Mini Player Bar -->
     <div id="mini-player" class="mini-player" style="display: none;">
@@ -324,6 +358,17 @@
                                 <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" />
                             </svg>
                         </button>
+                        <button class="btn btn-eq" id="eqBtn" title="均衡器" data-i18n-title="player.equalizer">
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                                <path d="M7 4h2v16H7V4zm4 4h2v8h-2V8zm4-4h2v16h-2V4zM3 10h2v4H3v-4zm16 0h2v4h-2v-4z"/>
+                            </svg>
+                        </button>
+                        <button class="btn btn-queue" id="queueBtn" title="播放队列" data-i18n-title="player.queue">
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                                <path d="M3 5h18v2H3V5zm0 6h18v2H3v-2zm0 6h12v2H3v-2zm14-2l4 3-4 3v-6z"/>
+                            </svg>
+                            <span class="queue-badge" id="queueBadge" style="display:none;">0</span>
+                        </button>
                     </div>
                     <div class="volume-control">
                         <div class="volume-icon" id="volIcon">
@@ -375,6 +420,48 @@
                 <div class="fullscreen-lyrics-content" id="fullscreenLyricsContent">
                     <div class="no-lyrics" data-i18n="player.noLyrics">暂无歌词</div>
                 </div>
+            </div>
+        </div>
+
+        <!-- 均衡器面板 -->
+        <div class="eq-panel" id="eqPanel">
+            <div class="eq-panel-header">
+                <h3 data-i18n="player.equalizer">均衡器</h3>
+                <div class="eq-panel-actions">
+                    <label class="eq-switch" title="启用/旁路" data-i18n-title="player.eqToggle">
+                        <input type="checkbox" id="eqEnabledToggle" />
+                        <span class="eq-switch-track"><span class="eq-switch-thumb"></span></span>
+                    </label>
+                    <button class="eq-reset-btn" id="eqResetBtn" title="重置" data-i18n-title="common.reset">
+                        <svg viewBox="0 0 24 24" width="16" height="16">
+                            <path d="M12 5V2L8 6l4 4V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="eq-bands" id="eqBands"><!-- JS 动态生成 10 个频段滑块 --></div>
+            <div class="eq-hint" data-i18n="player.eqHint">拖动滑块调节各频段增益（±12 dB），点击空白处或按 ESC 关闭</div>
+        </div>
+
+        <!-- 播放队列面板 -->
+        <div class="queue-panel" id="queuePanel">
+            <div class="queue-panel-header">
+                <h3 data-i18n="player.queue">播放队列</h3>
+                <div class="queue-panel-actions">
+                    <button class="queue-action-btn" id="queueShuffleBtn" title="洗牌" data-i18n-title="player.queueShuffle">
+                        <svg viewBox="0 0 24 24" width="16" height="16">
+                            <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
+                        </svg>
+                    </button>
+                    <button class="queue-action-btn" id="queueClearBtn" title="清空" data-i18n-title="player.queueClear">
+                        <svg viewBox="0 0 24 24" width="16" height="16">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="queue-list" id="queueList">
+                <div class="queue-empty" data-i18n="player.queueEmpty">队列为空，右键曲目加入队列</div>
             </div>
         </div>
     </div>
