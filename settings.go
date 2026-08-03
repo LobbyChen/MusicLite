@@ -34,6 +34,8 @@ type Settings struct {
 	DesignGlow      float64 `json:"design_glow"`        // 主题色辉光范围（0-1，默认 0.35）
 	DesignTextGlow  float64 `json:"design_text_glow"`  // 字体晕影强度（0-1，默认 0）
 	TitlebarText   string  `json:"titlebar_text"`     // 自定义标题栏文字（空则使用默认 "MusicLite Cuckoo"）
+	SmartEQEnabled   bool    `json:"smart_eq_enabled"`     // 智能均衡器开关
+	SmartEQIntensity float64 `json:"smart_eq_intensity"`   // 智能均衡器补偿强度 0-1
 }
 
 // DefaultSettings 返回默认设置
@@ -61,7 +63,9 @@ func DefaultSettings() Settings {
 		DesignShadow:   0.45,
 		DesignGlow:     0.35,
 		DesignTextGlow: 0,
-		TitlebarText:   "MusicLite Cuckoo",
+		TitlebarText:      "MusicLite Cuckoo",
+		SmartEQEnabled:   false,
+		SmartEQIntensity: 0.7,
 	}
 }
 
@@ -188,6 +192,20 @@ func (a *App) LoadSettings() Settings {
 	// SortMode 兼容旧版设置文件（缺失或非法时用默认值 "recent"）
 	if s.SortMode != "recent" && s.SortMode != "title" && s.SortMode != "artist" {
 		s.SortMode = def.SortMode
+	}
+	// SmartEQ 兼容旧版设置文件（缺失时用默认值补齐，越界时钳制到合法范围）
+	{
+		var raw3 map[string]json.RawMessage
+		_ = json.Unmarshal(data, &raw3)
+		has3 := func(key string) bool { _, ok := raw3[key]; return ok }
+		if !has3("smart_eq_enabled") {
+			s.SmartEQEnabled = def.SmartEQEnabled
+		}
+		if !has3("smart_eq_intensity") {
+			s.SmartEQIntensity = def.SmartEQIntensity
+		} else if s.SmartEQIntensity < 0 || s.SmartEQIntensity > 1 {
+			s.SmartEQIntensity = def.SmartEQIntensity
+		}
 	}
 	// 设计令牌：兼容旧版设置文件（缺失时用默认值补齐，越界时钳制到合法范围）
 	// 用 raw map 检测字段是否存在，避免把"用户主动设为 0"误判为缺失

@@ -191,6 +191,8 @@ export namespace main {
 	    design_glow: number;
 	    design_text_glow: number;
 	    titlebar_text: string;
+	    smart_eq_enabled: boolean;
+	    smart_eq_intensity: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -221,6 +223,8 @@ export namespace main {
 	        this.design_glow = source["design_glow"];
 	        this.design_text_glow = source["design_text_glow"];
 	        this.titlebar_text = source["titlebar_text"];
+	        this.smart_eq_enabled = source["smart_eq_enabled"];
+	        this.smart_eq_intensity = source["smart_eq_intensity"];
 	    }
 	}
 

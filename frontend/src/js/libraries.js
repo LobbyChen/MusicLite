@@ -547,6 +547,8 @@ function renderTracksList(tracks, mode) {
     }
 }
 
+// ============ 联网搜索相关功能已移除 ============
+
 // ============ 播放全部 / 迷你播放器上一曲下一曲 ============
 // 按"当前播放模式"取下一首/上一首（随机模式走 GetRandomTrack）
 async function pickAdjacentTrack(direction) {

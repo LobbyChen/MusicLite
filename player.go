@@ -73,11 +73,15 @@ type Player struct {
 	srcFmt   beep.Format           // 原始格式（用于采样换算）
 	ctrl     *beep.Ctrl            // 暂停/恢复
 	eq       *Equalizer            // 10 频段均衡器（管线中的 DSP 节点）
+	smartEQ  *SmartEQ              // 智能均衡器（FFT 分析 + 动态增益 + 软限幅）
 	vol      *effects.Volume       // 音量
 	paused   bool                  // 是否处于暂停态
 	volume   int                   // 0-100
 	playMode string                // none | loopOne | random
 	queue    *PlayQueue             // 播放队列（非空时优先驱动进曲）
+	// 智能均衡器启动参数（管线构建时应用到 SmartEQ 实例）
+	smartEQDefaultEnabled   bool
+	smartEQDefaultIntensity float64
 }
 
 // NewPlayer 创建播放器实例（不初始化设备，等 startup 拿到 ctx 后调用 Start）
@@ -101,6 +105,11 @@ func (p *Player) Queue() *PlayQueue {
 // Equalizer 返回均衡器实例（供 App 绑定方法调用）
 func (p *Player) Equalizer() *Equalizer {
 	return p.eq
+}
+
+// SmartEQ 返回智能均衡器实例（供 App 绑定方法调用）
+func (p *Player) SmartEQ() *SmartEQ {
+	return p.smartEQ
 }
 
 // Start 初始化音频设备并启动 timeupdate 推送循环（在 app.startup 中调用）
@@ -252,6 +261,42 @@ func (a *App) PlayerResetEq() {
 	if eq != nil {
 		eq.SetGains(make([]float64, EqBandCount))
 	}
+}
+
+// ============ 智能均衡器绑定方法 ============
+
+// PlayerSetSmartEQEnabled 启用/旁路智能均衡器
+func (a *App) PlayerSetSmartEQEnabled(on bool) {
+	smartEQ := a.player.SmartEQ()
+	if smartEQ != nil {
+		smartEQ.SetEnabled(on)
+	}
+}
+
+// PlayerGetSmartEQEnabled 返回智能均衡器启用状态
+func (a *App) PlayerGetSmartEQEnabled() bool {
+	smartEQ := a.player.SmartEQ()
+	if smartEQ == nil {
+		return false
+	}
+	return smartEQ.IsEnabled()
+}
+
+// PlayerSetSmartEQIntensity 设置智能均衡器补偿强度（0-1）
+func (a *App) PlayerSetSmartEQIntensity(v float64) {
+	smartEQ := a.player.SmartEQ()
+	if smartEQ != nil {
+		smartEQ.SetIntensity(v)
+	}
+}
+
+// PlayerGetSmartEQIntensity 返回智能均衡器补偿强度
+func (a *App) PlayerGetSmartEQIntensity() float64 {
+	smartEQ := a.player.SmartEQ()
+	if smartEQ == nil {
+		return 0
+	}
+	return smartEQ.GetIntensity()
 }
 
 // ============ 播放队列绑定方法 ============
@@ -450,16 +495,31 @@ func (p *Player) rebuildPipeline(startPaused bool) {
 	p.mu.Unlock()
 
 	resampled := beep.Resample(4, srcFmt.SampleRate, playerSampleRate, decoded)
-	// 均衡器插入在 resample 之后、ctrl 之前：EQ 在最终输出采样率上工作
-	// 复用同一个 EQ 实例（保留用户设置的增益），仅重新指向上游 streamer
+	// 管线：resampled → smartEQ → equalizer → ctrl → volume → speaker
+	// SmartEQ 插入在 resample 之后、图形 EQ 之前：先做智能动态增益，再叠加用户手动 EQ
 	p.mu.Lock()
+	smartEQ := p.smartEQ
 	eq := p.eq
+	smartEQDefaultEnabled := p.smartEQDefaultEnabled
+	smartEQDefaultIntensity := p.smartEQDefaultIntensity
 	p.mu.Unlock()
-	if eq == nil {
-		eq = NewEqualizer(resampled, playerSampleRate)
+	// SmartEQ：复用实例，切歌时清空分析状态
+	if smartEQ == nil {
+		smartEQ = NewSmartEQ(resampled, playerSampleRate)
+		// 应用缓存的启动参数
+		smartEQ.SetIntensity(smartEQDefaultIntensity)
+		smartEQ.SetEnabled(smartEQDefaultEnabled)
+		smartEQ.SetVolume(vol)
 	} else {
-		eq.SetSource(resampled)
-		eq.Reset() // 切歌时清空滤波器状态，避免上一首的瞬态残留
+		smartEQ.SetSource(resampled)
+		smartEQ.Reset()
+	}
+	// 图形 EQ：复用实例，切歌时清空滤波器状态
+	if eq == nil {
+		eq = NewEqualizer(smartEQ, playerSampleRate)
+	} else {
+		eq.SetSource(smartEQ)
+		eq.Reset()
 	}
 	ctrl := &beep.Ctrl{Streamer: eq, Paused: paused}
 	volEff := &effects.Volume{
@@ -472,6 +532,7 @@ func (p *Player) rebuildPipeline(startPaused bool) {
 	p.mu.Lock()
 	p.ctrl = ctrl
 	p.eq = eq
+	p.smartEQ = smartEQ
 	p.vol = volEff
 	p.paused = paused
 	p.mu.Unlock()
@@ -580,6 +641,7 @@ func (p *Player) seek(seconds float64) error {
 	decoded := p.decoded
 	srcFmt := p.srcFmt
 	eq := p.eq
+	smartEQ := p.smartEQ
 	if decoded == nil {
 		p.mu.Unlock()
 		return fmt.Errorf("无曲目加载")
@@ -595,9 +657,12 @@ func (p *Player) seek(seconds float64) error {
 	if err != nil {
 		return fmt.Errorf("跳转失败: %w", err)
 	}
-	// 跳转后清空 EQ 滤波器状态，避免位置不连续带来的瞬态伪影
+	// 跳转后清空 EQ / SmartEQ 滤波器状态，避免位置不连续带来的瞬态伪影
 	if eq != nil {
 		eq.Reset()
+	}
+	if smartEQ != nil {
+		smartEQ.Reset()
 	}
 	p.emitTimeUpdate()
 	return nil
@@ -713,9 +778,17 @@ func (p *Player) handleEnded() {
 	}
 
 	// 队列驱动进曲：队列非空时自动推进到下一首（循环队列），
-	// 由后端直接加载并播放，前端通过 player:queuenext 同步队列高亮
+	// random 模式下随机推进，其他模式顺序推进；
+	// 队列只有当前一首时交给库随机/顺序处理
 	if queue != nil && !queue.IsEmpty() {
-		if item, ok := queue.AdvanceNext(true); ok {
+		var item QueueItem
+		var ok bool
+		if mode == "random" {
+			item, ok = queue.AdvanceRandom(true)
+		} else {
+			item, ok = queue.AdvanceNext(true)
+		}
+		if ok {
 			if err := p.loadTrack(item.Track); err != nil {
 				log.Printf("[Player] 队列下一首加载失败: %v", err)
 			} else {
@@ -732,7 +805,8 @@ func (p *Player) handleEnded() {
 		}
 	}
 
-	// 队列为空：通知前端选下一首（顺序/随机从音乐库选）
+	// 队列为空或队列只有当前一首（random 模式下）：
+	// 通知前端选下一首（顺序/随机从音乐库选）
 	if p.ctx != nil {
 		runtime.EventsEmit(p.ctx, "player:ended", trackID)
 		runtime.EventsEmit(p.ctx, "player:state", map[string]any{
@@ -887,12 +961,17 @@ func (p *Player) SetVolume(vol int) {
 	p.mu.Lock()
 	p.volume = vol
 	volEff := p.vol
+	smartEQ := p.smartEQ
 	p.mu.Unlock()
 	if volEff != nil && p.ready {
 		speaker.Lock()
 		volEff.Volume = volumeToGain(vol)
 		volEff.Silent = vol <= 0
 		speaker.Unlock()
+	}
+	// 同步音量到智能均衡器（影响 α 补偿强度计算）
+	if smartEQ != nil {
+		smartEQ.SetVolume(vol)
 	}
 }
 
@@ -907,6 +986,14 @@ func (p *Player) GetVolume() int {
 func (p *Player) SetInitialVolume(vol int) {
 	p.mu.Lock()
 	p.volume = vol
+	p.mu.Unlock()
+}
+
+// SetSmartEQDefaults 缓存智能均衡器启动参数（管线构建时应用到 SmartEQ 实例）
+func (p *Player) SetSmartEQDefaults(enabled bool, intensity float64) {
+	p.mu.Lock()
+	p.smartEQDefaultEnabled = enabled
+	p.smartEQDefaultIntensity = intensity
 	p.mu.Unlock()
 }
 

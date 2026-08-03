@@ -100,7 +100,10 @@ func (a *App) startup(ctx context.Context) {
 	// 启动后端音频播放器（初始化 speaker + timeupdate 推送循环）
 	a.player.Start(ctx)
 	// 从设置同步初始音量到播放器
-	a.player.SetInitialVolume(a.LoadSettings().Volume)
+	settings := a.LoadSettings()
+	a.player.SetInitialVolume(settings.Volume)
+	// 同步智能均衡器设置到播放器（管线构建时自动创建 SmartEQ 实例，此处仅缓存参数）
+	a.player.SetSmartEQDefaults(settings.SmartEQEnabled, settings.SmartEQIntensity)
 
 	// 启动听歌时长 heartbeat（定期提交 pending 到注册表）
 	StartListenTimeHeartbeat()

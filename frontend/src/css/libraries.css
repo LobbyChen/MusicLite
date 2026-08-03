@@ -1,4 +1,4 @@
-/* Dark theme (default) */
+﻿/* Dark theme (default) */
 :root {
     --bg-color: #121212;
     --card-bg: #1e1e1e;
@@ -2967,7 +2967,6 @@ body[data-anim="3"] .view-toggle-thumb {
     gap: 4px;
 }
 .queue-action-btn {
-    background: transparent;
     border: none;
     color: var(--accent-color);
     cursor: pointer;

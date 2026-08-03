@@ -171,9 +171,6 @@ func (q *PlayQueue) Shuffle() {
 	}
 	// Fisher-Yates 洗前 n-1 项
 	n := len(q.items)
-	if hasCur {
-		n--
-	}
 	for i := n - 1; i > 0; i-- {
 		j := rand.Intn(i + 1)
 		q.items[i], q.items[j] = q.items[j], q.items[i]
@@ -325,6 +322,31 @@ func (q *PlayQueue) AdvanceNext(loop bool) (QueueItem, bool) {
 			return QueueItem{}, false
 		}
 		next = 0
+	}
+	q.current = next
+	return q.items[next], true
+}
+
+// AdvanceRandom 随机前进到下一项并返回（用于 random 模式下的队列推进）
+// 队列只有 1 项时返回 false，由调用方决定是否走库随机
+func (q *PlayQueue) AdvanceRandom(loop bool) (QueueItem, bool) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if len(q.items) == 0 {
+		return QueueItem{}, false
+	}
+	if len(q.items) == 1 {
+		// 队列只有当前一首，交给库随机处理
+		return QueueItem{}, false
+	}
+	// 随机选一个不等于 current 的下标
+	cur := q.current
+	if cur < 0 {
+		cur = 0
+	}
+	next := rand.Intn(len(q.items))
+	for next == cur {
+		next = rand.Intn(len(q.items))
 	}
 	q.current = next
 	return q.items[next], true

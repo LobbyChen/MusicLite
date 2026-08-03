@@ -2,7 +2,7 @@
 // 与库视图共享同一个 window.audioManager，切换视图时后端播放不中断，保持连续。
 // 音频解码与输出全部在 Go 后端完成，本视图只负责 UI 控制与状态展示，
 // 通过 audioManager（订阅后端 Wails Events）获取播放状态。
-import { GetTrack, GetNextTracks, GetPrevTracks, GetRandomTrack, QueueGetStatus } from '../../wailsjs/go/main/App.js';
+import { GetTrack, GetNextTracks, GetPrevTracks, GetRandomTrack, QueueGetStatus, QueueGetNext, QueueGetPrev } from '../../wailsjs/go/main/App.js';
 import { initI18n, t } from './i18n.js';
 import { EqualizerPanel } from './equalizer.js';
 import { QueuePanel } from './queue.js';
@@ -581,7 +581,18 @@ async function playPrevTrack() {
         return;
     }
     try {
-        // 从后端确认最新播放模式，避免前端缓存滞后导致走错分支
+        // 队列优先：队列有多首时从队列取上一首
+        const qStatus = await QueueGetStatus();
+        if (qStatus && qStatus.count > 1) {
+            const prevTrack = await QueueGetPrev();
+            if (prevTrack && prevTrack.id) {
+                loadTrack(prevTrack);
+                playAudio();
+                return;
+            }
+        }
+
+        // 队列为空或只有一首：走库随机/顺序
         const mode = await window.audioManager.fetchPlayMode();
         let prevTrack = null;
 
@@ -611,7 +622,18 @@ async function playNextTrack() {
     }
 
     try {
-        // 从后端确认最新播放模式，避免前端缓存滞后导致走错分支
+        // 队列优先：队列有多首时从队列取下一首
+        const qStatus = await QueueGetStatus();
+        if (qStatus && qStatus.count > 1) {
+            const nextTrack = await QueueGetNext();
+            if (nextTrack && nextTrack.id) {
+                loadTrack(nextTrack);
+                playAudio();
+                return;
+            }
+        }
+
+        // 队列为空或只有一首：走库随机/顺序
         const mode = await window.audioManager.fetchPlayMode();
         let nextTrack = null;
 
@@ -624,7 +646,6 @@ async function playNextTrack() {
 
         // 检查是否返回了有效数据
         if (nextTrack && nextTrack.id) {
-
             loadTrack(nextTrack);
             playAudio(); // 自动播放下一首
         } else {

@@ -122,6 +122,14 @@ export function PlayerGetPlayMode() {
   return window['go']['main']['App']['PlayerGetPlayMode']();
 }
 
+export function PlayerGetSmartEQEnabled() {
+  return window['go']['main']['App']['PlayerGetSmartEQEnabled']();
+}
+
+export function PlayerGetSmartEQIntensity() {
+  return window['go']['main']['App']['PlayerGetSmartEQIntensity']();
+}
+
 export function PlayerGetState() {
   return window['go']['main']['App']['PlayerGetState']();
 }
@@ -160,6 +168,14 @@ export function PlayerSetEqEnabled(arg1) {
 
 export function PlayerSetEqGains(arg1) {
   return window['go']['main']['App']['PlayerSetEqGains'](arg1);
+}
+
+export function PlayerSetSmartEQEnabled(arg1) {
+  return window['go']['main']['App']['PlayerSetSmartEQEnabled'](arg1);
+}
+
+export function PlayerSetSmartEQIntensity(arg1) {
+  return window['go']['main']['App']['PlayerSetSmartEQIntensity'](arg1);
 }
 
 export function PlayerStop() {

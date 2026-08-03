@@ -5,16 +5,28 @@
 // 用法：
 //   import { initI18n, t, applyTranslations } from './i18n.js';
 //   await initI18n();          // 启动时调用一次
-//   t('libraries.title');      // 翻译
-//   applyTranslations();       // 翻译页面所有 [data-i18n] 元素
+//   t('libraries.title');      // 翻译；找不到时返回 undefined（不会返回原始 key）
+//   applyTranslations();       // 翻译页面所有 [data-i18n] 元素，找不到的保留 DOM 内原始文本
 
 import { GetI18nData } from '../../wailsjs/go/main/App.js';
 
-// 翻译数据：{ 'zh-CN': { 'key': 'value', ... }, 'en': { ... } }
+// 翻译数据：{ 'zh-CN': { 'key': 'value', ... }, 'en-US': { ... } }
 let translations = {};
 
 // 当前语言（默认 zh-CN）
 let currentLanguage = 'zh-CN';
+
+// 标准化语言代码（把常见简称映射为完整代码，避免字典对不上）
+function normalizeLang(lang) {
+    if (!lang) return 'zh-CN';
+    const l = String(lang).toLowerCase();
+    if (l.startsWith('zh')) return 'zh-CN';
+    if (l.startsWith('en')) return 'en-US';
+    return lang;
+}
+
+// 翻译 fallback 顺序：当前语言 → en-US → zh-CN
+const FALLBACK_LANGS = ['zh-CN', 'en-US'];
 
 // 从 localStorage 恢复语言选择（跨页面同步）
 try {
@@ -59,6 +71,9 @@ export async function initI18n() {
             const data = await GetI18nData();
             if (data && data.languages) {
                 translations = data.languages;
+                // 把当前语言标准化一次，并持久化
+                currentLanguage = normalizeLang(currentLanguage);
+                try { localStorage.setItem('appLanguage', currentLanguage); } catch (_) {}
                 initialized = true;
                 return;
             }
@@ -83,28 +98,41 @@ export async function initI18n() {
  * @returns {string} 翻译后的字符串
  */
 export function t(key, ...args) {
-    const dict = translations[currentLanguage] || translations['zh-CN'] || fallbackTranslations[currentLanguage] || {};
-    let str = dict[key];
-    if (str === undefined) {
-        // 回退到 zh-CN
-        const zhDict = translations['zh-CN'] || fallbackTranslations['zh-CN'] || {};
-        str = zhDict[key];
+    if (key === undefined || key === null || key === '') return '';
+    const k = String(key);
+    // 构造查找链：当前语言（标准化后）→ en-US → zh-CN → 当前语言 fallbackTranslations → zh-CN fallbackTranslations → 'en' fallback
+    const lookupChain = [];
+    const normCur = normalizeLang(currentLanguage);
+    lookupChain.push(translations[normCur]);
+    for (const fb of FALLBACK_LANGS) {
+        if (fb !== normCur) lookupChain.push(translations[fb]);
     }
-    if (str === undefined) {
-        // 键不存在，返回键名本身
-        return key;
+    lookupChain.push(fallbackTranslations[normCur]);
+    lookupChain.push(fallbackTranslations['zh-CN']);
+    if (normCur === 'en-US') lookupChain.push(fallbackTranslations['en']);
+    else lookupChain.push(fallbackTranslations['en']);
+
+    let str = undefined;
+    for (const dict of lookupChain) {
+        if (dict && Object.prototype.hasOwnProperty.call(dict, k)) {
+            const v = dict[k];
+            if (v !== undefined && v !== null) {
+                str = String(v);
+                break;
+            }
+        }
     }
+    // 完全找不到：返回 undefined（让调用方自行决定，例如 applyTranslations 保持 DOM 原文）
+    if (str === undefined) return undefined;
     if (args.length > 0) {
         for (let i = 0; i < args.length; i++) {
             const arg = args[i];
             if (arg && typeof arg === 'object' && !Array.isArray(arg) && !(arg instanceof Error)) {
-                // 命名参数：替换 {key}
-                for (const k of Object.keys(arg)) {
-                    str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(arg[k]));
+                for (const kk of Object.keys(arg)) {
+                    str = str.replace(new RegExp(`\\{${kk}\\}`, 'g'), String(arg[kk]));
                 }
             } else {
-                // 位置参数：替换 {0}, {1}, ...
-                str = str.replace(new RegExp(`\\{${i}\\}`, 'g'), String(arg));
+                str = str.replace(new RegExp(`\\{${i}\\}`, 'g'), String(arg ?? ''));
             }
         }
     }
@@ -116,13 +144,21 @@ export function t(key, ...args) {
  * @param {string} lang — 语言代码：'zh-CN' | 'en'
  */
 export function setLanguage(lang) {
-    if (!translations[lang] && !fallbackTranslations[lang]) {
-        console.warn(`Unknown language: ${lang}, falling back to zh-CN`);
-        lang = 'zh-CN';
+    const normalized = normalizeLang(lang);
+    const hasDict = translations && (
+        Object.prototype.hasOwnProperty.call(translations, normalized) ||
+        Object.prototype.hasOwnProperty.call(fallbackTranslations, normalized) ||
+        // 兜底：旧 fallbackTranslations 可能只用 'en' 作 key
+        (normalized === 'en-US' && Object.prototype.hasOwnProperty.call(fallbackTranslations, 'en'))
+    );
+    if (!hasDict) {
+        console.warn(`Unknown language: ${lang} (normalized=${normalized}), falling back to zh-CN`);
+        currentLanguage = 'zh-CN';
+    } else {
+        currentLanguage = normalized;
     }
-    currentLanguage = lang;
     try {
-        localStorage.setItem('appLanguage', lang);
+        localStorage.setItem('appLanguage', currentLanguage);
     } catch (e) {
         // ignore
     }
@@ -154,25 +190,49 @@ export function getAvailableLanguages() {
  * 也支持 [data-i18n-placeholder] 用于 placeholder 属性
  */
 export function applyTranslations() {
-    // 翻译文本内容
+    // 翻译文本内容（找不到翻译时保留 DOM 内的原始默认文本，不写入原始 key 名）
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
-        if (key) {
-            el.textContent = t(key);
+        if (!key) return;
+        if (el.getAttribute('data-original-text') === null) {
+            el.setAttribute('data-original-text', el.textContent);
+        }
+        const translated = t(key);
+        if (translated !== undefined && translated !== null) {
+            el.textContent = translated;
+        } else {
+            const backup = el.getAttribute('data-original-text');
+            if (backup !== null) el.textContent = backup;
         }
     });
-    // 翻译 placeholder
+    // 翻译 placeholder（保留原 placeholder 作兜底）
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const key = el.getAttribute('data-i18n-placeholder');
-        if (key) {
-            el.placeholder = t(key);
+        if (!key) return;
+        if (el.getAttribute('data-original-placeholder') === null && el.placeholder) {
+            el.setAttribute('data-original-placeholder', el.placeholder);
+        }
+        const translated = t(key);
+        if (translated !== undefined && translated !== null) {
+            el.placeholder = translated;
+        } else {
+            const backup = el.getAttribute('data-original-placeholder');
+            if (backup !== null) el.placeholder = backup;
         }
     });
-    // 翻译 title 属性
+    // 翻译 title 属性（保留原 title 作兜底）
     document.querySelectorAll('[data-i18n-title]').forEach(el => {
         const key = el.getAttribute('data-i18n-title');
-        if (key) {
-            el.title = t(key);
+        if (!key) return;
+        if (el.getAttribute('data-original-title') === null && el.title) {
+            el.setAttribute('data-original-title', el.title);
+        }
+        const translated = t(key);
+        if (translated !== undefined && translated !== null) {
+            el.title = translated;
+        } else {
+            const backup = el.getAttribute('data-original-title');
+            if (backup !== null) el.title = backup;
         }
     });
 }

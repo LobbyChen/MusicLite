@@ -64,6 +64,10 @@ export function PlayerGetEqGains():Promise<Array<number>>;
 
 export function PlayerGetPlayMode():Promise<string>;
 
+export function PlayerGetSmartEQEnabled():Promise<boolean>;
+
+export function PlayerGetSmartEQIntensity():Promise<number>;
+
 export function PlayerGetState():Promise<main.PlayerState>;
 
 export function PlayerLoad(arg1:format.MscData):Promise<void>;
@@ -83,6 +87,10 @@ export function PlayerSetEqBand(arg1:number,arg2:number):Promise<void>;
 export function PlayerSetEqEnabled(arg1:boolean):Promise<void>;
 
 export function PlayerSetEqGains(arg1:Array<number>):Promise<void>;
+
+export function PlayerSetSmartEQEnabled(arg1:boolean):Promise<void>;
+
+export function PlayerSetSmartEQIntensity(arg1:number):Promise<void>;
 
 export function PlayerStop():Promise<void>;
 
