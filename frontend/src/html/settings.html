@@ -12,7 +12,7 @@
         <script src="/src/js/settings.js" type="module"></script>
         <title>设置 · MusicLite</title>
     </head>
-    <body>
+    <body data-page="settings">
 
         <div class="titlebar">
             <div class="titlebar-left">
@@ -42,14 +42,13 @@
         <header>
             <button class="btn-back" id="backBtn" title="返回" data-i18n-title="common.back">
                 <svg viewBox="0 0 24 24" width="24" height="24">
-                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-                </svg>
+  <path d="M17.41 5.41L16 4l-8 8 8 8 1.41-1.41L10.83 12z"/>
+</svg>
             </button>
             <h1 data-i18n="settings.title">设置</h1>
         </header>
-
         <main>
-            <section class="settings-section">
+            <section class="settings-section" data-section-id="appearance">
                 <h2 data-i18n="settings.appearance">外观</h2>
 
                 <div class="setting-item">
@@ -101,9 +100,18 @@
                     </div>
                     <span class="toggle-desc anim-level-desc" data-i18n="settings.animationsDesc">启用过渡、入场与交互动画</span>
                 </div>
+
+                <div class="setting-item">
+                    <label data-i18n="settings.newUI">新风格 UI</label>
+                    <div class="anim-level-row" style="margin-top: 8px;">
+                        <button type="button" class="anim-level-btn" data-newui-mode="on" data-i18n="settings.newUIOn">启用</button>
+                        <button type="button" class="anim-level-btn" data-newui-mode="off" data-i18n="settings.newUIOff">关闭</button>
+                    </div>
+                    <span class="toggle-desc" data-i18n="settings.newUIDesc">为所有界面启用新风格视觉样式</span>
+                </div>
             </section>
 
-            <section class="settings-section">
+            <section class="settings-section" data-section-id="font">
                 <h2 data-i18n="settings.fontSection">字体</h2>
 
                 <div class="setting-item">
@@ -149,7 +157,7 @@
                 </div>
             </section>
 
-            <section class="settings-section">
+            <section class="settings-section" data-section-id="playback">
                 <h2 data-i18n="settings.playback">播放</h2>
 
                 <div class="setting-item">
@@ -207,7 +215,14 @@
 
             </section>
 
-            <section class="settings-section">
+            <section class="settings-section" data-section-id="hotkeys">
+                <h2 data-i18n="settings.hotkeys">全局快捷键</h2>
+                <div id="hotkey-list" class="hotkey-list">
+                    <!-- 由 settings.js 动态生成 -->
+                </div>
+            </section>
+
+            <section class="settings-section" data-section-id="language">
                 <h2 data-i18n="settings.language">语言</h2>
                 <div class="setting-item">
                     <label for="language-select" data-i18n="settings.language">界面语言</label>
@@ -221,10 +236,10 @@
                 </div>
             </section>
 
-            <section class="settings-section">
+            <section class="settings-section" data-section-id="about">
                 <h2 data-i18n="settings.about">关于</h2>
                 <div class="about-info">
-                    <p><strong>MusicLite Cuckoo</strong>Beta 0.4.0</p>
+                    <p><strong>MusicLite Cuckoo</strong>Beta 0.5.0</p>
                     <p class="text-muted" data-i18n="settings.aboutDesc">轻量级离线音乐播放器</p>
                     <p class="text-muted" data-i18n="settings.builtWith">基于 Wails v2 构建</p>
                     <p class="text-muted" data-i18n="settings.ExperienmentWarnMsg">实验性分支构建</p>
@@ -239,7 +254,7 @@
                 </div>
             </section>
 
-            <section class="settings-section">
+            <section class="settings-section" data-section-id="more">
                 <h2 data-i18n="settings.more">更多</h2>
                 <div class="setting-item">
                     <label data-i18n="settings.defaultPlayer">默认播放器</label>

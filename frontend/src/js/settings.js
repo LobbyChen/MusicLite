@@ -1,4 +1,4 @@
-import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, PlayerSetSmartEQEnabled, PlayerSetSmartEQIntensity } from '../../wailsjs/go/main/App.js';
+import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, PlayerSetSmartEQEnabled, PlayerSetSmartEQIntensity, HotkeyApply, HotkeyGetActionList } from '../../wailsjs/go/main/App.js';
 import { initI18n, t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
@@ -83,6 +83,16 @@ const animLevelBtns = document.querySelectorAll('.anim-level-btn[data-level]');
 const smartEQModeBtns = document.querySelectorAll('.anim-level-btn[data-smarteq-mode]');
 const smartEQIntensitySlider = document.getElementById('smarteq-intensity');
 const smartEQIntensityValue = document.getElementById('smarteq-intensity-value');
+const newUIModeBtns = document.querySelectorAll('.anim-level-btn[data-newui-mode]');
+
+// ============ 全局快捷键 ============
+const HOTKEY_ACTIONS = [
+    { action: 'playpause', field: 'hotkey_playpause', label: 'settings.hotkeyPlayPause', default: 'Ctrl+Shift+P' },
+    { action: 'next',      field: 'hotkey_next',      label: 'settings.hotkeyNext',      default: 'Ctrl+Shift+Right' },
+    { action: 'prev',      field: 'hotkey_prev',      label: 'settings.hotkeyPrev',      default: 'Ctrl+Shift+Left' },
+];
+const hotkeyListEl = document.getElementById('hotkey-list');
+let hotkeyListeningAction = null; // 当前正在监听按键的动作名
 
 // 确认对话框 / Toast 元素（settings.html 里有）
 const confirmModal = document.getElementById('confirmModal');
@@ -362,6 +372,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyAccentToUI();
     setupEventListeners();
     initMiniPlayer();
+    renderHotkeyList();
     // 为设置区块添加逐级入场延迟
     document.querySelectorAll('.settings-section').forEach((sec, i) => {
         sec.style.setProperty('--sec-i', i);
@@ -585,6 +596,21 @@ function applySettingsToUI(s) {
     // 界面动画级别（默认 2 = 增强；旧文件 enable_animations:false → 0）
     const lvl = typeof s.animation_level === 'number' ? s.animation_level : (s.enable_animations === false ? 0 : 2);
     setAnimationLevel(lvl);
+
+    // 新风格 UI 开关
+    const newUIOn = s.new_ui_enabled || false;
+    newUIModeBtns.forEach(btn => {
+        btn.classList.toggle('active', (btn.dataset.newuiMode === 'on') === newUIOn);
+    });
+    if (window.MusicLiteSettings) window.MusicLiteSettings.applyNewUI(newUIOn);
+
+    // 设置界面布局模式（新UI开启时强制使用 WinUI3 NavigationView 布局）
+    if (newUIOn) {
+        applyWinUI3Layout();
+    } else {
+        removeWinUI3Layout();
+        applySettingsLayoutMode(s.settings_layout || 'scroll');
+    }
 }
 
 // 同步四级动画选择器 UI 与 body data-anim 属性
@@ -602,6 +628,175 @@ function setAnimationLevel(level) {
     // 持久化到 localStorage，供 settings-apply.js 启动时同步读取（避免首屏闪烁）
     try { localStorage.setItem('musicLite.animationsLevel', clamped.toString()); } catch (e) {}
     return clamped;
+}
+
+// ============ 设置界面布局模式：scroll / columns / tabs ============
+function applySettingsLayoutMode(mode) {
+    const valid = ['scroll', 'columns', 'tabs'];
+    const m = valid.includes(mode) ? mode : 'scroll';
+    document.body.setAttribute('data-settings-layout', m);
+    if (window.MusicLiteSettings) window.MusicLiteSettings.applySettingsLayout(m);
+    // 生成或移除选项卡栏
+    const existingTabs = document.querySelector('.settings-tabs');
+    if (m === 'tabs') {
+        if (!existingTabs) {
+            generateTabBar();
+        }
+        // 默认激活第一个选项卡
+        const firstTab = document.querySelector('.settings-tab');
+        if (firstTab) switchTab(firstTab.dataset.tabTarget);
+    } else {
+        if (existingTabs) existingTabs.remove();
+        // 恢复所有 section 可见
+        document.querySelectorAll('.settings-section').forEach(sec => sec.classList.remove('active'));
+    }
+}
+
+// 生成选项卡栏（tabs 模式）
+function generateTabBar() {
+    const main = document.querySelector('main');
+    if (!main) return;
+    const sections = main.querySelectorAll('.settings-section[data-section-id]');
+    if (sections.length === 0) return;
+
+    const tabBar = document.createElement('div');
+    tabBar.className = 'settings-tabs';
+
+    sections.forEach(sec => {
+        const id = sec.dataset.sectionId;
+        const h2 = sec.querySelector('h2');
+        const label = h2 ? h2.textContent : id;
+        const tab = document.createElement('button');
+        tab.className = 'settings-tab';
+        tab.dataset.tabTarget = id;
+        tab.textContent = label;
+        tab.addEventListener('click', () => switchTab(id));
+        tabBar.appendChild(tab);
+    });
+
+    // 插入到 main 之前
+    main.parentNode.insertBefore(tabBar, main);
+}
+
+// 切换选项卡
+function switchTab(sectionId) {
+    document.querySelectorAll('.settings-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tabTarget === sectionId);
+    });
+    document.querySelectorAll('.settings-section').forEach(sec => {
+        sec.classList.toggle('active', sec.dataset.sectionId === sectionId);
+    });
+}
+
+// ============ WinUI3 NavigationView 布局（新UI专属） ============
+// WinUI3 图标（简洁线条 SVG，24x24，currentColor）
+const WINUI3_ICONS = {
+  appearance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18V3z" fill="currentColor" stroke="none"/></svg>',
+
+  font: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h10v2"/><path d="M9 5v14"/><path d="M6 19h6"/><path d="M14.5 19l3.5-10 3.5 10"/><path d="M15.75 15.5h4.5"/></svg>',
+
+  playback: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
+
+  hotkeys: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="3"/><line x1="6" y1="10" x2="8" y2="10"/><line x1="11" y1="10" x2="13" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="6" y1="14" x2="18" y2="14"/></svg>',
+
+  language: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M4.5 7.5h15"/><path d="M4.5 16.5h15"/></svg>',
+
+  about: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="17"/><circle cx="12" cy="7.5" r="0.75" fill="currentColor" stroke="none"/></svg>',
+
+  more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.75" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.75" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.75" fill="currentColor" stroke="none"/></svg>'
+};
+// 生成 WinUI3 NavigationView 左侧导航栏
+function applyWinUI3Layout() {
+    document.body.setAttribute('data-settings-layout', 'winui3');
+
+    // 移除可能存在的选项卡栏和旧导航栏
+    document.querySelector('.settings-tabs')?.remove();
+    document.querySelector('.winui3-nav')?.remove();
+
+    const main = document.querySelector('main');
+    if (!main) return;
+    const sections = main.querySelectorAll('.settings-section[data-section-id]');
+    if (sections.length === 0) return;
+
+    // 创建导航栏
+    const nav = document.createElement('nav');
+    nav.className = 'winui3-nav';
+
+    // 导航头部（含返回键）
+    const navHeader = document.createElement('div');
+    navHeader.className = 'winui3-nav-header';
+    // 尝试复用原 header 中的返回键
+    const origBackBtn = document.querySelector('header .btn-back');
+    if (origBackBtn) {
+        const backClone = origBackBtn.cloneNode(true);
+        backClone.className = 'winui3-nav-back btn-back';
+        backClone.id = 'winui3BackBtn';
+        // 重新绑定返回事件（cloneNode 不复制事件监听器）
+        backClone.addEventListener('click', async () => {
+            if (typeof hasChanges !== 'undefined' && hasChanges) {
+                const ok = await showConfirm(t('settings.discardConfirm'), {
+                    title: t('settings.discardTitle'), okText: t('settings.discardBtn'), cancelText: t('settings.stayBtn'), danger: true
+                });
+                if (ok) window.history.back();
+            } else {
+                window.history.back();
+            }
+        });
+        navHeader.appendChild(backClone);
+    }
+    const navTitle = document.createElement('span');
+    navTitle.className = 'winui3-nav-title';
+    navTitle.textContent = '设置';
+    navHeader.appendChild(navTitle);
+    nav.appendChild(navHeader);
+
+    // 导航项
+    const navList = document.createElement('div');
+    navList.className = 'winui3-nav-list';
+    sections.forEach(sec => {
+        const id = sec.dataset.sectionId;
+        const h2 = sec.querySelector('h2');
+        const label = h2 ? h2.textContent : id;
+        const icon = WINUI3_ICONS[id] || WINUI3_ICONS.more;
+
+        const item = document.createElement('button');
+        item.className = 'winui3-nav-item';
+        item.dataset.navTarget = id;
+        item.innerHTML = '<span class="winui3-nav-icon">' + icon + '</span><span class="winui3-nav-label">' + label + '</span>';
+        item.addEventListener('click', () => switchWinUI3Nav(id));
+        navList.appendChild(item);
+    });
+    nav.appendChild(navList);
+
+    // 插入导航栏到 main 之前
+    main.parentNode.insertBefore(nav, main);
+
+    // 隐藏所有 section，只显示第一个
+    sections.forEach(sec => sec.classList.remove('active'));
+    const firstSection = sections[0];
+    if (firstSection) {
+        firstSection.classList.add('active');
+        const firstNav = nav.querySelector('.winui3-nav-item');
+        if (firstNav) firstNav.classList.add('active');
+    }
+}
+
+// 移除 WinUI3 导航栏，恢复原布局
+function removeWinUI3Layout() {
+    const nav = document.querySelector('.winui3-nav');
+    if (nav) nav.remove();
+    // 恢复所有 section 可见
+    document.querySelectorAll('.settings-section').forEach(sec => sec.classList.remove('active'));
+}
+
+// 切换 WinUI3 导航项
+function switchWinUI3Nav(sectionId) {
+    document.querySelectorAll('.winui3-nav-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.navTarget === sectionId);
+    });
+    document.querySelectorAll('.settings-section').forEach(sec => {
+        sec.classList.toggle('active', sec.dataset.sectionId === sectionId);
+    });
 }
 
 // 让设置值匹配 select 的 option value（后端保存的值可能带引号，匹配最佳 option）
@@ -735,6 +930,24 @@ function setupEventListeners() {
             const lvl = parseInt(btn.dataset.level, 10) || 0;
             currentSettings.animation_level = lvl;
             setAnimationLevel(lvl);
+            markChanged();
+        });
+    });
+
+    // 新风格 UI 开关
+    newUIModeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const on = btn.dataset.newuiMode === 'on';
+            currentSettings.new_ui_enabled = on;
+            newUIModeBtns.forEach(b => b.classList.toggle('active', b === btn));
+            if (window.MusicLiteSettings) window.MusicLiteSettings.applyNewUI(on);
+            // 新UI 开启时切换为 WinUI3 NavigationView 布局；关闭时恢复原布局模式
+            if (on) {
+                applyWinUI3Layout();
+            } else {
+                removeWinUI3Layout();
+                applySettingsLayoutMode(currentSettings.settings_layout || 'scroll');
+            }
             markChanged();
         });
     });
@@ -951,6 +1164,7 @@ function setupEventListeners() {
                 applySettingsToUI(newSettings);
                 applyTheme();
                 applyAccentToUI();
+                renderHotkeyList();
                 // 通知其他页面设置已更新
                 localStorage.setItem('settingsUpdated', Date.now().toString());
                 showToast(t('settings.importSuccess'), 'success');
@@ -976,6 +1190,7 @@ function setupEventListeners() {
                     applySettingsToUI(defaults);
                     applyTheme();
                     applyAccentToUI();
+                    renderHotkeyList();
                     // 立即保存
                     await SaveSettings(defaults);
                     hasChanges = false;
@@ -1021,6 +1236,134 @@ function setupEventListeners() {
         });
     }
 }
+
+// ============ 全局快捷键：UI 渲染与按键捕获 ============
+function renderHotkeyList() {
+    if (!hotkeyListEl) return;
+    const frag = document.createDocumentFragment();
+    for (const { action, label, default: defaultKey } of HOTKEY_ACTIONS) {
+        const cfg = currentSettings?.[HOTKEY_ACTIONS.find(h => h.action === action).field] || { enabled: false, keys: '' };
+        const item = document.createElement('div');
+        item.className = 'hotkey-item';
+        item.dataset.action = action;
+        item.innerHTML = `
+            <span class="hotkey-label" data-i18n="${label}">${t(label)}</span>
+            <div class="hotkey-toggle${cfg.enabled ? ' active' : ''}" data-action="${action}"></div>
+            <button class="hotkey-key-btn${cfg.keys ? '' : ' empty'}" data-action="${action}">
+                ${cfg.keys || t('settings.hotkeyNotSet')}
+            </button>
+            <button class="hotkey-clear-btn" data-action="${action}">${t('settings.hotkeyClear')}</button>
+        `;
+        frag.appendChild(item);
+    }
+    hotkeyListEl.innerHTML = '';
+    hotkeyListEl.appendChild(frag);
+    bindHotkeyEvents();
+}
+
+function bindHotkeyEvents() {
+    // 开关
+    hotkeyListEl.querySelectorAll('.hotkey-toggle').forEach(toggle => {
+        toggle.addEventListener('click', () => {
+            const action = toggle.dataset.action;
+            const field = HOTKEY_ACTIONS.find(h => h.action === action).field;
+            const cfg = currentSettings[field] || { enabled: false, keys: '' };
+            const newEnabled = !cfg.enabled;
+            currentSettings[field] = { ...cfg, enabled: newEnabled };
+            toggle.classList.toggle('active', newEnabled);
+            markChanged();
+        });
+    });
+    // 按键捕获按钮
+    hotkeyListEl.querySelectorAll('.hotkey-key-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            // 取消之前的监听
+            if (hotkeyListeningAction) {
+                const prevBtn = hotkeyListEl.querySelector(`.hotkey-key-btn[data-action="${hotkeyListeningAction}"]`);
+                if (prevBtn) {
+                    prevBtn.classList.remove('listening');
+                    const prevField = HOTKEY_ACTIONS.find(h => h.action === hotkeyListeningAction).field;
+                    const prevCfg = currentSettings[prevField] || { enabled: false, keys: '' };
+                    prevBtn.textContent = prevCfg.keys || t('settings.hotkeyNotSet');
+                    prevBtn.classList.toggle('empty', !prevCfg.keys);
+                }
+            }
+            hotkeyListeningAction = btn.dataset.action;
+            btn.classList.add('listening');
+            btn.textContent = t('settings.hotkeyListening');
+            btn.classList.remove('empty');
+        });
+    });
+    // 清除按钮
+    hotkeyListEl.querySelectorAll('.hotkey-clear-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.action;
+            const field = HOTKEY_ACTIONS.find(h => h.action === action).field;
+            const cfg = currentSettings[field] || { enabled: false, keys: '' };
+            currentSettings[field] = { ...cfg, keys: '' };
+            const keyBtn = hotkeyListEl.querySelector(`.hotkey-key-btn[data-action="${action}"]`);
+            if (keyBtn) {
+                keyBtn.textContent = t('settings.hotkeyNotSet');
+                keyBtn.classList.add('empty');
+            }
+            markChanged();
+        });
+    });
+}
+
+// 全局 keydown 监听：当 hotkeyListeningAction 不为 null 时捕获按键组合
+document.addEventListener('keydown', (e) => {
+    if (!hotkeyListeningAction) return;
+    e.preventDefault();
+    e.stopPropagation();
+    // 修饰键单独按下不触发捕获
+    if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
+    // Escape 取消监听
+    if (e.key === 'Escape') {
+        const btn = hotkeyListEl.querySelector(`.hotkey-key-btn[data-action="${hotkeyListeningAction}"]`);
+        if (btn) {
+            btn.classList.remove('listening');
+            const field = HOTKEY_ACTIONS.find(h => h.action === hotkeyListeningAction).field;
+            const cfg = currentSettings[field] || { enabled: false, keys: '' };
+            btn.textContent = cfg.keys || t('settings.hotkeyNotSet');
+            btn.classList.toggle('empty', !cfg.keys);
+        }
+        hotkeyListeningAction = null;
+        return;
+    }
+    // 构建组合键字符串
+    const parts = [];
+    if (e.ctrlKey) parts.push('Ctrl');
+    if (e.shiftKey) parts.push('Shift');
+    if (e.altKey) parts.push('Alt');
+    if (e.metaKey) parts.push('Win');
+    // 标准化键名
+    let keyName = e.key;
+    if (keyName === ' ') keyName = 'Space';
+    if (keyName.length === 1) keyName = keyName.toUpperCase();
+    parts.push(keyName);
+    const combo = parts.join('+');
+    // 写入 currentSettings
+    const action = hotkeyListeningAction;
+    const field = HOTKEY_ACTIONS.find(h => h.action === action).field;
+    const cfg = currentSettings[field] || { enabled: false, keys: '' };
+    currentSettings[field] = { ...cfg, keys: combo };
+    // 更新 UI
+    const btn = hotkeyListEl.querySelector(`.hotkey-key-btn[data-action="${action}"]`);
+    if (btn) {
+        btn.classList.remove('listening');
+        btn.textContent = combo;
+        btn.classList.remove('empty');
+    }
+    // 自动启用开关
+    if (!cfg.enabled) {
+        currentSettings[field] = { ...currentSettings[field], enabled: true };
+        const toggle = hotkeyListEl.querySelector(`.hotkey-toggle[data-action="${action}"]`);
+        if (toggle) toggle.classList.add('active');
+    }
+    hotkeyListeningAction = null;
+    markChanged();
+});
 
 // Mark settings as changed
 // 更新默认播放器状态显示
@@ -1093,6 +1436,8 @@ async function saveSettings() {
         // 应用标题栏文字
         const titlebarText = (currentSettings.titlebar_text && currentSettings.titlebar_text.trim()) || 'MusicLite Cuckoo';
         document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = titlebarText; });
+        // 同步全局快捷键配置到后端 HotkeyManager
+        try { await HotkeyApply(); } catch (_) {}
         showToast(t('libraries.saved'), 'success');
     } catch (err) {
         console.error('Failed to save settings:', err);

@@ -161,6 +161,13 @@ func (q *PlayQueue) Shuffle() {
 	if len(q.items) <= 1 {
 		return
 	}
+	if len(q.items) == 2 {
+		// 直接互换队列
+		t := q.items[1]
+		q.items[1] = q.items[0]
+		q.items[0] = t
+		return
+	}
 	cur := q.current
 	var curItem QueueItem
 	hasCur := cur >= 0 && cur < len(q.items)
@@ -187,24 +194,33 @@ func (q *PlayQueue) Shuffle() {
 	}
 }
 
-// Move 拖拽排序：把 from 下标的项移到 to 下标
+// Move 拖拽排序：把 from 项移动到 to 位置（to 是移除 from 之后的插入目标，0<=to<=len-1）
 func (q *PlayQueue) Move(from, to int) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if from < 0 || from >= len(q.items) || to < 0 || to >= len(q.items) || from == to {
+	n := len(q.items)
+	if from < 0 || from >= n || to < 0 || to >= n || from == to {
 		return false
 	}
+	// 记录当前播放曲目的稳定标识，移动完后用 ID 重新定位 current
+	var curID int64
+	if q.current >= 0 && q.current < n {
+		curID = q.items[q.current].Track.ID
+	}
 	item := q.items[from]
-	q.items = append(q.items[:from], q.items[from+1:]...)
-	q.items = append(q.items[:to], append([]QueueItem{item}, q.items[to:]...)...)
-	// 调整 current
-	switch {
-	case from == q.current:
-		q.current = to
-	case from < q.current && to >= q.current:
-		q.current--
-	case from > q.current && to <= q.current:
-		q.current++
+	// 移除 from
+	out := append(q.items[:from], q.items[from+1:]...)
+	// 插入到 to（to 是移除后的下标）
+	q.items = append(out[:to], append([]QueueItem{item}, out[to:]...)...)
+	// 用 ID 重定位 current
+	if curID > 0 {
+		q.current = -1
+		for i, it := range q.items {
+			if it.Track.ID == curID {
+				q.current = i
+				break
+			}
+		}
 	}
 	return true
 }
@@ -328,7 +344,6 @@ func (q *PlayQueue) AdvanceNext(loop bool) (QueueItem, bool) {
 }
 
 // AdvanceRandom 随机前进到下一项并返回（用于 random 模式下的队列推进）
-// 队列只有 1 项时返回 false，由调用方决定是否走库随机
 func (q *PlayQueue) AdvanceRandom(loop bool) (QueueItem, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -336,17 +351,22 @@ func (q *PlayQueue) AdvanceRandom(loop bool) (QueueItem, bool) {
 		return QueueItem{}, false
 	}
 	if len(q.items) == 1 {
-		// 队列只有当前一首，交给库随机处理
-		return QueueItem{}, false
+		// 队列只有当前一首，直接拿出来送给他
+		return q.items[q.current], false
 	}
 	// 随机选一个不等于 current 的下标
 	cur := q.current
 	if cur < 0 {
 		cur = 0
 	}
-	next := rand.Intn(len(q.items))
-	for next == cur {
-		next = rand.Intn(len(q.items))
+	var next int
+	for {
+		next = random(0, len(q.items))
+		if next == cur {
+			continue
+		} else {
+			break
+		}
 	}
 	q.current = next
 	return q.items[next], true

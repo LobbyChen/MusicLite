@@ -5,6 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" type="text/css" href="/src/css/libraries.css" />
+    <link rel="stylesheet" type="text/css" href="/src/css/settings.css" />
     <script src="/wails/ipc.js"></script>
     <script src="/wails/runtime.js"></script>
     <script src="/src/js/audio-manager.js" type="module"></script>
@@ -13,16 +14,13 @@
     <title>MusicLite · 我的音乐库</title>
 </head>
 
-<body class="lyric-anim-fade">
+<body class="lyric-anim-fade" data-page="libraries">
     <!-- 自定义标题栏（无边框窗口） -->
     <div class="titlebar">
         <div class="titlebar-left">
             <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" clip-rule="evenodd" xml:space="preserve"
                 version="1.1">
-
                 <g>
-                    <rect opacity="0" stroke-width="0" rx="4" id="svg_5" height="23.09522" width="23.09522" y="0.45239"
-                        x="0.45239" stroke="#000" fill="#ececf1" />
                     <g stroke-dasharray="5,2,2,2,2,2" fill="#666666" id="Icon">
                         <path fill="#00A4EF" stroke-dasharray="5,2,2,2,2,2" id="svg_1"
                             d="m11.7619,2.25c-5.381,0 -9.75,4.369 -9.75,9.75c0,5.381 4.369,9.75 9.75,9.75c5.381,0 9.75,-4.369 9.75,-9.75c0,-5.381 -4.369,-9.75 -9.75,-9.75zm0,1.5c4.553,0 8.25,3.697 8.25,8.25c0,4.553 -3.697,8.25 -8.25,8.25c-4.553,0 -8.25,-3.697 -8.25,-8.25c0,-4.553 3.697,-8.25 8.25,-8.25z" />
@@ -38,7 +36,7 @@
         <div class="titlebar-controls">
             <button class="titlebar-btn" id="minimizeBtn" title="最小化" data-i18n-title="titlebar.minimize">
                 <svg viewBox="0 0 24 24" width="14" height="14">
-                    <path d="M6 19h12v2H6z" />
+                    <path d="M19 13H5v-2h14v2z" />
                 </svg>
             </button>
             <button class="titlebar-btn titlebar-close" id="closeBtn" title="关闭" data-i18n-title="titlebar.close">
@@ -56,43 +54,65 @@
         <div class="header-actions">
             <div class="search-box" id="searchBox">
                 <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18">
-                    <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z" />
+                    <path
+                        d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z" />
                 </svg>
                 <input type="text" id="searchInput" class="search-input" placeholder="搜索曲目或艺术家"
                     data-i18n-placeholder="libraries.searchPlaceholder" />
-                <button class="search-clear" id="searchClear" title="清除" data-i18n-title="libraries.clearSearch" style="display:none;">
+                <button class="search-clear" id="searchClear" title="清除" data-i18n-title="libraries.clearSearch"
+                    style="display:none;">
                     <svg viewBox="0 0 24 24" width="14" height="14">
-                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                        <path
+                            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                     </svg>
                 </button>
             </div>
             <button class="btn-open" id="openFileBtn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                 </svg>
                 <span data-i18n="libraries.importFiles">导入文件</span>
             </button>
             <button class="btn-stats" id="statsBtn" title="听歌统计" data-i18n-title="libraries.stats">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 20V10M18 20V4M6 20v-4"/>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 20V10M12 20V4M6 20v-6" />
                 </svg>
             </button>
             <button class="btn-designer" id="designerBtn" title="设计器" data-i18n-title="common.designer">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" y1="21" x2="4" y2="14"></line>
+                    <line x1="4" y1="10" x2="4" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12" y2="3"></line>
+                    <line x1="20" y1="21" x2="20" y2="16"></line>
+                    <line x1="20" y1="12" x2="20" y2="3"></line>
+                    <line x1="1" y1="14" x2="7" y2="14"></line>
+                    <line x1="9" y1="8" x2="15" y2="8"></line>
+                    <line x1="17" y1="16" x2="23" y2="16"></line>
                 </svg>
             </button>
             <button class="btn-queue-toggle" id="libQueueBtn" title="播放队列" data-i18n-title="player.queue">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 5h18v2H3V5zm0 6h18v2H3v-2zm0 6h12v2H3v-2zm14-2l4 3-4 3v-6z"/>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
                 </svg>
                 <span class="queue-badge lib-queue-badge" id="libQueueBadge" style="display:none;">0</span>
             </button>
             <button class="btn-settings" id="settingsBtn" title="设置" data-i18n-title="common.settings">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
                     <path
-                        d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" />
+                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                    </path>
                 </svg>
             </button>
         </div>
@@ -112,26 +132,31 @@
             </div>
             <div class="tracks-controls">
                 <div class="sort-control" id="sortControl" role="group" aria-label="排序方式">
-                    <button class="sort-btn" data-sort="recent" title="最近添加" data-i18n-title="libraries.sortRecent" data-i18n="libraries.sortRecent">最近添加</button>
-                    <button class="sort-btn" data-sort="title" title="标题" data-i18n-title="libraries.sortTitle" data-i18n="libraries.sortTitle">标题</button>
-                    <button class="sort-btn" data-sort="artist" title="艺术家" data-i18n-title="libraries.sortArtist" data-i18n="libraries.sortArtist">艺术家</button>
+                    <button class="sort-btn" data-sort="recent" title="最近添加" data-i18n-title="libraries.sortRecent"
+                        data-i18n="libraries.sortRecent">最近添加</button>
+                    <button class="sort-btn" data-sort="title" title="标题" data-i18n-title="libraries.sortTitle"
+                        data-i18n="libraries.sortTitle">标题</button>
+                    <button class="sort-btn" data-sort="artist" title="艺术家" data-i18n-title="libraries.sortArtist"
+                        data-i18n="libraries.sortArtist">艺术家</button>
                 </div>
-                <div class="view-toggle" id="view-toggle" role="switch" tabindex="0" aria-label="切换卡片/列表模式" data-i18n-title="settings.listMode">
-                <span class="view-toggle-thumb">
-                    <svg class="view-toggle-icon view-toggle-icon-card" viewBox="0 0 24 24" width="14" height="14">
-                        <path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/>
-                    </svg>
-                    <svg class="view-toggle-icon view-toggle-icon-list" viewBox="0 0 24 24" width="14" height="14">
-                        <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
-                    </svg>
-                </span>
+                <div class="view-toggle" id="view-toggle" role="switch" tabindex="0" aria-label="切换卡片/列表模式"
+                    data-i18n-title="settings.listMode">
+                    <span class="view-toggle-thumb">
+                        <svg class="view-toggle-icon view-toggle-icon-card" viewBox="0 0 24 24" width="14" height="14">
+                            <path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" />
+                        </svg>
+                        <svg class="view-toggle-icon view-toggle-icon-list" viewBox="0 0 24 24" width="14" height="14">
+                            <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
+                        </svg>
+                    </span>
                 </div>
             </div>
         </div>
         <div id="media-container" class="media-grid"></div>
 
         <div id="empty-state" class="empty-state">
-            <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.5">
+            <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round">
                 <path d="M9 18V5l12-2v13" />
                 <circle cx="6" cy="18" r="3" />
                 <circle cx="18" cy="16" r="3" />
@@ -140,8 +165,11 @@
             <p data-i18n="libraries.emptyHint">点击"导入文件"按钮添加音乐</p>
         </div>
         <div id="no-results" class="empty-state no-results" style="display:none;">
-            <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z" />
+            <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                <line x1="8" y1="11" x2="14" y2="11" />
             </svg>
             <h2 data-i18n="libraries.noResults">没有匹配的曲目</h2>
             <p data-i18n="libraries.noResultsHint">试试其他关键词</p>
@@ -155,14 +183,30 @@
         <div class="lib-queue-header">
             <h3 data-i18n="player.queue">播放队列</h3>
             <div class="lib-queue-actions">
-                <button class="queue-action-btn" id="libQueueShuffleBtn" title="洗牌" data-i18n-title="player.queueShuffle">
-                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+                <button class="queue-action-btn" id="libQueueShuffleBtn" title="洗牌"
+                    data-i18n-title="player.queueShuffle">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="16 3 21 3 21 8"></polyline>
+                        <line x1="4" y1="20" x2="21" y2="3"></line>
+                        <polyline points="21 16 21 21 16 21"></polyline>
+                        <line x1="15" y1="15" x2="21" y2="21"></line>
+                        <line x1="4" y1="4" x2="9" y2="9"></line>
+                    </svg>
                 </button>
                 <button class="queue-action-btn" id="libQueueClearBtn" title="清空" data-i18n-title="player.queueClear">
-                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
                 </button>
                 <button class="queue-action-btn" id="libQueueCloseBtn" title="关闭" data-i18n-title="common.close">
-                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
                 </button>
             </div>
         </div>
@@ -183,7 +227,7 @@
         <div class="mini-player-center">
             <button class="mini-btn" id="mini-prev" title="上一曲" data-i18n-title="player.prevTrack">
                 <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path d="M18 18L9.5 12L18 6V18zM8 6V18H6V6H8Z" />
+                    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
                 </svg>
             </button>
             <button class="mini-btn mini-play-btn" id="mini-play" title="播放" data-i18n-title="common.play">
@@ -202,8 +246,12 @@
         </div>
         <div class="mini-player-right">
             <button class="mini-btn" id="mini-expand" title="打开播放器" data-i18n-title="libraries.openPlayer">
-                <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <polyline points="9 21 3 21 3 15"></polyline>
+                    <line x1="21" y1="3" x2="14" y2="10"></line>
+                    <line x1="3" y1="21" x2="10" y2="14"></line>
                 </svg>
             </button>
         </div>
@@ -217,11 +265,18 @@
                 <!-- 封面预览 + 更换 -->
                 <div class="edit-cover-section">
                     <div class="edit-cover-preview" id="edit-cover-preview">
-                        <svg viewBox="0 0 24 24" width="32" height="32"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
                     </div>
                     <div class="edit-cover-actions">
-                        <button class="btn btn-secondary btn-sm" id="edit-cover-pick" data-i18n="libraries.changeCover">更换封面</button>
-                        <button class="btn btn-secondary btn-sm" id="edit-cover-clear" data-i18n="libraries.clearCover">清除</button>
+                        <button class="btn btn-secondary btn-sm" id="edit-cover-pick"
+                            data-i18n="libraries.changeCover">更换封面</button>
+                        <button class="btn btn-secondary btn-sm" id="edit-cover-clear"
+                            data-i18n="libraries.clearCover">清除</button>
                     </div>
                 </div>
                 <!-- 右侧：标题/艺术家/歌词 -->
@@ -237,17 +292,21 @@
                     <div class="form-group">
                         <label data-i18n="libraries.lyricsFormat">歌词 (LRC 格式)</label>
                         <textarea id="edit-lyrics" class="form-textarea"
-                            placeholder="粘贴 LRC 歌词，如：&#10;[00:12.34]歌词内容&#10;[00:15.67]下一行" data-i18n-placeholder="libraries.lyricsPlaceholder"></textarea>
+                            placeholder="粘贴 LRC 歌词，如：&#10;[00:12.34]歌词内容&#10;[00:15.67]下一行"
+                            data-i18n-placeholder="libraries.lyricsPlaceholder"></textarea>
                         <div class="edit-lyrics-actions">
-                            <button class="btn btn-secondary btn-sm" id="edit-lyrics-pick" data-i18n="libraries.importFromFile">从文件导入</button>
-                            <button class="btn btn-secondary btn-sm" id="edit-lyrics-clear" data-i18n="libraries.clearLyrics">清空</button>
+                            <button class="btn btn-secondary btn-sm" id="edit-lyrics-pick"
+                                data-i18n="libraries.importFromFile">从文件导入</button>
+                            <button class="btn btn-secondary btn-sm" id="edit-lyrics-clear"
+                                data-i18n="libraries.clearLyrics">清空</button>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="edit-drop-hint" data-i18n="libraries.dropEditHint">拖放封面图片或歌词文件到此处</div>
             <div class="modal-buttons">
-                <button class="btn btn-secondary modal-cancel" data-action="cancel" data-i18n="common.cancel">取消</button>
+                <button class="btn btn-secondary modal-cancel" data-action="cancel"
+                    data-i18n="common.cancel">取消</button>
                 <button class="btn btn-primary modal-save" data-action="save" data-i18n="common.save">保存</button>
             </div>
         </div>
@@ -257,8 +316,12 @@
     <div id="modal-confirm" class="modal-backdrop">
         <div class="modal modal-confirm">
             <div class="confirm-icon" id="confirm-icon">
-                <svg viewBox="0 0 24 24" width="32" height="32">
-                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
                 </svg>
             </div>
             <h3 id="confirm-title" data-i18n="libraries.confirmDeleteTitle">确认删除</h3>
@@ -273,8 +336,11 @@
     <!-- 拖放导入遮罩 -->
     <div id="drop-overlay" class="drop-overlay">
         <div class="drop-overlay-inner">
-            <svg viewBox="0 0 24 24" width="64" height="64">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+            <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
             <div class="drop-overlay-text" data-i18n="libraries.dropText">松开鼠标导入音乐文件</div>
             <div class="drop-overlay-hint" data-i18n="libraries.dropHint">支持 MP3 / OGG / FLAC / WAV / APE</div>
@@ -301,20 +367,15 @@
                     </div>
                     <div class="lyrics-card" id="lyricsCard">
                         <div class="lyrics-nav-group">
-                            <button class="lyrics-nav-btn" id="lyricPrevBtn" title="上一句歌词" data-i18n-title="player.prevLyric">
-                                <svg viewBox="0 0 24 24" width="16" height="16">
-                                    <path d="M7 14H5v5h5v-2H7v-3zm3-8H5v2h5V6zM5 13h2V8H5v5zm12 7h2v-3h-2v3zM14 6v2h5V6h-5zm5 7h-2V8h2v5z" />
-                                </svg>
-                            </button>
-                            <button class="lyrics-mode-btn" id="expandFullscreenBtn" title="全屏歌词" data-i18n-title="player.fullscreenLyrics">
-                                <svg viewBox="0 0 24 24" width="14" height="14">
-                                    <path
-                                        d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
-                            </svg>
-                            </button>
-                            <button class="lyrics-nav-btn" id="lyricNextBtn" title="下一句歌词" data-i18n-title="player.nextLyric">
-                                <svg viewBox="0 0 24 24" width="16" height="16">
-                                    <path d="M7 14H5v5h5v-2H7v-3zm3-8H5v2h5V6zM5 13h2V8H5v5zm12 7h2v-3h-2v3zM14 6v2h5V6h-5zm5 7h-2V8h2v5z" />
+
+                            <button class="lyrics-mode-btn" id="expandFullscreenBtn" title="全屏歌词"
+                                data-i18n-title="player.fullscreenLyrics">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <polyline points="9 21 3 21 3 15"></polyline>
+                                    <line x1="21" y1="3" x2="14" y2="10"></line>
+                                    <line x1="3" y1="21" x2="10" y2="14"></line>
                                 </svg>
                             </button>
                         </div>
@@ -346,7 +407,7 @@
                         </button>
                         <button class="btn btn-next" id="prevBtn" title="上一曲" data-i18n-title="player.prevTrack">
                             <svg viewBox="0 0 24 24">
-                                <path d="M18 18L9.5 12L18 6V18zM8 6V18H6V6H8Z" />
+                                <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
                             </svg>
                         </button>
                         <button class="btn btn-next" id="nextBtn" title="下一曲" data-i18n-title="player.nextTrack">
@@ -360,13 +421,28 @@
                             </svg>
                         </button>
                         <button class="btn btn-eq" id="eqBtn" title="均衡器" data-i18n-title="player.equalizer">
-                            <svg viewBox="0 0 24 24" width="20" height="20">
-                                <path d="M7 4h2v16H7V4zm4 4h2v8h-2V8zm4-4h2v16h-2V4zM3 10h2v4H3v-4zm16 0h2v4h-2v-4z"/>
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="4" y1="21" x2="4" y2="14"></line>
+                                <line x1="4" y1="10" x2="4" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12" y2="3"></line>
+                                <line x1="20" y1="21" x2="20" y2="16"></line>
+                                <line x1="20" y1="12" x2="20" y2="3"></line>
+                                <line x1="1" y1="14" x2="7" y2="14"></line>
+                                <line x1="9" y1="8" x2="15" y2="8"></line>
+                                <line x1="17" y1="16" x2="23" y2="16"></line>
                             </svg>
                         </button>
                         <button class="btn btn-queue" id="queueBtn" title="播放队列" data-i18n-title="player.queue">
-                            <svg viewBox="0 0 24 24" width="20" height="20">
-                                <path d="M3 5h18v2H3V5zm0 6h18v2H3v-2zm0 6h12v2H3v-2zm14-2l4 3-4 3v-6z"/>
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="8" y1="6" x2="21" y2="6"></line>
+                                <line x1="8" y1="12" x2="21" y2="12"></line>
+                                <line x1="8" y1="18" x2="21" y2="18"></line>
+                                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                <line x1="3" y1="18" x2="3.01" y2="18"></line>
                             </svg>
                             <span class="queue-badge" id="queueBadge" style="display:none;">0</span>
                         </button>
@@ -385,9 +461,9 @@
                         </div>
                     </div>
                     <button class="btn btn-back" id="backBtn" title="返回音乐库" data-i18n-title="player.backToLibrary">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-                        </svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+  <path d="M17.41 5.41L16 4l-8 8 8 8 1.41-1.41L10.83 12z"/>
+</svg>
                     </button>
                 </div>
             </div>
@@ -397,19 +473,14 @@
         <div class="fullscreen-lyrics" id="fullscreenLyrics">
             <div class="fullscreen-lyrics-bg" id="fullscreenBg"></div>
             <div class="lyrics-nav-group fullscreen-nav-group">
-                <button class="lyrics-nav-btn" id="fsLyricPrevBtn" title="上一句歌词" data-i18n-title="player.prevLyric">
-                    <svg viewBox="0 0 24 24" width="18" height="18">
-                        <path d="M7 14H5v5h5v-2H7v-3zm3-8H5v2h5V6zM5 13h2V8H5v5zm12 7h2v-3h-2v3zM14 6v2h5V6h-5zm5 7h-2V8h2v5z" />
-                    </svg>
-                </button>
-                <button class="lyrics-mode-btn fullscreen-mode-btn" id="collapseCardBtn" title="返回卡片歌词" data-i18n-title="player.backToCardLyrics">
-                    <svg viewBox="0 0 24 24" width="14" height="14">
-                        <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
-                    </svg>
-                </button>
-                <button class="lyrics-nav-btn" id="fsLyricNextBtn" title="下一句歌词" data-i18n-title="player.nextLyric">
-                    <svg viewBox="0 0 24 24" width="18" height="18">
-                        <path d="M7 14H5v5h5v-2H7v-3zm3-8H5v2h5V6zM5 13h2V8H5v5zm12 7h2v-3h-2v3zM14 6v2h5V6h-5zm5 7h-2V8h2v5z" />
+                <button class="lyrics-mode-btn fullscreen-mode-btn" id="collapseCardBtn" title="返回卡片歌词"
+                    data-i18n-title="player.backToCardLyrics">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="4 14 10 14 10 20"></polyline>
+                        <polyline points="20 10 14 10 14 4"></polyline>
+                        <line x1="14" y1="10" x2="21" y2="3"></line>
+                        <line x1="3" y1="21" x2="10" y2="14"></line>
                     </svg>
                 </button>
             </div>
@@ -434,8 +505,10 @@
                         <span class="eq-switch-track"><span class="eq-switch-thumb"></span></span>
                     </label>
                     <button class="eq-reset-btn" id="eqResetBtn" title="重置" data-i18n-title="common.reset">
-                        <svg viewBox="0 0 24 24" width="16" height="16">
-                            <path d="M12 5V2L8 6l4 4V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                            <path d="M3 3v5h5"></path>
                         </svg>
                     </button>
                 </div>
@@ -449,14 +522,23 @@
             <div class="queue-panel-header">
                 <h3 data-i18n="player.queue">播放队列</h3>
                 <div class="queue-panel-actions">
-                    <button class="queue-action-btn" id="queueShuffleBtn" title="洗牌" data-i18n-title="player.queueShuffle">
-                        <svg viewBox="0 0 24 24" width="16" height="16">
-                            <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
+                    <button class="queue-action-btn" id="queueShuffleBtn" title="洗牌"
+                        data-i18n-title="player.queueShuffle">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="16 3 21 3 21 8"></polyline>
+                            <line x1="4" y1="20" x2="21" y2="3"></line>
+                            <polyline points="21 16 21 21 16 21"></polyline>
+                            <line x1="15" y1="15" x2="21" y2="21"></line>
+                            <line x1="4" y1="4" x2="9" y2="9"></line>
                         </svg>
                     </button>
                     <button class="queue-action-btn" id="queueClearBtn" title="清空" data-i18n-title="player.queueClear">
-                        <svg viewBox="0 0 24 24" width="16" height="16">
-                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
                         </svg>
                     </button>
                 </div>
@@ -471,8 +553,11 @@
     <div class="modal-backdrop" id="confirmModal">
         <div class="modal modal-confirm">
             <div class="confirm-icon">
-                <svg viewBox="0 0 24 24" width="28" height="28">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
                 </svg>
             </div>
             <h3 id="confirmTitle">确认操作</h3>

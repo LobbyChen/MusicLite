@@ -14,9 +14,15 @@
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
-    --dur-fast: 0.15s;
-    --dur-normal: 0.25s;
-    --dur-slow: 0.35s;
+    /* anim-mult 是速度倍率，高值 = 更快 = 更短持续时间，故用除法 */
+    --design-anim-mult: 1;
+    --dur-fast: calc(0.15s / var(--design-anim-mult));
+    --dur-normal: calc(0.25s / var(--design-anim-mult));
+    --dur-slow: calc(0.35s / var(--design-anim-mult));
+    /* 视觉设计令牌默认值（与 libraries.css :root 保持一致） */
+    --design-radius: 10px;
+    --design-radius-sm: 6px;
+    --design-radius-lg: 16px;
 }
 
 /* Light theme */
@@ -56,7 +62,7 @@ html ::-webkit-scrollbar {
 }
 
 /* 覆盖 libraries.css 的 body 布局（settings 页需要可滚动，不是 flex 列） */
-html body {
+html body[data-page="settings"] {
     font-family: var(--player-font, system-ui), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: var(--bg-color);
     color: var(--text-primary);
@@ -76,7 +82,7 @@ img {
     user-drag: none;
 }
 
-html body ::-webkit-scrollbar {
+html body[data-page="settings"] ::-webkit-scrollbar {
     display: none;
 }
 
@@ -130,7 +136,7 @@ html body ::-webkit-scrollbar {
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: var(--design-radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -182,18 +188,18 @@ h1 {
     font-weight: 700;
 }
 
-main {
+body[data-page="settings"] main {
     margin: 0 auto;
     padding: 0 40px 180px;
     overflow: auto;
 }
 
 /* 有迷你播放器时，main 再加 72px 底部留白避免被遮挡 */
-body.has-mini-player main {
+body[data-page="settings"].has-mini-player main {
     padding-bottom: 252px;
 }
 
-.settings-section {
+body[data-page="settings"] .settings-section {
     margin-bottom: 40px;
     animation: sectionFadeIn 0.4s var(--ease-out-expo) both;
     animation-delay: calc(var(--sec-i, 0) * 0.06s);
@@ -235,7 +241,7 @@ body.has-mini-player main {
     padding: 16px;
     background: var(--card-bg);
     border: 2px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: var(--design-radius);
     color: var(--text-primary);
     cursor: pointer;
     display: flex;
@@ -275,7 +281,7 @@ body.has-mini-player main {
     position: relative;
     width: 48px;
     height: 26px;
-    border-radius: 13px;
+    border-radius: var(--design-radius);
     border: 1px solid var(--border-color);
     background: var(--card-bg);
     cursor: pointer;
@@ -336,7 +342,7 @@ body.has-mini-player main {
     padding: 10px 14px;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 10px;
+    border-radius: var(--design-radius);
     color: var(--text-primary);
     font-size: 0.85rem;
     font-weight: 500;
@@ -376,7 +382,7 @@ body.has-mini-player main {
     padding: 12px 16px;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: var(--design-radius);
     color: var(--text-primary);
     font-size: 0.95rem;
     cursor: pointer;
@@ -398,7 +404,7 @@ body.has-mini-player main {
     padding: 12px 16px;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: var(--design-radius);
     color: var(--text-primary);
     font-size: 0.95rem;
     font-family: inherit;
@@ -499,16 +505,19 @@ body.has-mini-player .save-bar {
     bottom: 72px;
 }
 
-.btn {
+/* 仅在设置/设计器页面覆盖 .btn 基础样式（避免影响音乐库页面） */
+body[data-page="settings"] .btn,
+body[data-page="designer"] .btn {
     padding: 10px 20px;
     border: none;
-    border-radius: 20px;
+    border-radius: var(--design-radius-lg);
     cursor: pointer;
     font-weight: 600;
     transition: transform 0.1s, opacity 0.2s;
 }
 
-.btn:active {
+body[data-page="settings"] .btn:active,
+body[data-page="designer"] .btn:active {
     transform: scale(0.95);
 }
 
@@ -535,7 +544,7 @@ body.has-mini-player .save-bar {
     width: 48px;
     height: 40px;
     border: 2px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: var(--design-radius);
     padding: 2px;
     background: var(--card-bg);
     cursor: pointer;
@@ -552,7 +561,7 @@ body.has-mini-player .save-bar {
     padding: 10px 14px;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: var(--design-radius);
     color: var(--text-primary);
     font-family: 'Consolas', monospace;
     font-size: 0.9rem;
@@ -616,7 +625,7 @@ body.has-mini-player .save-bar {
 .modal {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 16px;
+    border-radius: var(--design-radius-lg);
     padding: 28px;
     min-width: 360px;
     max-width: 90vw;
@@ -707,7 +716,7 @@ body.has-mini-player .save-bar {
     max-width: 360px;
     padding: 12px 16px;
     background: var(--card-bg);
-    border-radius: 8px;
+    border-radius: var(--design-radius);
     color: var(--text-primary);
     display: flex;
     align-items: center;
@@ -800,7 +809,7 @@ body.has-mini-player .save-bar {
     padding: 14px 16px;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: var(--design-radius);
     color: var(--text-primary);
     font-size: 1rem;
     line-height: 1.6;
@@ -841,7 +850,7 @@ body.has-mini-player .save-bar {
     color: var(--text-secondary);
     cursor: pointer;
     padding: 4px;
-    border-radius: 4px;
+    border-radius: var(--design-radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -957,4 +966,1973 @@ body.has-mini-player .save-bar {
     text-align: center;
     padding: 40px 0;
     font-size: 0.9rem;
+}
+
+/* ========== 全局快捷键 ========== */
+.hotkey-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.hotkey-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--design-radius);
+    transition: border-color 0.2s;
+}
+
+.hotkey-item:hover {
+    border-color: var(--accent-color);
+}
+
+.hotkey-label {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.hotkey-toggle {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    background: var(--border-color);
+    border-radius: 11px;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.hotkey-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+}
+
+.hotkey-toggle.active {
+    background: var(--accent-color);
+}
+
+.hotkey-toggle.active::after {
+    transform: translateX(18px);
+}
+
+.hotkey-key-btn {
+    min-width: 120px;
+    padding: 6px 12px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--design-radius);
+    color: var(--text-primary);
+    font-family: 'Consolas', monospace;
+    font-size: 0.85rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    user-select: none;
+}
+
+.hotkey-key-btn:hover {
+    border-color: var(--accent-color);
+}
+
+.hotkey-key-btn.listening {
+    border-color: var(--accent-color);
+    background: rgba(29, 185, 84, 0.1);
+    color: var(--accent-color);
+}
+
+.hotkey-key-btn.empty {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.hotkey-clear-btn {
+    padding: 6px 10px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--design-radius);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.hotkey-clear-btn:hover {
+    color: #e74c3c;
+    border-color: #e74c3c;
+}
+
+/* ============================================================
+   设置界面布局模式：多栏（columns）
+   ============================================================ */
+body[data-page="settings"][data-settings-layout="columns"] main {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 28px;
+    max-width: 1200px;
+    padding: 0 40px 180px;
+    align-items: start;
+}
+body[data-page="settings"][data-settings-layout="columns"].has-mini-player main {
+    padding-bottom: 252px;
+}
+body[data-page="settings"][data-settings-layout="columns"] .settings-section {
+    margin-bottom: 0;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--design-radius-lg);
+    padding: 24px;
+}
+body[data-page="settings"][data-settings-layout="columns"] .settings-section h2 {
+    margin-bottom: 16px;
+}
+/* 关于和更多 section 跨两列 */
+body[data-page="settings"][data-settings-layout="columns"] .settings-section[data-section-id="about"],
+body[data-page="settings"][data-settings-layout="columns"] .settings-section[data-section-id="more"] {
+    grid-column: span 1;
+}
+@media (min-width: 820px) {
+    body[data-page="settings"][data-settings-layout="columns"] main {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (min-width: 1200px) {
+    body[data-page="settings"][data-settings-layout="columns"] main {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* ============================================================
+   设置界面布局模式：选项卡（tabs）
+   ============================================================ */
+body[data-page="settings"][data-settings-layout="tabs"] .settings-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 40px;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 36px;
+    z-index: 50;
+    background: var(--bg-color);
+    overflow-x: auto;
+}
+body[data-page="settings"][data-settings-layout="tabs"] .settings-tabs::-webkit-scrollbar {
+    display: none;
+}
+body[data-page="settings"][data-settings-layout="tabs"] .settings-tab {
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color var(--dur-fast) var(--ease-smooth), border-color var(--dur-fast) var(--ease-smooth);
+    flex-shrink: 0;
+}
+body[data-page="settings"][data-settings-layout="tabs"] .settings-tab:hover {
+    color: var(--text-primary);
+}
+body[data-page="settings"][data-settings-layout="tabs"] .settings-tab.active {
+    color: var(--accent-color);
+    border-bottom-color: var(--accent-color);
+}
+body[data-page="settings"][data-settings-layout="tabs"] main .settings-section {
+    display: none;
+    margin-bottom: 40px;
+}
+body[data-page="settings"][data-settings-layout="tabs"] main .settings-section.active {
+    display: block;
+    animation: sectionFadeIn 0.3s var(--ease-out-expo) both;
+}
+body[data-page="settings"][data-settings-layout="tabs"] main {
+    max-width: 760px;
+}
+
+/* ============================================================
+   WinUI 3 风格新 UI（仅设置界面生效，data-new-ui="true" + settings 页限定）
+   参考 WinUI 3 / Fluent Design：
+   - Mica 材质背景（半透明 + 深浅层叠）
+   - 卡片化分组（CardExpander 风格：无边框圆角卡片，细微分层色）
+   - 按钮强调色填充 + hover 浅层叠加
+   - 滑块/开关/选择器全部统一为 Fluent 控件外观
+   - 排版更紧凑，间距更规律，层次靠背景色深浅区分而非阴影
+   ============================================================ */
+
+/* --- WinUI3 局部变量 --- */
+body[data-new-ui="true"] {
+    /* Mica 材质：极浅的半透明层叠 */
+    --w3-layer-0: transparent;                    /* 画布层（body 本身） */
+    --w3-layer-1: rgba(255, 255, 255, 0.022);     /* 卡片背景 */
+    --w3-layer-1-hover: rgba(255, 255, 255, 0.045); /* 卡片 hover */
+    --w3-layer-2: rgba(255, 255, 255, 0.06);      /* 悬浮元素 / 下拉 */
+    --w3-stroke: rgba(255, 255, 255, 0.06);       /* 1px 细描边 */
+    --w3-stroke-strong: rgba(255, 255, 255, 0.12); /* hover/focus 描边 */
+    --w3-accent: var(--accent-color);
+    --w3-accent-hover: var(--accent-hover, #1a9e47);
+    --w3-accent-pressed: color-mix(in srgb, var(--accent-color) 85%, transparent);
+    --w3-accent-soft: color-mix(in srgb, var(--accent-color) 10%, transparent); /* 选中态淡色底 */
+    --w3-accent-glow: color-mix(in srgb, var(--accent-color) 35%, transparent);  /* 辉光/阴影统一派生 */
+    --w3-text-secondary: rgba(255, 255, 255, 0.55);
+    --w3-radius: 4px;                              /* WinUI3 圆角偏小 */
+    --w3-radius-lg: 8px;
+    --w3-control-height: 32px;                    /* Fluent 控件标准高度 */
+    --w3-transition: 150ms cubic-bezier(0.33, 0, 0.67, 1); /* WinUI3 标准缓动 */
+}
+body[data-new-ui="true"][data-theme="light"] {
+    --w3-layer-1: rgba(0, 0, 0, 0.018);
+    --w3-layer-1-hover: rgba(0, 0, 0, 0.035);
+    --w3-layer-2: rgba(0, 0, 0, 0.05);
+    --w3-stroke: rgba(0, 0, 0, 0.06);
+    --w3-stroke-strong: rgba(0, 0, 0, 0.12);
+    --w3-accent-soft: color-mix(in srgb, var(--accent-color) 6%, transparent);
+    --w3-text-secondary: rgba(0, 0, 0, 0.50);
+}
+/* 仅设置页生效：设计器不会匹配此选择器 */
+body[data-new-ui="true"] {
+    background: var(--bg-color);
+}
+
+/* --- 设置区块：WinUI3 卡片 --- */
+body[data-new-ui="true"] .settings-section {
+    background: var(--w3-layer-1);
+    border: 1px solid var(--w3-stroke);
+    border-radius: var(--w3-radius-lg);
+    padding: 20px 24px;
+    margin-bottom: 4px;
+    transition: background var(--w3-transition), border-color var(--w3-transition);
+}
+body[data-new-ui="true"] .settings-section:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-new-ui="true"] .settings-section h2 {
+    border-bottom: 1px solid var(--w3-stroke);
+    padding-bottom: 10px;
+    margin-bottom: 18px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* --- 设置项 --- */
+body[data-new-ui="true"] .setting-item {
+    margin-bottom: 20px;
+}
+body[data-new-ui="true"] .setting-item label {
+    font-size: 0.875rem;
+    font-weight: 400;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+body[data-new-ui="true"] .toggle-desc {
+    font-size: 0.78rem;
+    color: var(--w3-text-secondary);
+    margin-top: 4px;
+}
+
+/* --- 主题选择按钮 --- */
+body[data-new-ui="true"] .theme-selector {
+    gap: 8px;
+}
+body[data-new-ui="true"] .theme-btn {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+    padding: 12px 8px;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .theme-btn:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-new-ui="true"] .theme-btn.active {
+    background: var(--w3-accent-soft);
+    border-color: var(--w3-accent);
+}
+
+/* --- Fluent 按钮 --- */
+body[data-new-ui="true"] .btn {
+    border-radius: var(--w3-radius);
+    min-height: var(--w3-control-height);
+    padding: 5px 16px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .btn-primary {
+    background: var(--w3-accent);
+    color: #fff;
+    border: 1px solid var(--w3-accent);
+}
+body[data-new-ui="true"] .btn-primary:hover {
+    background: var(--w3-accent-hover);
+}
+body[data-new-ui="true"] .btn-primary:active {
+    background: var(--w3-accent-pressed);
+    transform: scale(0.98);
+}
+body[data-new-ui="true"] .btn-secondary {
+    background: var(--w3-layer-1);
+    border: 1px solid var(--w3-stroke);
+    color: var(--text-primary);
+}
+body[data-new-ui="true"] .btn-secondary:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-new-ui="true"] .btn-danger {
+    background: #c42b1c;
+    color: #fff;
+    border: 1px solid #c42b1c;
+}
+body[data-new-ui="true"] .btn-danger:hover {
+    background: #b32719;
+}
+
+/* --- 动画级别 / 音量模式 / SmartEQ / 新UI 按钮组 --- */
+body[data-new-ui="true"] .anim-level-btn {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+    min-height: var(--w3-control-height);
+    padding: 4px 14px;
+    font-size: 0.825rem;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .anim-level-btn:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-new-ui="true"] .anim-level-btn.active {
+    background: var(--w3-accent-soft);
+    border-color: var(--w3-accent);
+    color: var(--w3-accent);
+}
+
+/* --- 下拉选择框 --- */
+body[data-new-ui="true"] .font-select {
+    background: var(--w3-layer-1);
+    border: 1px solid var(--w3-stroke);
+    border-radius: var(--w3-radius);
+    min-height: var(--w3-control-height);
+    padding: 5px 10px;
+    font-size: 0.875rem;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .font-select:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-new-ui="true"] .font-select:focus {
+    border-color: var(--w3-accent);
+    outline: none;
+}
+
+/* --- 文本输入框 --- */
+body[data-new-ui="true"] .text-input {
+    background: var(--w3-layer-1);
+    border: 1px solid var(--w3-stroke);
+    border-radius: var(--w3-radius);
+    min-height: var(--w3-control-height);
+    padding: 5px 10px;
+    font-size: 0.875rem;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .text-input:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-new-ui="true"] .text-input:focus {
+    border-color: var(--w3-accent);
+    outline: none;
+    border-bottom: 2px solid var(--w3-accent);  /* WinUI3 下划线焦点指示 */
+}
+
+/* --- 滑块 --- */
+body[data-new-ui="true"] .setting-slider {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--w3-layer-2);
+}
+body[data-new-ui="true"] .setting-slider::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--w3-accent);
+    border: 2px solid #fff;
+    box-shadow: none;
+    transition: transform var(--w3-transition);
+}
+body[data-new-ui="true"] .setting-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+body[data-new-ui="true"] .setting-slider::-webkit-slider-thumb:active {
+    transform: scale(0.9);
+}
+
+/* --- 开关 --- */
+body[data-new-ui="true"] .toggle-switch {
+    width: 40px;
+    height: 20px;
+    border-radius: 10px;
+    border: none;
+    background: var(--w3-layer-2);
+    transition: background var(--w3-transition);
+}
+body[data-new-ui="true"] .toggle-switch .toggle-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform var(--w3-transition);
+}
+body[data-new-ui="true"] .toggle-switch[aria-checked="true"] {
+    background: var(--w3-accent);
+    border-color: var(--w3-accent);
+}
+body[data-new-ui="true"] .toggle-switch[aria-checked="true"] .toggle-thumb {
+    transform: translateX(20px);
+}
+
+/* --- 颜色选择器 --- */
+body[data-new-ui="true"] .color-picker {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+}
+body[data-new-ui="true"] .color-text {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+}
+body[data-new-ui="true"] .preset-color {
+    border-radius: 50%;
+    border: 2px solid var(--w3-stroke);
+    transition: border-color var(--w3-transition);
+}
+body[data-new-ui="true"] .preset-color.active {
+    border-color: var(--w3-accent);
+}
+
+/* --- 快捷键项 --- */
+body[data-new-ui="true"] .hotkey-item {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+    padding: 8px 12px;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .hotkey-item:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-new-ui="true"] .hotkey-toggle {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+}
+body[data-new-ui="true"] .hotkey-toggle[aria-checked="true"] {
+    background: var(--w3-accent);
+    border-color: var(--w3-accent);
+}
+body[data-new-ui="true"] .hotkey-key-btn {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+    min-height: var(--w3-control-height);
+    font-size: 0.825rem;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .hotkey-key-btn:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-new-ui="true"] .hotkey-key-btn.listening {
+    border-color: var(--w3-accent);
+    background: var(--w3-accent-soft);
+}
+body[data-new-ui="true"] .hotkey-clear-btn {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    min-height: var(--w3-control-height);
+    font-size: 0.78rem;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .hotkey-clear-btn:hover {
+    background: rgba(196, 43, 28, 0.08);
+    border-color: #c42b1c;
+    color: #c42b1c;
+}
+
+/* --- 弹窗 --- */
+body[data-new-ui="true"] .modal {
+    border-radius: var(--w3-radius-lg);
+    background: var(--card-bg);
+    border: 1px solid var(--w3-stroke-strong);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+}
+body[data-new-ui="true"] .modal-confirm {
+    padding: 24px;
+    max-width: 400px;
+}
+body[data-new-ui="true"] .modal-buttons {
+    gap: 8px;
+}
+
+/* --- 更新记录弹窗 --- */
+body[data-new-ui="true"] .modal-changelog {
+    border-radius: var(--w3-radius-lg);
+}
+
+/* --- 保存栏 --- */
+body[data-new-ui="true"] .save-bar {
+    background: var(--w3-accent);
+    color: #fff;
+    padding: 12px 40px;
+    border: none;
+}
+body[data-new-ui="true"] .save-bar .btn-primary {
+    background: rgba(0, 0, 0, 0.15);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+body[data-new-ui="true"] .save-bar .btn-primary:hover {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+/* --- 标题栏 --- */
+body[data-new-ui="true"] .titlebar {
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--w3-stroke);
+    height: 32px;
+}
+body[data-new-ui="true"] .titlebar-title {
+    font-size: 0.78rem;
+    color: var(--w3-text-secondary);
+}
+body[data-new-ui="true"] .titlebar-btn {
+    border-radius: var(--w3-radius);
+    transition: background var(--w3-transition);
+}
+body[data-new-ui="true"] .titlebar-btn:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-new-ui="true"] .titlebar-close:hover {
+    background: #c42b1c;
+    border-radius: var(--w3-radius);
+}
+
+/* --- header --- */
+body[data-new-ui="true"] header {
+    padding: 0 40px;
+}
+body[data-new-ui="true"] header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+/* --- 返回按钮 --- */
+body[data-new-ui="true"] .btn-back {
+    background: transparent;
+    border: none;
+    border-radius: var(--w3-radius);
+    padding: 6px;
+    transition: background var(--w3-transition);
+}
+body[data-new-ui="true"] .btn-back:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-new-ui="true"] .btn-back:active {
+    background: var(--w3-layer-2);
+    transform: scale(0.95);
+}
+
+/* --- 字体预览 --- */
+body[data-new-ui="true"] .font-preview {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+    padding: 8px 12px;
+}
+
+/* --- 关于信息 --- */
+body[data-new-ui="true"] .about-info {
+    padding: 12px 0;
+}
+
+body[data-new-ui="true"] .about-info p {
+    margin-bottom: 4px;
+    font-size: 0.875rem;
+}
+body[data-new-ui="true"] .text-muted {
+    color: var(--w3-text-secondary);
+    font-size: 0.825rem;
+}
+
+/* --- Toast 通知 --- */
+body[data-new-ui="true"] .toast {
+    border-radius: var(--w3-radius-lg);
+    border: 1px solid var(--w3-stroke-strong);
+    background: var(--card-bg);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* --- main 布局间距微调 --- */
+body[data-new-ui="true"] main {
+    padding: 0 40px 180px;
+    gap: 8px;
+}
+body[data-new-ui="true"].has-mini-player main {
+    padding-bottom: 120px;
+}
+
+/* --- 选项卡栏（tabs 布局 + WinUI3 风格） --- */
+body[data-new-ui="true"][data-settings-layout="tabs"] .settings-tabs {
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--w3-stroke);
+    padding: 0 40px;
+    gap: 2px;
+}
+body[data-new-ui="true"][data-settings-layout="tabs"] .settings-tab {
+    padding: 8px 16px;
+    font-size: 0.825rem;
+    border-bottom: 2px solid transparent;
+    color: var(--w3-text-secondary);
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"][data-settings-layout="tabs"] .settings-tab:hover {
+    color: var(--text-primary);
+    background: var(--w3-layer-1-hover);
+    border-radius: var(--w3-radius) var(--w3-radius) 0 0;
+}
+body[data-new-ui="true"][data-settings-layout="tabs"] .settings-tab.active {
+    color: var(--w3-accent);
+    border-bottom-color: var(--w3-accent);
+    font-weight: 600;
+}
+
+/* --- 多栏布局 + WinUI3 风格 --- */
+body[data-new-ui="true"][data-settings-layout="columns"] .settings-section {
+    border-radius: var(--w3-radius-lg);
+    padding: 20px;
+}
+
+/* ============================================================
+   WinUI3 NavigationView 布局（新UI专属布局）
+   左侧固定导航栏 + 右侧滚动内容区
+   ============================================================ */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] {
+    display: flex;
+    overflow: hidden;
+    padding-top: 32px; /* titlebar */
+    /* 锁定视口高度：padding-top 计入高度，main 在剩余空间内滚动。
+       不锁高度时 body 会被超高内容撑开，导致 sticky 左侧栏整体下移。 */
+    height: 100vh;
+    min-height: 0;
+    box-sizing: border-box;
+}
+
+/* 导航栏 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav {
+    flex-shrink: 0;
+    width: 256px;
+    height: calc(100vh - 32px);
+    overflow-y: auto;
+    background: var(--bg-color);
+    border-right: 1px solid var(--w3-stroke);
+    padding: 16px 8px;
+    position: sticky;
+    top: 32px;
+}
+
+/* 导航头部 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-header {
+    padding: 8px 12px 16px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-back {
+    background: transparent;
+    border: none;
+    border-radius: var(--w3-radius);
+    padding: 6px;
+    cursor: pointer;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--w3-transition);
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-back:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-back:active {
+    background: var(--w3-layer-2);
+    transform: scale(0.95);
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-back svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* 导航列表 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* 导航项 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    border-radius: var(--w3-radius);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--w3-transition);
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-item:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-item:active {
+    background: var(--w3-layer-2);
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-item.active {
+    background: var(--w3-accent-soft);
+    color: var(--w3-accent);
+    font-weight: 600;
+}
+
+/* 导航图标 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* 导航标签文字 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 内容区 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] main {
+    flex: 1;
+    min-width: 0;
+    min-height: 0; /* 允许在锁定的 body 高度内滚动，不被内容撑开 */
+    overflow-y: auto;
+    padding: 16px 40px 180px;
+    margin: 0;
+    max-width: none;
+    display: block;
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"].has-mini-player main {
+    padding-bottom: 120px;
+}
+
+/* WinUI3 布局下：所有 section 默认隐藏，只有 .active 显示 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .settings-section {
+    display: none;
+    margin-bottom: 16px;
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .settings-section.active {
+    display: block;
+    animation: sectionFadeIn 0.2s var(--ease-smooth) both;
+}
+
+/* WinUI3 布局下：header 隐藏（导航栏已包含标题） */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] header {
+    display: none;
+}
+
+/* WinUI3 布局下：导航栏滚动条样式 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav::-webkit-scrollbar {
+    width: 4px;
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav::-webkit-scrollbar-thumb {
+    background: var(--w3-stroke-strong);
+    border-radius: 2px;
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* WinUI3 布局下：保存栏宽度限制在内容区 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .save-bar {
+    left: 256px;
+}
+
+/* 响应式：窄屏时导航栏收窄为图标栏 */
+@media (max-width: 700px) {
+    body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav {
+        width: 48px;
+        padding: 16px 4px;
+    }
+    body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-title,
+    body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-label {
+        display: none;
+    }
+    body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-item {
+        justify-content: center;
+        padding: 10px 8px;
+    }
+    body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .save-bar {
+        left: 48px;
+    }
+    body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] main {
+        padding: 16px 20px 180px;
+    }
+}
+
+/* ============================================================
+   WinUI3 全页面布局 —— 音乐库页面（data-page="libraries"）
+   左侧 NavigationView 导航栏 + 右侧内容区（命令栏 + 网格）
+   ============================================================ */
+body[data-page="libraries"][data-new-ui="true"] {
+    flex-direction: row;
+    padding-top: 32px;
+    overflow: hidden;
+}
+
+/* 左侧导航栏 */
+body[data-page="libraries"][data-new-ui="true"] .winui3-page-nav {
+    flex-shrink: 0;
+    width: 256px;
+    height: calc(100vh - 32px);
+    overflow-y: auto;
+    background: var(--bg-color);
+    border-right: 1px solid var(--w3-stroke);
+    padding: 12px 8px;
+    position: sticky;
+    top: 32px;
+}
+
+/* 导航头部 */
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-header {
+    padding: 8px 12px 16px;
+    margin-bottom: 4px;
+}
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* 导航列表 */
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* 导航项 */
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    border-radius: var(--w3-radius);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-item:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-item:active {
+    background: var(--w3-layer-2);
+}
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-item.active {
+    background: var(--w3-accent-soft);
+    color: var(--w3-accent);
+    font-weight: 600;
+}
+
+/* 导航图标 */
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-icon svg {
+    width: 18px;
+    height: 18px;
+}
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 内容包裹区 */
+body[data-page="libraries"][data-new-ui="true"] .winui3-content-wrapper {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 32px);
+    overflow: hidden;
+}
+
+/* 命令栏（原 header 变为顶部命令栏） */
+body[data-page="libraries"][data-new-ui="true"] header {
+    padding: 8px 24px;
+    border-bottom: 1px solid var(--w3-stroke);
+    background: var(--bg-color);
+    flex-shrink: 0;
+    animation: none;
+}
+body[data-page="libraries"][data-new-ui="true"] header h1 {
+    display: none; /* WinUI3 布局不显示大标题，导航栏已有标题 */
+}
+body[data-page="libraries"][data-new-ui="true"] .header-actions {
+    gap: 8px;
+}
+
+/* 主内容区 */
+body[data-page="libraries"][data-new-ui="true"] main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px 100px;
+}
+
+/* 搜索框 WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .search-box {
+    height: 32px;
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+}
+body[data-page="libraries"][data-new-ui="true"] .search-input {
+    width: 180px;
+    font-size: 0.825rem;
+}
+
+/* 按钮组 WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .btn-open,
+body[data-page="libraries"][data-new-ui="true"] .btn-stats {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+    min-height: var(--w3-control-height);
+    transition: all var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .btn-open:hover,
+body[data-page="libraries"][data-new-ui="true"] .btn-stats:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+
+/* 新 UI 下隐藏与侧栏导航重复的旧 header 按钮（设置/设计器/队列） */
+body[data-page="libraries"][data-new-ui="true"] .btn-designer,
+body[data-page="libraries"][data-new-ui="true"] .btn-queue-toggle,
+body[data-page="libraries"][data-new-ui="true"] .btn-settings {
+    display: none !important;
+}
+
+/* 媒体卡片 WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .media-card {
+    background: var(--w3-layer-1);
+    border: 1px solid var(--w3-stroke);
+    border-radius: var(--w3-radius-lg);
+    transition: all var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .media-card:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* 列表项 WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .media-list-item {
+    border-radius: var(--w3-radius);
+    background: var(--w3-layer-1);
+    border: 1px solid var(--w3-stroke);
+    transition: background var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .media-list-item:hover {
+    background: var(--w3-layer-1-hover);
+}
+
+/* 迷你播放器 WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .mini-player {
+    left: 256px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgba(20, 20, 20, 0.85);
+    border-top: 1px solid var(--w3-stroke);
+}
+body[data-page="libraries"][data-new-ui="true"][data-theme="light"] .mini-player {
+    background: rgba(250, 250, 250, 0.85);
+}
+
+/* 队列侧栏 WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .lib-queue-sidebar {
+    top: 32px;
+    border-left: 1px solid var(--w3-stroke);
+    background: var(--bg-color);
+}
+
+/* 标题栏 WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .titlebar {
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--w3-stroke);
+    height: 32px;
+}
+
+/* tracks-header WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .tracks-header {
+    margin-bottom: 16px;
+}
+body[data-page="libraries"][data-new-ui="true"] .tracks-header h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* ===== Pane 切换：音乐库 vs 队列 Section ===== */
+body[data-page="libraries"][data-new-ui="true"] .w3-pane {
+    width: 100%;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-pane--queue {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 0 16px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--w3-stroke);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-title-group {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-badge {
+    background: var(--w3-accent);
+    color: #fff;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-actions {
+    display: flex;
+    gap: 8px;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: all var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-action:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-action:active {
+    background: var(--w3-layer-2);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px;
+    border: 1px dashed transparent;
+    border-radius: var(--w3-radius);
+    transition: border-color var(--w3-transition), background var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone.drag-over {
+    border-color: var(--w3-accent);
+    background: var(--w3-accent-soft);
+}
+
+/* Queue 项：WinUI3 ListItem 风格（内嵌队列 Section） */
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item {
+    display: grid;
+    grid-template-columns: 16px 48px 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: var(--w3-radius);
+    background: transparent;
+    transition: background var(--w3-transition);
+    margin-bottom: 2px;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item.is-current {
+    background: var(--w3-accent-soft);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item.drag-over {
+    outline: 2px solid var(--w3-accent);
+    outline-offset: -2px;
+    border-radius: var(--w3-radius);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-cover {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--w3-radius);
+    overflow: hidden;
+    background: var(--w3-layer-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-cover svg {
+    width: 24px;
+    height: 24px;
+    color: var(--text-secondary);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-artist {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-drag {
+    color: var(--text-secondary);
+    opacity: 0.6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-drag:active {
+    cursor: grabbing;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-remove {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    width: 28px;
+    height: 28px;
+    border-radius: var(--w3-radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-remove:hover {
+    background: rgba(255, 74, 74, 0.12);
+    color: #ff4a4a;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-empty {
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 48px 16px;
+    font-size: 0.875rem;
+}
+
+/* 响应式：窄屏导航栏收窄 */
+@media (max-width: 700px) {
+    body[data-page="libraries"][data-new-ui="true"] .winui3-page-nav {
+        width: 48px;
+        padding: 12px 4px;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .winui3-nav-title,
+    body[data-page="libraries"][data-new-ui="true"] .winui3-nav-label {
+        display: none;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .winui3-nav-item {
+        justify-content: center;
+        padding: 10px 8px;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .mini-player {
+        left: 48px;
+    }
+}
+
+/* ============================================================
+   WinUI3 风格播放器（player-overlay）—— 重构版
+   三行网格：Header（返回）+ Content（封面+信息 | 歌词）+ Bottom（进度+控件）
+   设计原则：
+   - 歌词无边框卡片，浮于模糊背景之上，仅保留淡入淡出遮罩
+   - 所有辉光/阴影由 --accent-color 派生（--w3-accent-glow），无硬编码色
+   - 底部控制条极简，不用粗描边；进度条平滑过渡
+   - 不使用 !important，旧壳由 JS inline display:none + 选择器联动隐藏
+   ============================================================ */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay {
+    top: 0;
+    padding-top: 32px; /* 避开自定义标题栏 */
+    background: transparent;
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    display: block;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .player-bg-layer {
+    opacity: 0.7;
+    filter: blur(60px) saturate(140%);
+}
+
+/* player-container：三行网格 header / content / bottom */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay > .player-container {
+    width: 100%;
+    max-width: 1400px;
+    height: 100%;
+    margin: 0 auto;
+    padding: 0;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 0;
+}
+
+/* ===== Header：返回按钮 ===== */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-player-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 24px;
+    min-height: 44px;
+    flex-shrink: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-back-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--w3-radius);
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background var(--w3-transition), color var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-back-btn:hover {
+    background: var(--w3-layer-1-hover);
+    color: var(--w3-accent);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-back-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
+/* ===== Content Area：Cover + Info | Lyrics ===== */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-player-content {
+    display: grid;
+    grid-template-columns: minmax(300px, 1fr) 1.35fr;
+    gap: 48px;
+    padding: 8px 48px 24px;
+    overflow: hidden;
+    align-items: center;
+    min-height: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-pc-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+    min-height: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cover-wrap {
+    width: 100%;
+    max-width: 340px;
+    aspect-ratio: 1 / 1;
+    flex-shrink: 0;
+    position: relative;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cover {
+    width: 100%;
+    height: 100%;
+    border-radius: var(--w3-radius-lg);
+    overflow: hidden;
+    background: var(--w3-layer-2);
+    border: 1px solid var(--w3-stroke);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+body[data-page="libraries"][data-new-ui="true"][data-anim="3"] .player-overlay.active .w3-cover {
+    animation: w3-cover-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes w3-cover-pop {
+    from { transform: scale(0.92) translateY(16px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cover .card-icon {
+    width: 50%;
+    height: 50%;
+    color: var(--text-secondary);
+    opacity: 0.5;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cover .card-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-track-info {
+    width: 100%;
+    max-width: 340px;
+    text-align: center;
+    min-width: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-track-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 6px;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-track-artist {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ===== Lyrics（无边框浮动，仅淡入淡出遮罩） ===== */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-pc-right {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyrics-card {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyrics-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 4px;
+    padding: 0 0 8px;
+    flex-shrink: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyrics-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--w3-radius);
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--w3-transition), color var(--w3-transition);
+    padding: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyrics-btn:hover {
+    background: var(--w3-layer-1-hover);
+    color: var(--text-primary);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyrics-btn svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
+
+/* lyricsWrapper 整体搬入，覆盖旧 height:130px / overflow:auto */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyrics-wrapper {
+    flex: 1;
+    height: auto;
+    overflow: hidden;
+    position: relative;
+    padding: 8px 8px 8px 0;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+/* lyricsContent 由 player.js translateY 驱动滚动，CSS 过渡使行切换更顺滑 */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyrics-wrapper .lyrics-content {
+    padding: 6px 14px;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyric-line {
+    padding: 7px 14px;
+    font-family: var(--lyrics-font, inherit);
+    font-size: var(--lyrics-font-size, 0.98rem);
+    line-height: 1.55;
+    color: var(--text-secondary);
+    text-align: left;
+    cursor: pointer;
+    border-radius: var(--w3-radius);
+    opacity: 0.45;
+    transition: color var(--w3-transition), opacity var(--w3-transition), background var(--w3-transition);
+    margin-bottom: 2px;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyric-line:hover {
+    background: var(--w3-layer-1-hover);
+    opacity: 0.85;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyric-line.active {
+    color: var(--w3-accent);
+    font-weight: 700;
+    opacity: 1;
+    background: var(--w3-accent-soft);
+    text-shadow: 0 0 14px var(--w3-accent-glow);
+}
+
+/* ===== Playback Controls (底部) ===== */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-player-bottom {
+    padding: 10px 48px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-progress-row {
+    display: grid;
+    grid-template-columns: 44px 1fr 44px;
+    align-items: center;
+    gap: 12px;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-time {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    opacity: 0.85;
+}
+
+/* 滑块容器：复用旧 .track-bg / .progress-fill 元素，不用 ::after 伪填充 */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider {
+    position: relative;
+    height: 22px;
+    display: flex;
+    align-items: center;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider .track-bg {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    height: 3px;
+    border-radius: 999px;
+    background: var(--w3-layer-2);
+    z-index: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider .progress-fill {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 3px;
+    border-radius: 999px;
+    background: var(--w3-accent);
+    z-index: 1;
+    pointer-events: none;
+    transition: width 0.12s linear;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 22px;
+    background: transparent;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    z-index: 2;
+    cursor: pointer;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 3px;
+    background: transparent;
+    border: none;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--w3-accent);
+    margin-top: -4.5px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transition: transform 0.12s, opacity 0.12s;
+    opacity: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider:hover input[type=range]::-webkit-slider-thumb,
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider input[type=range]:active::-webkit-slider-thumb {
+    opacity: 1;
+    transform: scale(1.15);
+}
+
+/* Controls row */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-controls-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cr-left {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    justify-content: flex-start;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cr-center {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cr-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: flex-end;
+}
+
+/* 按钮基础：高优先级选择器覆盖旧 .btn*，无需 !important */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--w3-radius);
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--w3-transition), color var(--w3-transition), transform 0.1s;
+    position: relative;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn:hover {
+    background: var(--w3-layer-1-hover);
+    color: var(--text-primary);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn:active {
+    background: var(--w3-layer-2);
+    transform: scale(0.96);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+    pointer-events: none;
+    display: block;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.active,
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.active-loop-one,
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.active-random {
+    color: var(--w3-accent);
+    background: var(--w3-accent-soft);
+}
+/* 隐藏旧 .btn-loop.active::after 的小圆点 */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.active::after,
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.active-loop-one::after,
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.active-random::after {
+    display: none;
+}
+
+/* Play 按钮：强调色填充 + 由 accent 派生的辉光 */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.w3-play-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--w3-accent);
+    color: #fff;
+    box-shadow: 0 4px 16px var(--w3-accent-glow);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.w3-play-btn:hover {
+    transform: scale(1.06);
+    box-shadow: 0 6px 22px var(--w3-accent-glow);
+    color: #fff;
+    background: var(--w3-accent);
+    filter: brightness(1.08);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.w3-play-btn:active {
+    transform: scale(0.98);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.w3-play-btn svg {
+    width: 20px;
+    height: 20px;
+    margin-left: 2px;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.w3-play-btn.btn-pause svg {
+    margin-left: 0;
+}
+
+/* Tool buttons（EQ / Queue）小徽章 */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.w3-tool-btn .queue-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    background: var(--w3-accent);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 14px;
+    text-align: center;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+/* Volume */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-volume {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 150px;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-volume-icon {
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    transition: color var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-volume-icon:hover {
+    color: var(--text-primary);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-volume-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
+/* 旧播放器壳隐藏：JS 已设 inline display:none，选择器含 [data-new-ui="true"] 自动联动，无需 !important */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay > .player-container > .info-and-controls,
+body[data-page="libraries"][data-new-ui="true"] .player-overlay > .player-container > .album-art-wrapper {
+    display: none;
+}
+
+/* 全屏歌词：避开标题栏（overlay 在 New UI 下 top:0，需向下偏移） */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .fullscreen-lyrics {
+    top: 32px;
+}
+
+/* WinUI3 浮层面板（EQ / Queue） */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .eq-panel,
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .queue-panel {
+    background: var(--bg-color);
+    border: 1px solid var(--w3-stroke);
+    border-radius: var(--w3-radius-lg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .eq-panel {
+    max-width: 680px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .queue-panel {
+    right: 16px;
+    top: calc(32px + 60px);
+    bottom: 20px;
+    width: 360px;
+    left: auto;
+    transform: none;
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+    body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-player-content {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+        gap: 20px;
+        padding: 12px 24px 16px;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cover-wrap {
+        max-width: 200px;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-track-info {
+        text-align: center;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-pc-left {
+        gap: 14px;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-player-bottom {
+        padding: 8px 16px 14px;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-volume {
+        width: 100px;
+    }
+}
+
+
+/* ============================================================
+   WinUI3 全页面布局 —— 设计器页面（data-page="designer"）
+   左侧 NavigationView 导航栏 + 右侧内容区 + 预览面板
+   ============================================================ */
+body[data-page="designer"][data-new-ui="true"] {
+    flex-direction: row;
+    padding-top: 32px;
+    overflow: hidden;
+}
+
+/* 左侧导航栏 */
+body[data-page="designer"][data-new-ui="true"] .winui3-page-nav {
+    flex-shrink: 0;
+    width: 256px;
+    height: calc(100vh - 32px);
+    overflow-y: auto;
+    background: var(--bg-color);
+    border-right: 1px solid var(--w3-stroke);
+    padding: 12px 8px;
+    position: sticky;
+    top: 32px;
+}
+
+/* 导航头部 */
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-header {
+    padding: 8px 12px 16px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-back {
+    background: transparent;
+    border: none;
+    border-radius: var(--w3-radius);
+    padding: 6px;
+    cursor: pointer;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--w3-transition);
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-back:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-back svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* 导航列表和项（复用音乐库样式） */
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    border-radius: var(--w3-radius);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--w3-transition);
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-item:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-item.active {
+    background: var(--w3-accent-soft);
+    color: var(--w3-accent);
+    font-weight: 600;
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-icon svg {
+    width: 18px;
+    height: 18px;
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 设计器主区域：调整为导航栏右侧的内容区 */
+body[data-page="designer"][data-new-ui="true"] .designer-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    gap: 24px;
+    padding: 16px 40px 120px 24px;
+    align-items: flex-start;
+    overflow-y: auto;
+    height: calc(100vh - 32px);
+    animation: none !important;
+    transform: none !important;
+}
+
+/* 控件区 */
+body[data-page="designer"][data-new-ui="true"] .designer-controls {
+    flex: 1;
+    min-width: 0;
+    max-width: 520px;
+}
+
+/* 预览区 */
+body[data-page="designer"][data-new-ui="true"] .designer-preview-aside {
+    flex-shrink: 0;
+    width: 280px;
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+}
+
+/* 标题栏 WinUI3 风格 */
+body[data-page="designer"][data-new-ui="true"] .titlebar {
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--w3-stroke);
+    height: 32px;
+}
+
+/* 保存栏 WinUI3 风格 */
+body[data-page="designer"][data-new-ui="true"] .save-bar {
+    left: 256px;
+    background: var(--w3-accent);
+    color: #fff;
+    border: none;
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+    body[data-page="designer"][data-new-ui="true"] .winui3-page-nav {
+        width: 48px;
+        padding: 12px 4px;
+    }
+    body[data-page="designer"][data-new-ui="true"] .winui3-nav-title,
+    body[data-page="designer"][data-new-ui="true"] .winui3-nav-label {
+        display: none;
+    }
+    body[data-page="designer"][data-new-ui="true"] .winui3-nav-item {
+        justify-content: center;
+        padding: 10px 8px;
+    }
+    body[data-page="designer"][data-new-ui="true"] .save-bar {
+        left: 48px;
+    }
+    body[data-page="designer"][data-new-ui="true"] .designer-main {
+        flex-direction: column;
+        padding: 16px 20px 120px;
+    }
+    body[data-page="designer"][data-new-ui="true"] .designer-preview-aside {
+        position: static;
+        width: auto;
+        max-height: none;
+    }
 }

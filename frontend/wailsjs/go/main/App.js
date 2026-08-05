@@ -62,6 +62,26 @@ export function GetTrack(arg1) {
   return window['go']['main']['App']['GetTrack'](arg1);
 }
 
+export function HotkeyApply() {
+  return window['go']['main']['App']['HotkeyApply']();
+}
+
+export function HotkeyFormatKey(arg1) {
+  return window['go']['main']['App']['HotkeyFormatKey'](arg1);
+}
+
+export function HotkeyGetActionList() {
+  return window['go']['main']['App']['HotkeyGetActionList']();
+}
+
+export function HotkeyGetConfig() {
+  return window['go']['main']['App']['HotkeyGetConfig']();
+}
+
+export function HotkeyParseFromJS(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['HotkeyParseFromJS'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function ImportFiles() {
   return window['go']['main']['App']['ImportFiles']();
 }

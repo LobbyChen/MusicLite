@@ -71,12 +71,6 @@ const nextBtn = document.getElementById('nextBtn');
 // 模式切换按钮
 const expandFullscreenBtn = document.getElementById('expandFullscreenBtn');
 const collapseCardBtn = document.getElementById('collapseCardBtn');
-// 歌词翻找按钮（卡片 + 全屏）
-const lyricPrevBtn = document.getElementById('lyricPrevBtn');
-const lyricNextBtn = document.getElementById('lyricNextBtn');
-const fsLyricPrevBtn = document.getElementById('fsLyricPrevBtn');
-const fsLyricNextBtn = document.getElementById('fsLyricNextBtn');
-
 // 全屏歌词 DOM
 const fullscreenLyricsEl = document.getElementById('fullscreenLyrics');
 const fullscreenBgEl = document.getElementById('fullscreenBg');
@@ -481,15 +475,6 @@ collapseCardBtn.addEventListener('click', (e) => {
     switchFullscreenToCard();
 });
 
-// 歌词翻找按钮（卡片 + 全屏，点击不冒泡，避免触发"点击空白收起"逻辑）
-[lyricPrevBtn, lyricNextBtn, fsLyricPrevBtn, fsLyricNextBtn].forEach(btn => {
-    if (!btn) return;
-    btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const direction = (btn === lyricPrevBtn || btn === fsLyricPrevBtn) ? -1 : 1;
-        seekLyric(direction);
-    });
-});
 
 // 点击全屏歌词任意处或按 Esc 退出（回到收起状态）
 fullscreenLyricsEl.addEventListener('click', (e) => {
@@ -817,6 +802,20 @@ prevBtn.addEventListener('click', playPrevTrack);
 audioManager.on('pause', () => {
     syncPlayState();
     stopSmoothProgress();
+});
+// trackcleared：曲目被删除/清除时，清理播放器 UI
+audioManager.on('trackcleared', () => {
+    currentTrackData = null;
+    trackNameEl.textContent = '';
+    artistNameEl.textContent = '';
+    totalDurationEl.textContent = '0:00';
+    currentTimeEl.textContent = '0:00';
+    seekSlider.value = 0;
+    seekSlider.disabled = true;
+    if (coverImgEl) coverImgEl.src = '';
+    if (bgLayerEl) bgLayerEl.style.backgroundImage = '';
+    stopSmoothProgress();
+    syncPlayState();
 });
 // error：后端解码/播放错误
 audioManager.on('error', (e) => {

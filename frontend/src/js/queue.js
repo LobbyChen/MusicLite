@@ -3,7 +3,7 @@
 // 面板在 player-overlay 内，支持点击空白处或按 ESC 关闭，拖拽手柄排序。
 import {
     QueueGetStatus, QueueRemoveAt, QueueClear, QueueShuffle,
-    QueueMove, QueueJumpTo
+    QueueMove, QueueJumpTo, QueueAddTrack
 } from '../../wailsjs/go/main/App.js';
 import { t } from './i18n.js';
 
@@ -42,8 +42,14 @@ function renderList(status) {
     lastStatus = status;
     if (!listEl) return;
     const items = (status && status.items) || [];
-    // 注意：不能用 `|| -1`，因为 currentIndex===0（第一首）会被当成 falsy
     const curIdx = (status && typeof status.currentIndex === 'number') ? status.currentIndex : -1;
+
+    // FLIP First：记录旧元素位置（用 trackId 稳定标识匹配）
+    const oldPositions = new Map();
+    listEl.querySelectorAll('.queue-item').forEach(el => {
+        const tid = el.dataset.trackId;
+        if (tid) oldPositions.set(tid, el.getBoundingClientRect().top);
+    });
 
     // 更新角标
     if (badgeEl) {
@@ -64,7 +70,7 @@ function renderList(status) {
         const isCurrent = (i === curIdx);
         const cover = track.cover || '';
         html += `
-            <div class="queue-item${isCurrent ? ' is-current' : ''}" data-index="${i}" draggable="true">
+            <div class="queue-item${isCurrent ? ' is-current' : ''}" data-index="${i}" data-track-id="${track.id || ''}" draggable="true">
                 <span class="queue-item-drag" title="${t('player.queueDragHint')}">${DRAG_ICON_SVG}</span>
                 <div class="queue-item-cover">${renderCover(cover)}</div>
                 <div class="queue-item-info">
@@ -77,6 +83,27 @@ function renderList(status) {
         `;
     }
     listEl.innerHTML = html;
+
+    // FLIP Last + Invert + Play
+    listEl.querySelectorAll('.queue-item').forEach(el => {
+        const tid = el.dataset.trackId;
+        if (!tid) return;
+        const oldTop = oldPositions.get(tid);
+        if (oldTop === undefined) return;
+        const newTop = el.getBoundingClientRect().top;
+        const delta = oldTop - newTop;
+        if (Math.abs(delta) > 0.5) {
+            try {
+                el.animate(
+                    [
+                        { transform: `translateY(${delta}px)` },
+                        { transform: 'translateY(0px)' }
+                    ],
+                    { duration: 250, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
+                );
+            } catch (_) {}
+        }
+    });
 
     // 滚动到当前项
     if (curIdx >= 0) {
@@ -142,8 +169,15 @@ function bindItemEvents() {
         if (removeBtn) {
             removeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                const wasCurrent = el.classList.contains('is-current');
                 QueueRemoveAt(idx).then(ok => {
-                    if (ok) return refresh();
+                    if (ok) {
+                        // 删除的是当前播放项 → 停止播放并清理 UI
+                        if (wasCurrent && window.audioManager) {
+                            window.audioManager.clearTrack();
+                        }
+                        return refresh();
+                    }
                 }).catch(err => console.warn('QueueRemoveAt failed:', err));
             });
         }
@@ -151,20 +185,33 @@ function bindItemEvents() {
         // 拖拽排序
         el.addEventListener('dragstart', (e) => {
             dragFromIndex = idx;
-            el.classList.add('dragging');
-            try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(idx)); } catch (_) {}
+            try {
+                e.dataTransfer.effectAllowed = 'copyMove';
+                e.dataTransfer.setData('application/x-queue-index', String(idx));
+                e.dataTransfer.setData('text/plain', String(idx));
+            } catch (_) {}
+            requestAnimationFrame(() => el.classList.add('dragging'));
         });
         el.addEventListener('dragend', () => {
             el.classList.remove('dragging');
             listEl.querySelectorAll('.queue-item.drag-over').forEach(n => n.classList.remove('drag-over'));
             dragFromIndex = -1;
         });
+        el.addEventListener('dragenter', (e) => {
+            if (e.dataTransfer) e.preventDefault();
+        });
         el.addEventListener('dragover', (e) => {
             e.preventDefault();
-            try { e.dataTransfer.dropEffect = 'move'; } catch (_) {}
-            if (dragFromIndex < 0 || dragFromIndex === idx) return;
-            listEl.querySelectorAll('.queue-item.drag-over').forEach(n => n.classList.remove('drag-over'));
-            el.classList.add('drag-over');
+            const isInternal = dragFromIndex >= 0;
+            if (isInternal) {
+                try { e.dataTransfer.dropEffect = 'move'; } catch (_) {}
+                if (dragFromIndex === idx) return;
+                listEl.querySelectorAll('.queue-item.drag-over').forEach(n => n.classList.remove('drag-over'));
+                el.classList.add('drag-over');
+            } else {
+                try { e.dataTransfer.dropEffect = 'copy'; } catch (_) {}
+                el.classList.add('drag-over');
+            }
         });
         el.addEventListener('dragleave', () => {
             el.classList.remove('drag-over');
@@ -172,11 +219,30 @@ function bindItemEvents() {
         el.addEventListener('drop', (e) => {
             e.preventDefault();
             el.classList.remove('drag-over');
-            const from = dragFromIndex;
-            if (from < 0 || from === idx) return;
-            QueueMove(from, idx).then(ok => {
-                if (ok) return refresh();
-            }).catch(err => console.warn('QueueMove failed:', err));
+            const isInternal = dragFromIndex >= 0;
+            if (isInternal) {
+                const from = dragFromIndex;
+                if (from < 0) return;
+                const rect = el.getBoundingClientRect();
+                const insertBefore = (e.clientY - rect.top) < (rect.height / 2);
+                let to = insertBefore ? idx : idx + 1;
+                if (from < to) to -= 1;
+                if (from === to) return;
+                QueueMove(from, to).then(() => {
+                    refresh();
+                    try {
+                        if (typeof refreshLibQueue === 'function') {
+                            refreshLibQueue();
+                        }
+                    } catch (_) {}
+                }).catch(err => console.warn('QueueMove failed:', err));
+            } else {
+                const trackId = e.dataTransfer.getData('application/x-track-id') || e.dataTransfer.getData('text/plain');
+                const id = Number(trackId);
+                if (id > 0) {
+                    QueueAddTrack(id).then(() => refresh()).catch(err => console.warn('QueueAddTrack failed:', err));
+                }
+            }
         });
     });
 }
@@ -212,8 +278,7 @@ async function refresh() {
 
 // 初始化
 async function init() {
-    // 防重复绑定：openPlayer 每次切歌都会调用 init()，但 DOM 元素只有一个，
-    // 若不拦截会导致 click 事件被绑定多次 → toggle() 被调用多次 → 面板打开后立刻关闭。
+    // 防重复绑定
     if (initialized) {
         await refresh();
         return;
@@ -247,8 +312,40 @@ async function init() {
             toggle();
         });
     }
-    // 面板内点击不冒泡（避免触发"点击空白关闭"）
+    // 面板内点击不冒泡
     panelEl.addEventListener('click', (e) => { e.stopPropagation(); });
+
+    // listEl 拖放目标：支持外部拖入入队 + 内部排序空区域兜底
+    listEl.addEventListener('dragenter', (e) => {
+        if (e.dataTransfer) e.preventDefault();
+    });
+    listEl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const isInternal = dragFromIndex >= 0;
+        try { e.dataTransfer.dropEffect = isInternal ? 'move' : 'copy'; } catch (_) {}
+        if (e.target === listEl) {
+            listEl.classList.add('drag-over');
+        }
+    });
+    listEl.addEventListener('dragleave', (e) => {
+        if (e.target === listEl) listEl.classList.remove('drag-over');
+    });
+    listEl.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        listEl.classList.remove('drag-over');
+        const isInternal = dragFromIndex >= 0;
+        if (isInternal) return;
+        const trackId = e.dataTransfer.getData('application/x-track-id') || e.dataTransfer.getData('text/plain');
+        const id = Number(trackId);
+        if (id > 0) {
+            try {
+                await QueueAddTrack(id);
+                refresh();
+            } catch (err) {
+                console.warn('QueueAddTrack (drop) failed:', err);
+            }
+        }
+    });
 
     // 初始拉取一次
     await refresh();
@@ -256,3 +353,7 @@ async function init() {
 }
 
 export const QueuePanel = { init, open, close, toggle, getIsOpen, refresh };
+// 暴露到全局 window，供 libraries.html 侧栏跨模块调用 QueuePanel.refresh（不重载曲目，仅同步正在播放标记）
+if (typeof window !== 'undefined') {
+    window.QueuePanel = QueuePanel;
+}

@@ -36,6 +36,13 @@ type Settings struct {
 	TitlebarText   string  `json:"titlebar_text"`     // 自定义标题栏文字（空则使用默认 "MusicLite Cuckoo"）
 	SmartEQEnabled   bool    `json:"smart_eq_enabled"`     // 智能均衡器开关
 	SmartEQIntensity float64 `json:"smart_eq_intensity"`   // 智能均衡器补偿强度 0-1
+	// 设置界面布局与新 UI
+	SettingsLayout string `json:"settings_layout"` // 设置界面布局："scroll"（默认）| "columns" | "tabs"
+	NewUIEnabled   bool   `json:"new_ui_enabled"`   // 新风格 UI 开关
+	// 全局快捷键（3 个）
+	HotkeyPlayPause HotkeyConfig `json:"hotkey_playpause"` // 播放 / 暂停切换
+	HotkeyNext      HotkeyConfig `json:"hotkey_next"`      // 下一曲
+	HotkeyPrev      HotkeyConfig `json:"hotkey_prev"`      // 上一曲
 }
 
 // DefaultSettings 返回默认设置
@@ -66,6 +73,11 @@ func DefaultSettings() Settings {
 		TitlebarText:      "MusicLite Cuckoo",
 		SmartEQEnabled:   false,
 		SmartEQIntensity: 0.7,
+		SettingsLayout:  "scroll",
+		NewUIEnabled:    false,
+		HotkeyPlayPause: HotkeyConfig{Enabled: false, Keys: ""},
+		HotkeyNext:      HotkeyConfig{Enabled: false, Keys: ""},
+		HotkeyPrev:      HotkeyConfig{Enabled: false, Keys: ""},
 	}
 }
 
@@ -207,6 +219,20 @@ func (a *App) LoadSettings() Settings {
 			s.SmartEQIntensity = def.SmartEQIntensity
 		}
 	}
+	// SettingsLayout / NewUIEnabled 兼容旧版设置文件
+	{
+		var raw4 map[string]json.RawMessage
+		_ = json.Unmarshal(data, &raw4)
+		has4 := func(key string) bool { _, ok := raw4[key]; return ok }
+		if !has4("settings_layout") {
+			s.SettingsLayout = def.SettingsLayout
+		} else if s.SettingsLayout != "scroll" && s.SettingsLayout != "columns" && s.SettingsLayout != "tabs" {
+			s.SettingsLayout = def.SettingsLayout
+		}
+		if !has4("new_ui_enabled") {
+			s.NewUIEnabled = def.NewUIEnabled
+		}
+	}
 	// 设计令牌：兼容旧版设置文件（缺失时用默认值补齐，越界时钳制到合法范围）
 	// 用 raw map 检测字段是否存在，避免把"用户主动设为 0"误判为缺失
 	{
@@ -254,7 +280,14 @@ func (a *App) SaveSettings(s Settings) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(settingsFilePath(), data, 0644)
+	if err := os.WriteFile(settingsFilePath(), data, 0644); err != nil {
+		return err
+	}
+	// 同步全局快捷键配置到 HotkeyManager（无需重启 hook，热更新）
+	if a.hotkeyManager != nil {
+		a.hotkeyManager.UpdateConfig(s)
+	}
+	return nil
 }
 
 // ResetSettings 返回默认设置（不立即写盘，由前端再次调用 SaveSettings 持久化）

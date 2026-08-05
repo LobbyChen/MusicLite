@@ -34,6 +34,16 @@ export function GetTotalListenTime():Promise<number>;
 
 export function GetTrack(arg1:number):Promise<format.MscData>;
 
+export function HotkeyApply():Promise<void>;
+
+export function HotkeyFormatKey(arg1:string):Promise<string>;
+
+export function HotkeyGetActionList():Promise<Array<Record<string, string>>>;
+
+export function HotkeyGetConfig():Promise<Record<string, main.HotkeyConfig>>;
+
+export function HotkeyParseFromJS(arg1:boolean,arg2:boolean,arg3:boolean,arg4:boolean,arg5:string):Promise<string>;
+
 export function ImportFiles():Promise<number>;
 
 export function ImportFilesFromPaths(arg1:Array<string>):Promise<number>;

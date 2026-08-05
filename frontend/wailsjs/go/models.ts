@@ -31,6 +31,20 @@ export namespace format {
 
 export namespace main {
 	
+	export class HotkeyConfig {
+	    enabled: boolean;
+	    keys: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HotkeyConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.keys = source["keys"];
+	    }
+	}
 	export class I18nData {
 	    version: number;
 	    languages: Record<string, any>;
@@ -193,6 +207,11 @@ export namespace main {
 	    titlebar_text: string;
 	    smart_eq_enabled: boolean;
 	    smart_eq_intensity: number;
+	    settings_layout: string;
+	    new_ui_enabled: boolean;
+	    hotkey_playpause: HotkeyConfig;
+	    hotkey_next: HotkeyConfig;
+	    hotkey_prev: HotkeyConfig;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -225,7 +244,30 @@ export namespace main {
 	        this.titlebar_text = source["titlebar_text"];
 	        this.smart_eq_enabled = source["smart_eq_enabled"];
 	        this.smart_eq_intensity = source["smart_eq_intensity"];
+	        this.settings_layout = source["settings_layout"];
+	        this.new_ui_enabled = source["new_ui_enabled"];
+	        this.hotkey_playpause = this.convertValues(source["hotkey_playpause"], HotkeyConfig);
+	        this.hotkey_next = this.convertValues(source["hotkey_next"], HotkeyConfig);
+	        this.hotkey_prev = this.convertValues(source["hotkey_prev"], HotkeyConfig);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }

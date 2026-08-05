@@ -445,6 +445,12 @@ function _bindTrackItemListeners(el, track, actionSelector) {
         openEditModal(track);
     });
 
+    const addQueueBtn = el.querySelector('.add-queue-btn');
+    if (addQueueBtn) addQueueBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        doAddToQueue(track);
+    });
+
     const deleteBtn = el.querySelector('.delete-btn');
     if (deleteBtn) deleteBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
@@ -483,8 +489,10 @@ function renderTracksList(tracks, mode) {
     }
 
     const MUSIC_ICON_SVG = '<svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>';
+    const QUEUE_BTN_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="3" rx="1"/><rect x="3" y="13" width="18" height="3" rx="1"/></svg>`;
     const EDIT_BTN_SVG = `<svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
     const DELETE_BTN_SVG = `<svg viewBox="0 0 24 24" width="16" height="16"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
+    const QUEUE_TITLE = t('libraries.addToQueue');
     const EDIT_TITLE = t('libraries.editInfo');
     const DELETE_TITLE = t('common.delete');
     const UNKNOWN_ARTIST = t('common.unknownArtist');
@@ -509,6 +517,7 @@ function renderTracksList(tracks, mode) {
                     <div class="list-item-artist">${escapeHtml(track.artist || UNKNOWN_ARTIST)}</div>
                 </div>
                 <div class="list-item-actions">
+                    <button class="card-btn add-queue-btn" title="${QUEUE_TITLE}">${QUEUE_BTN_SVG}</button>
                     <button class="card-btn edit-btn" title="${EDIT_TITLE}">${EDIT_BTN_SVG}</button>
                     <button class="card-btn delete-btn" title="${DELETE_TITLE}">${DELETE_BTN_SVG}</button>
                 </div>
@@ -536,6 +545,7 @@ function renderTracksList(tracks, mode) {
                 <div class="card-title">${escapeHtml(track.name)}</div>
                 <div class="card-meta">${escapeHtml(track.artist || UNKNOWN_ARTIST)}</div>
                 <div class="card-actions">
+                    <button class="card-btn add-queue-btn" title="${QUEUE_TITLE}">${QUEUE_BTN_SVG}</button>
                     <button class="card-btn edit-btn" title="${EDIT_TITLE}">${EDIT_BTN_SVG}</button>
                     <button class="card-btn delete-btn" title="${DELETE_TITLE}">${DELETE_BTN_SVG}</button>
                 </div>
@@ -616,6 +626,13 @@ function escapeHtml(text) {
 async function doDelete(id) {
     try {
         await DeleteTrack(id);
+        // 如果删除的是当前播放曲目，停止播放并清理 UI
+        const cur = window.audioManager && window.audioManager.currentTrack;
+        if (cur && Number(cur.id) === Number(id)) {
+            window.audioManager.clearTrack();
+            const miniPlayer = document.getElementById('mini-player');
+            if (miniPlayer) miniPlayer.style.display = 'none';
+        }
         showToast(t('libraries.deleted'), 'success');
         await refreshList();
     } catch (err) {
@@ -752,10 +769,15 @@ function renderLibQueueCover(coverUrl) {
 function renderLibQueueList(status) {
     if (!libQueueList) return;
     const items = (status && status.items) || [];
-    // 注意：不能用 `|| -1`，因为 currentIndex===0（第一首）会被当成 falsy
     const curIdx = (status && typeof status.currentIndex === 'number') ? status.currentIndex : -1;
 
-    // 更新角标
+    // FLIP 动画 First：记录旧元素位置（用 trackId 作为稳定标识匹配）
+    const oldPositions = new Map();
+    libQueueList.querySelectorAll('.queue-item').forEach(el => {
+        const tid = el.dataset.trackId;
+        if (tid) oldPositions.set(tid, el.getBoundingClientRect().top);
+    });
+
     if (libQueueBadge) {
         const n = items.length;
         libQueueBadge.textContent = String(n);
@@ -774,7 +796,7 @@ function renderLibQueueList(status) {
         const isCurrent = (i === curIdx);
         const cover = track.cover || '';
         html += `
-            <div class="queue-item${isCurrent ? ' is-current' : ''}" data-index="${i}" draggable="true">
+            <div class="queue-item${isCurrent ? ' is-current' : ''}" data-index="${i}" data-track-id="${track.id || ''}" draggable="true">
                 <span class="queue-item-drag" title="${t('player.queueDragHint')}">${DRAG_ICON_SVG_Q}</span>
                 <div class="queue-item-cover">${renderLibQueueCover(cover)}</div>
                 <div class="queue-item-info">
@@ -788,7 +810,27 @@ function renderLibQueueList(status) {
     }
     libQueueList.innerHTML = html;
 
-    // 滚动到当前项
+    // FLIP 动画 Last + Invert + Play：对比新旧位置，用 Web Animations API 滑过去
+    libQueueList.querySelectorAll('.queue-item').forEach(el => {
+        const tid = el.dataset.trackId;
+        if (!tid) return;
+        const oldTop = oldPositions.get(tid);
+        if (oldTop === undefined) return;
+        const newTop = el.getBoundingClientRect().top;
+        const delta = oldTop - newTop;
+        if (Math.abs(delta) > 0.5) {
+            try {
+                el.animate(
+                    [
+                        { transform: `translateY(${delta}px)` },
+                        { transform: 'translateY(0px)' }
+                    ],
+                    { duration: 250, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
+                );
+            } catch (_) {}
+        }
+    });
+
     if (curIdx >= 0) {
         const curEl = libQueueList.querySelector(`.queue-item[data-index="${curIdx}"]`);
         if (curEl) curEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -796,6 +838,17 @@ function renderLibQueueList(status) {
 
     bindLibQueueItemEvents();
     restartLibNpBars();
+}
+
+// 从后端拉取最新队列状态并刷新 UI（被 trackloaded 事件调用，确保正在播放指示器立即更新）
+async function refreshLibQueue() {
+    if (!libQueueList) return;
+    try {
+        const status = await QueueGetStatus();
+        renderLibQueueList(status);
+    } catch (e) {
+        console.warn('refreshLibQueue QueueGetStatus failed:', e);
+    }
 }
 
 // ========== JS 驱动主页队列 np-bars 动画（同 queue.js 逻辑，避免纯 CSS 选择器不可靠） ==========
@@ -846,45 +899,89 @@ function bindLibQueueItemEvents() {
         if (removeBtn) {
             removeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                QueueRemoveAt(idx).then(ok => { if (ok) refreshLibQueue(); }).catch(err => console.warn('QueueRemoveAt failed:', err));
+                const wasCurrent = el.classList.contains('is-current');
+                QueueRemoveAt(idx).then(ok => {
+                    if (ok) {
+                        // 删除的是当前播放项 → 停止播放并清理 UI
+                        if (wasCurrent && window.audioManager) {
+                            window.audioManager.clearTrack();
+                            const miniPlayer = document.getElementById('mini-player');
+                            if (miniPlayer) miniPlayer.style.display = 'none';
+                        }
+                        refreshLibQueue();
+                    }
+                }).catch(err => console.warn('QueueRemoveAt failed:', err));
             });
         }
 
         // 拖拽排序
         el.addEventListener('dragstart', (e) => {
             libQueueDragFromIndex = idx;
-            el.classList.add('dragging');
-            try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(idx)); } catch (_) {}
+            try {
+                e.dataTransfer.effectAllowed = 'copyMove';
+                e.dataTransfer.setData('application/x-queue-index', String(idx));
+                e.dataTransfer.setData('text/plain', String(idx));
+            } catch (_) {}
+            // 延迟一帧加 .dragging，让浏览器先截好拖拽预览图
+            requestAnimationFrame(() => el.classList.add('dragging'));
         });
         el.addEventListener('dragend', () => {
             el.classList.remove('dragging');
             libQueueList.querySelectorAll('.queue-item.drag-over').forEach(n => n.classList.remove('drag-over'));
             libQueueDragFromIndex = -1;
         });
+        el.addEventListener('dragenter', (e) => {
+            if (e.dataTransfer) e.preventDefault();
+        });
         el.addEventListener('dragover', (e) => {
             e.preventDefault();
-            try { e.dataTransfer.dropEffect = 'move'; } catch (_) {}
-            if (libQueueDragFromIndex < 0 || libQueueDragFromIndex === idx) return;
-            libQueueList.querySelectorAll('.queue-item.drag-over').forEach(n => n.classList.remove('drag-over'));
-            el.classList.add('drag-over');
+            const isInternal = libQueueDragFromIndex >= 0;
+            if (isInternal) {
+                try { e.dataTransfer.dropEffect = 'move'; } catch (_) {}
+                if (libQueueDragFromIndex === idx) return;
+                libQueueList.querySelectorAll('.queue-item.drag-over').forEach(n => n.classList.remove('drag-over'));
+                el.classList.add('drag-over');
+            } else {
+                try { e.dataTransfer.dropEffect = 'copy'; } catch (_) {}
+                el.classList.add('drag-over');
+            }
+        });
+        el.addEventListener('dragleave', (e) => {
+            if (!el.contains(e.relatedTarget)) {
+                el.classList.remove('drag-over');
+            }
         });
         el.addEventListener('drop', (e) => {
             e.preventDefault();
             el.classList.remove('drag-over');
-            const from = libQueueDragFromIndex;
-            if (from < 0 || from === idx) return;
-            QueueMove(from, idx).then(ok => { if (ok) refreshLibQueue(); }).catch(err => console.warn('QueueMove failed:', err));
+            const isInternal = libQueueDragFromIndex >= 0;
+            if (isInternal) {
+                const from = libQueueDragFromIndex;
+                if (from < 0) return;
+                // 计算插入目标：鼠标在悬停项上半→插到 idx 前，下半→插到 idx 后
+                const rect = el.getBoundingClientRect();
+                const insertBefore = (e.clientY - rect.top) < (rect.height / 2);
+                // to 是"移除 from 之后"的目标下标
+                let to = insertBefore ? idx : idx + 1;
+                if (from < to) to -= 1;  // from 移除后，后面的下标前移 1
+                if (from === to) return;
+                QueueMove(from, to).then(() => {
+                    refreshLibQueue();
+                    try {
+                        if (window.QueuePanel && typeof window.QueuePanel.refresh === 'function') {
+                            window.QueuePanel.refresh();
+                        }
+                    } catch (_) {}
+                }).catch(err => console.warn('QueueMove failed:', err));
+            } else {
+                const trackId = e.dataTransfer.getData('application/x-track-id') || e.dataTransfer.getData('text/plain');
+                const id = Number(trackId);
+                if (id > 0) {
+                    QueueAddTrack(id).then(() => refreshLibQueue()).catch(err => console.warn('QueueAddTrack failed:', err));
+                }
+            }
         });
     });
-}
-
-async function refreshLibQueue() {
-    try {
-        const status = await QueueGetStatus();
-        renderLibQueueList(status);
-    } catch (e) {
-        console.warn('QueueGetStatus failed:', e);
-    }
 }
 
 function openLibQueue() {
@@ -913,7 +1010,8 @@ function makeTrackDraggable(el, track) {
     el.addEventListener('dragstart', (e) => {
         el.classList.add('dragging-queue');
         try {
-            e.dataTransfer.effectAllowed = 'copy';
+            // 使用 copyMove 以兼容 dropEffect=copy 和 move 的目标区域
+            e.dataTransfer.effectAllowed = 'copyMove';
             e.dataTransfer.setData('application/x-track-id', String(track.id));
             e.dataTransfer.setData('text/plain', String(track.id));
         } catch (_) {}
@@ -962,21 +1060,34 @@ function initLibQueueSidebar() {
         });
     }
 
-    // 整个列表作为拖放目标（从媒体库拖曲目入队）
+    // 整个列表作为拖放目标（外部拖入入队 + 内部排序空区域兜底）
+    libQueueList.addEventListener('dragenter', (e) => {
+        // dragenter 必须 preventDefault 才能允许 drop（WebView2 必需）
+        if (e.dataTransfer) e.preventDefault();
+    });
     libQueueList.addEventListener('dragover', (e) => {
-        // 仅接受来自媒体库的拖拽（非队列内部排序）
-        if (libQueueDragFromIndex >= 0) return;
         e.preventDefault();
-        try { e.dataTransfer.dropEffect = 'copy'; } catch (_) {}
-        libQueueList.classList.add('drag-over');
+        const isInternal = libQueueDragFromIndex >= 0;
+        if (isInternal) {
+            // 内部排序：dropEffect = move（与 dragstart effectAllowed='copyMove' 匹配）
+            try { e.dataTransfer.dropEffect = 'move'; } catch (_) {}
+        } else {
+            // 外部拖入：dropEffect = copy
+            try { e.dataTransfer.dropEffect = 'copy'; } catch (_) {}
+        }
+        if (e.target === libQueueList) {
+            libQueueList.classList.add('drag-over');
+        }
     });
     libQueueList.addEventListener('dragleave', (e) => {
         if (e.target === libQueueList) libQueueList.classList.remove('drag-over');
     });
     libQueueList.addEventListener('drop', async (e) => {
-        if (libQueueDragFromIndex >= 0) return; // 队列内排序由 item 自己处理
         e.preventDefault();
         libQueueList.classList.remove('drag-over');
+        const isInternal = libQueueDragFromIndex >= 0;
+        if (isInternal) return; // 队列内排序由 item 自己处理
+        // 外部拖入：媒体卡⽚ → 入队
         const trackId = e.dataTransfer.getData('application/x-track-id') || e.dataTransfer.getData('text/plain');
         const id = Number(trackId);
         if (id > 0) {
@@ -1467,6 +1578,8 @@ document.addEventListener("DOMContentLoaded", async function () {
             currentTrack = track;
             syncPlayIcon();
             applyNowPlayingIndicator();
+            // 同步刷新队列侧栏的 is-current 标记（正在播放指示）
+            if (typeof refreshLibQueue === 'function') refreshLibQueue();
         });
         // 曲目被清除时（删除检查）隐藏迷你播放器
         window.audioManager.on('trackcleared', () => {

@@ -68,6 +68,7 @@ const textGlowValue = document.getElementById('text-glow-value');
 const animSpeedSlider = document.getElementById('anim-speed-slider');
 const animSpeedValue = document.getElementById('anim-speed-value');
 const animLevelBtns = document.querySelectorAll('.anim-level-btn[data-level]');
+const layoutModeBtns = document.querySelectorAll('.anim-level-btn[data-layout-mode]');
 
 // 确认对话框 / Toast
 const confirmModal = document.getElementById('confirmModal');
@@ -214,6 +215,10 @@ function applySettingsToUI(s) {
     // 动画级别
     const lvl = (typeof s.animation_level === 'number') ? s.animation_level : 2;
     animLevelBtns.forEach(btn => btn.classList.toggle('active', Number(btn.dataset.level) === lvl));
+
+    // 设置界面布局模式
+    const layoutMode = s.settings_layout || 'scroll';
+    layoutModeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.layoutMode === layoutMode));
 }
 
 // ============ 加载设置 ============
@@ -385,6 +390,17 @@ function setupEventListeners() {
             btn.classList.add('active');
             currentSettings.animation_level = Number(btn.dataset.level);
             applyAnimationLevelLive();
+            markChanged();
+        });
+    });
+
+    // 设置界面布局模式
+    layoutModeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            layoutModeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSettings.settings_layout = btn.dataset.layoutMode;
+            if (window.MusicLiteSettings) window.MusicLiteSettings.applySettingsLayout(btn.dataset.layoutMode);
             markChanged();
         });
     });

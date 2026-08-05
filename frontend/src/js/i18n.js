@@ -91,15 +91,26 @@ export async function initI18n() {
 /**
  * 翻译键值
  * @param {string} key — 翻译键，如 'libraries.title'
- * @param {...*} args — 插值参数。支持两种形式：
+ * @param {...*} args — 支持以下形式：
  *   1. 位置参数：t('key', 'a', 'b')  → 替换 {0}, {1}
  *   2. 命名参数：t('key', { count: 5 }) → 替换 {count}
- *      混合使用也支持：t('key', 'pos1', { count: 5 })
+ *   3. fallback：t('key', '兜底') → 找不到时返回 '兜底'（或字符串 'undefined'）
+ *   混合使用也支持：t('key', '兜底', 'a', 'b') 或 t('key', '兜底', { count: 5 })
  * @returns {string} 翻译后的字符串
  */
 export function t(key, ...args) {
     if (key === undefined || key === null || key === '') return '';
     const k = String(key);
+
+    // 识别 fallback 参数：在第一个非占位参数之前、且是字符串的，作为兜底
+    // args 顺序：fallback?, ...positionalOrNamed
+    // 我们约定：若 args[0] 不是命名对象且看起来像文本（非空字符串），则视为 fallback
+    let fallback = undefined;
+    if (args.length > 0 && typeof args[0] === 'string') {
+        fallback = args[0];
+        args = args.slice(1);
+    }
+
     // 构造查找链：当前语言（标准化后）→ en-US → zh-CN → 当前语言 fallbackTranslations → zh-CN fallbackTranslations → 'en' fallback
     const lookupChain = [];
     const normCur = normalizeLang(currentLanguage);
@@ -122,8 +133,14 @@ export function t(key, ...args) {
             }
         }
     }
-    // 完全找不到：返回 undefined（让调用方自行决定，例如 applyTranslations 保持 DOM 原文）
-    if (str === undefined) return undefined;
+
+    // 完全找不到：若有 fallback 则使用 fallback，否则返回 undefined
+    if (str === undefined) {
+        if (fallback !== undefined) return fallback;
+        return undefined;
+    }
+
+    // 插值
     if (args.length > 0) {
         for (let i = 0; i < args.length; i++) {
             const arg = args[i];

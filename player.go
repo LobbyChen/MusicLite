@@ -115,8 +115,9 @@ func (p *Player) SmartEQ() *SmartEQ {
 // Start 初始化音频设备并启动 timeupdate 推送循环（在 app.startup 中调用）
 func (p *Player) Start(ctx context.Context) {
 	p.ctx = ctx
-	// 初始化 speaker：固定 44100Hz，缓冲 1/10 秒
-	if err := speaker.Init(playerSampleRate, playerSampleRate.N(time.Second/10)); err != nil {
+	// 初始化 speaker：固定 44100Hz，缓冲 1/4 秒
+	// 较大的缓冲区能容忍 CPU 密集型软件导致的调度延迟，避免音频卡顿
+	if err := speaker.Init(playerSampleRate, playerSampleRate.N(time.Second/4)); err != nil {
 		log.Printf("[Player] speaker.Init 失败: %v（后端播放不可用）", err)
 		p.ready = false
 	} else {

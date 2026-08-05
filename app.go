@@ -29,6 +29,7 @@ type App struct {
 	defaultTrackId  int64
 	database        *storage.Database
 	player          *Player // 后端音频播放器
+	hotkeyManager   *HotkeyManager // 全局快捷键管理器
 	audioServerPort int     // 独立 HTTP 服务器端口，dev 模式下使用
 	audioServerLn   net.Listener
 	trayQuitting    bool // 托盘"退出"时置 true，让 OnBeforeClose 放行
@@ -105,12 +106,21 @@ func (a *App) startup(ctx context.Context) {
 	// 同步智能均衡器设置到播放器（管线构建时自动创建 SmartEQ 实例，此处仅缓存参数）
 	a.player.SetSmartEQDefaults(settings.SmartEQEnabled, settings.SmartEQIntensity)
 
+	// 初始化全局快捷键
+	a.hotkeyManager = NewHotkeyManager(a, a.player)
+	a.hotkeyManager.UpdateConfig(settings)
+	a.hotkeyManager.Start()
+
 	// 启动听歌时长 heartbeat（定期提交 pending 到注册表）
 	StartListenTimeHeartbeat()
 }
 
 // shutdown 应用退出前触发，关闭数据库连接和音频服务器
 func (a *App) shutdown(ctx context.Context) {
+	// 停止全局快捷键
+	if a.hotkeyManager != nil {
+		a.hotkeyManager.Stop()
+	}
 	// 先停止后端播放器，释放音频设备并提交听歌时长
 	if a.player != nil {
 		a.player.Stop()
@@ -357,58 +367,27 @@ func (a *App) GetAllTracks() ([]format.MscData, error) {
 }
 
 func (a *App) GetRandomTrack(currTrackId int64) format.MscData {
-	// 先获取一次现在的列表
-	currMscs, _ := a.GetAllTracks()
-	// 如果只有一个
-	if len(currMscs) == 1 {
-		// 直接返回
-		return currMscs[0]
+	ran, b := a.player.queue.AdvanceRandom(true)
+	if !b {
+		return format.MscData{}
 	}
-	var index int
-	for {
-		// 随机一个下标
-		index = random(0, len(currMscs))
-		if currMscs[index].ID == currTrackId {
-			continue
-		}
-		break
-	}
-	// 返回
-	return currMscs[index]
+	return ran.Track
 }
 
 // GetNextTracks 返回下一曲目（前端用）
 func (a *App) GetNextTracks(currTrackId int64) format.MscData {
-	// 先获取一次现在的列表
-	currMscs, _ := a.GetAllTracks()
-	// 找到现在的
-	for index, d := range currMscs {
-		// 边界条件-最后一个
-		if d.ID == currTrackId {
-			if index == len(currMscs)-1 {
-				return currMscs[0]
-			} else {
-				return currMscs[index+1]
-			}
-		}
+	nex, b := a.player.queue.GetNext(true)
+	if !b {
+		return format.MscData{}
 	}
-	return format.MscData{}
+	return nex.Track
 }
 func (a *App) GetPrevTracks(currTrackId int64) format.MscData {
-	// 先获取一次现在的列表
-	currMscs, _ := a.GetAllTracks()
-	// 找到现在的
-	for index, d := range currMscs {
-		// 边界条件-最第一个
-		if d.ID == currTrackId {
-			if index == 0 {
-				return currMscs[len(currMscs)-1]
-			} else {
-				return currMscs[index-1]
-			}
-		}
+	pre, b := a.player.queue.GetPrev(true)
+	if !b {
+		return format.MscData{}
 	}
-	return format.MscData{}
+	return pre.Track
 }
 
 // GetTrack 返回单首曲目完整数据（播放器页用）

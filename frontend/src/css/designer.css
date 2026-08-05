@@ -177,7 +177,7 @@
     background: var(--accent-color);
     box-shadow: var(--design-glow);
     transform: translateY(-50%);
-    animation: designerBallBounce calc(2s * var(--design-anim-mult, 1)) var(--ease-smooth) infinite alternate;
+    animation: designerBallBounce calc(2s / var(--design-anim-mult, 1)) var(--ease-smooth) infinite alternate;
 }
 
 @keyframes designerBallBounce {
@@ -199,14 +199,14 @@
     background: var(--accent-color);
     border-radius: 2px;
     transform-origin: bottom;
-    animation: designerBarPulse calc(0.9s * var(--design-anim-mult, 1)) ease-in-out infinite;
+    animation: designerBarPulse calc(0.9s / var(--design-anim-mult, 1)) ease-in-out infinite;
 }
 
 .designer-anim-bars i:nth-child(1) { animation-delay: 0s; }
-.designer-anim-bars i:nth-child(2) { animation-delay: calc(0.15s * var(--design-anim-mult, 1)); }
-.designer-anim-bars i:nth-child(3) { animation-delay: calc(0.3s * var(--design-anim-mult, 1)); }
-.designer-anim-bars i:nth-child(4) { animation-delay: calc(0.45s * var(--design-anim-mult, 1)); }
-.designer-anim-bars i:nth-child(5) { animation-delay: calc(0.6s * var(--design-anim-mult, 1)); }
+.designer-anim-bars i:nth-child(2) { animation-delay: calc(0.15s / var(--design-anim-mult, 1)); }
+.designer-anim-bars i:nth-child(3) { animation-delay: calc(0.3s / var(--design-anim-mult, 1)); }
+.designer-anim-bars i:nth-child(4) { animation-delay: calc(0.45s / var(--design-anim-mult, 1)); }
+.designer-anim-bars i:nth-child(5) { animation-delay: calc(0.6s / var(--design-anim-mult, 1)); }
 
 @keyframes designerBarPulse {
     0%, 100% { height: 30%; }
@@ -239,8 +239,8 @@
 
 /* 入场动画类（由 JS 在重播时添加） */
 .designer-anim-demo.replay .designer-anim-ball {
-    animation: designerBallBounce calc(2s * var(--design-anim-mult, 1)) var(--ease-smooth) infinite alternate,
-               designerEntrance calc(0.5s * var(--design-anim-mult, 1)) var(--ease-spring);
+    animation: designerBallBounce calc(2s / var(--design-anim-mult, 1)) var(--ease-smooth) infinite alternate,
+               designerEntrance calc(0.5s / var(--design-anim-mult, 1)) var(--ease-spring);
 }
 
 @keyframes designerEntrance {

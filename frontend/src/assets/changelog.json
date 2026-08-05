@@ -1,5 +1,31 @@
 [
   {
+    "date": "2026-08-04",
+    "version": "MiscLite Cuckoo Beta 0.4.1",
+    "sections": [
+      {
+        "type": "添加",
+        "items": [
+          "LICENCE",
+          "icon的ico格式",
+          "安装程序"
+        ]
+      },
+      {
+        "type": "修改",
+        "items": [
+          "无"
+        ]
+      },
+      {
+        "type": "修复",
+        "items": [
+          "无"
+        ]
+      }
+    ]
+  },
+  {
     "date": "2026-08-03",
     "version": "MiscLite Cuckoo Beta 0.4.0",
     "sections": [

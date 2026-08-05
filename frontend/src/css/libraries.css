@@ -1,4 +1,4 @@
-﻿/* Dark theme (default) */
+/* Dark theme (default) */
 :root {
     --bg-color: #121212;
     --card-bg: #1e1e1e;
@@ -14,11 +14,12 @@
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
-    /* 动画速度倍率：设计器可调（0.5~2.0），影响所有 --dur-* 令牌 */
+    /* 动画速度倍率：设计器可调（0.3~2.5），影响所有 --dur-* 令牌 */
+    /* 注意：anim-mult 是"速度"倍率，高值 = 更快 = 更短持续时间，故用除法 */
     --design-anim-mult: 1;
-    --dur-fast: calc(0.15s * var(--design-anim-mult));
-    --dur-normal: calc(0.25s * var(--design-anim-mult));
-    --dur-slow: calc(0.35s * var(--design-anim-mult));
+    --dur-fast: calc(0.15s / var(--design-anim-mult));
+    --dur-normal: calc(0.25s / var(--design-anim-mult));
+    --dur-slow: calc(0.35s / var(--design-anim-mult));
     /* 视觉设计令牌：设计器可实时调整 */
     --design-radius: 10px;          /* 卡片/面板圆角 */
     --design-radius-sm: 6px;        /* 小元件圆角 */
@@ -127,6 +128,17 @@ img {
     -webkit-user-drag: none;
     user-drag: none;
 }
+/* 可拖拽容器内的图片：设置 pointer-events:none 让鼠标事件穿透到父元素，
+   父元素 draggable="true" 才能正常捕获 dragstart。
+   同时保留 user-select 防止文本选择干扰。*/
+.media-card[draggable="true"] img,
+.media-list-item[draggable="true"] img,
+.queue-item[draggable="true"] img,
+.lib-queue-dropzone .queue-item img {
+    -webkit-user-drag: none;
+    user-drag: none;
+    pointer-events: none;
+}
 body::-webkit-scrollbar {
     display: none;
 }
@@ -181,7 +193,7 @@ body::-webkit-scrollbar {
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: var(--design-radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -241,7 +253,7 @@ h1 {
     gap: 8px;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 20px;
+    border-radius: var(--design-radius-lg);
     padding: 0 12px;
     height: 40px;
     flex-shrink: 0;       /* 队列侧栏压缩 header 时不被挤压，避免占位文字竖排 */
@@ -309,7 +321,7 @@ h1 {
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 10px 20px;
-    border-radius: 20px;
+    border-radius: var(--design-radius-lg);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -389,7 +401,7 @@ h2 {
     color: var(--bg-color);
     border: none;
     padding: 6px 14px;
-    border-radius: 16px;
+    border-radius: var(--design-radius-lg);
     font-size: 0.8rem;
     font-weight: 600;
     font-family: inherit;
@@ -425,7 +437,7 @@ h2 {
     display: inline-flex;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 16px;
+    border-radius: var(--design-radius-lg);
     padding: 3px;
     gap: 2px;
 }
@@ -435,7 +447,7 @@ h2 {
     background: transparent;
     color: var(--text-secondary);
     padding: 5px 12px;
-    border-radius: 13px;
+    border-radius: var(--design-radius);
     font-size: 0.78rem;
     font-weight: 500;
     font-family: inherit;
@@ -522,7 +534,7 @@ h2 {
     height: 16px;
     padding: 3px;
     background: rgba(0, 0, 0, 0.55);
-    border-radius: 4px;
+    border-radius: var(--design-radius-sm);
     backdrop-filter: blur(4px);
 }
 
@@ -559,7 +571,7 @@ h2 {
     width: 56px;
     height: 26px;
     padding: 0;
-    border-radius: 13px;
+    border-radius: var(--design-radius);
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     cursor: pointer;
@@ -629,7 +641,7 @@ h2 {
 .media-card {
     background-color: var(--card-bg);
     padding: 16px;
-    border-radius: 8px;
+    border-radius: var(--design-radius);
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -660,7 +672,7 @@ h2 {
     width: 100%;
     aspect-ratio: 1;
     object-fit: cover;
-    border-radius: 4px;
+    border-radius: var(--design-radius-sm);
     margin-bottom: 10px;
     background-color: #282828;
     transition: transform 0.3s var(--ease-out-expo);
@@ -678,7 +690,7 @@ h2 {
     align-items: center;
     gap: 14px;
     padding: 10px 14px;
-    border-radius: 6px;
+    border-radius: var(--design-radius-sm);
     cursor: pointer;
     background-color: transparent;
     animation: cardFadeIn 0.25s var(--ease-out-expo) both;
@@ -698,7 +710,7 @@ h2 {
 .media-list-item .list-item-cover {
     width: 44px;
     height: 44px;
-    border-radius: 4px;
+    border-radius: var(--design-radius-sm);
     overflow: hidden;
     flex-shrink: 0;
     background: #282828;
@@ -771,7 +783,7 @@ h2 {
     width: 100%;
     aspect-ratio: 1;
     background-color: #282828;
-    border-radius: 4px;
+    border-radius: var(--design-radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -845,7 +857,7 @@ h2 {
     z-index: 500;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: var(--design-radius);
     padding: 4px 0;
     min-width: 160px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
@@ -924,7 +936,7 @@ h2 {
 .modal {
     background: var(--card-bg);
     padding: 30px;
-    border-radius: 12px;
+    border-radius: var(--design-radius);
     width: 400px;
     text-align: center;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -964,7 +976,7 @@ h2 {
 .edit-cover-preview {
     width: 120px;
     height: 120px;
-    border-radius: 8px;
+    border-radius: var(--design-radius);
     background: var(--bg-color);
     border: 1px solid var(--border-color);
     display: flex;
@@ -1027,7 +1039,7 @@ h2 {
 .btn-sm {
     padding: 6px 14px;
     font-size: 0.8rem;
-    border-radius: 16px;
+    border-radius: var(--design-radius-lg);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -1116,7 +1128,7 @@ h2 {
     padding: 10px 14px;
     background: var(--bg-color);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: var(--design-radius-sm);
     color: var(--text-primary);
     font-size: 0.95rem;
     font-family: inherit;
@@ -1142,7 +1154,7 @@ h2 {
     padding: 8px;
     background: var(--bg-color);
     border: 1px dashed var(--border-color);
-    border-radius: 6px;
+    border-radius: var(--design-radius-sm);
     color: var(--text-secondary);
     cursor: pointer;
 }
@@ -1152,7 +1164,7 @@ h2 {
     color: white;
     border: none;
     padding: 6px 12px;
-    border-radius: 4px;
+    border-radius: var(--design-radius-sm);
     cursor: pointer;
     margin-right: 8px;
 }
@@ -1167,7 +1179,7 @@ h2 {
 .btn {
     padding: 10px 20px;
     border: none;
-    border-radius: 20px;
+    border-radius: var(--design-radius-lg);
     cursor: pointer;
     font-weight: 600;
     transition: transform 0.12s var(--ease-smooth), background-color 0.2s var(--ease-smooth), box-shadow 0.2s var(--ease-smooth);
@@ -1311,7 +1323,7 @@ h2 {
 .mini-cover {
     width: 48px;
     height: 48px;
-    border-radius: 4px;
+    border-radius: var(--design-radius-sm);
     object-fit: cover;
     background: #282828;
     overflow: hidden;
@@ -1494,7 +1506,7 @@ h2 {
     min-width: 240px;
     max-width: 360px;
     padding: 12px 16px;
-    border-radius: 8px;
+    border-radius: var(--design-radius);
     background: var(--card-bg);
     color: var(--text-primary);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
@@ -1615,7 +1627,7 @@ body.player-active > .mini-player {
     height: 240px;
     flex-shrink: 0;
     background-color: var(--card-bg);
-    border-radius: 4px;
+    border-radius: var(--design-radius-sm);
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
@@ -1702,7 +1714,7 @@ body.player-active > .mini-player {
     cursor: pointer;
     transition: background 0.2s ease, transform 0.1s;
     gap: 10px;
-    border-radius: 4px;
+    border-radius: var(--design-radius-sm);
 }
 
 .lyrics-collapsed:hover {
@@ -1732,7 +1744,7 @@ body.player-active > .mini-player {
     margin-top: 8px;
     background: var(--overlay-card-bg, rgba(30, 30, 30, 0.95));
     border: 1px solid var(--overlay-card-border, rgba(255, 255, 255, 0.1));
-    border-radius: 8px;
+    border-radius: var(--design-radius);
     backdrop-filter: blur(10px);
     overflow: hidden;
     max-height: 0;
@@ -1762,7 +1774,7 @@ body.player-active > .mini-player {
     border: none;
     background: transparent;
     color: var(--text-secondary);
-    border-radius: 4px;
+    border-radius: var(--design-radius-sm);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -1797,7 +1809,7 @@ body.player-active > .mini-player {
     border: none;
     background: transparent;
     color: var(--text-secondary);
-    border-radius: 4px;
+    border-radius: var(--design-radius-sm);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -1875,7 +1887,7 @@ body.player-active > .mini-player {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    border-radius: 4px;
+    border-radius: var(--design-radius-sm);
     user-select: none;
 }
 
@@ -2377,7 +2389,7 @@ body.lyric-anim-none .fs-lyric-line {
     color: #fff;
     padding: 48px 64px;
     border: 3px dashed var(--accent-color, #1DB954);
-    border-radius: 24px;
+    border-radius: var(--design-radius-lg);
     background: rgba(0, 0, 0, 0.35);
     transform: scale(1);
     transition: transform 0.15s ease-out;
@@ -2746,7 +2758,7 @@ body[data-anim="3"] .view-toggle-thumb {
     min-width: 16px;
     height: 16px;
     padding: 0 4px;
-    border-radius: 8px;
+    border-radius: var(--design-radius);
     background: var(--accent-color);
     color: #fff;
     font-size: 10px;
@@ -3025,7 +3037,7 @@ body[data-anim="3"] .view-toggle-thumb {
     color: var(--accent-color);
 }
 .queue-item.dragging {
-    opacity: 0.4;
+    opacity: 0;
 }
 .queue-item.drag-over {
     border-top: 2px solid var(--accent-color);
@@ -3234,6 +3246,7 @@ body[data-anim="3"] .view-toggle-thumb {
     opacity: 0;
     visibility: hidden;
     z-index: 399;            /* 在侧栏(400)之下、主内容之上 */
+    pointer-events: none;    /* 不拦截鼠标事件，允许媒体卡片拖拽穿透 */
     transition: opacity var(--dur-normal) var(--ease-smooth),
                 visibility var(--dur-normal);
 }

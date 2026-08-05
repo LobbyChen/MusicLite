@@ -51,28 +51,29 @@ import (
 // ============ 常量 ============
 
 const (
-	smartEQFFTSize        = 2048 // FFT 窗口大小（采样点数）
-	smartEQHopSize        = 2048 // FFT 跳跃大小（无重叠，~21 次/秒 @44100Hz）
-	smartEQSmoothLambda   = 0.15 // 时间平滑系数 λ：越小越平滑
-	smartEQContentGamma   = 2.0  // 内容保护敏感度 γ：越大越保护
-	smartEQSoftLimitDrive = 1.5  // 软限幅驱动强度
-	smartEQMaxGain        = 12.0 // 单段最大增益（dB），与图形 EQ 一致
+	smartEQFFTSize        = 2048  // FFT 窗口大小（采样点数）
+	smartEQHopSize        = 2048  // FFT 跳跃大小（无重叠，~21 次/秒 @44100Hz）
+	smartEQSmoothLambda   = 0.15  // 时间平滑系数 λ：越小越平滑
+	smartEQContentGamma   = 3.0   // 内容保护敏感度 γ：越大越保护（提升至 3.0 减少激进补偿）
+	smartEQSoftLimitDrive = 1.5   // 软限幅驱动强度
+	smartEQMaxGain        = 6.0   // 单段最大增益（dB），自动补偿无需像手动 EQ 那么激进
 )
 
 // loudnessCurve 等响度补偿曲线 Ck（简化 ISO 226，40 phon 参考）
 // 正值 = 该频段需要提升；负值 = 该频段需要衰减
 // 低频和高频在低音量下人耳敏感度低，故需要更多补偿
+// 值已缩减为 ISO 226 的 50%，避免过度补偿导致破音
 var loudnessCurve = [EqBandCount]float64{
-	14, // 31 Hz
-	9,  // 62 Hz
-	5,  // 125 Hz
-	2,  // 250 Hz
-	1,  // 500 Hz
+	7,  // 31 Hz
+	4,  // 62 Hz
+	2,  // 125 Hz
+	1,  // 250 Hz
+	0,  // 500 Hz
 	0,  // 1 kHz（参考点）
-	-1, // 2 kHz
-	-2, // 4 kHz（人耳最敏感区域）
-	2,  // 8 kHz
-	8,  // 16 kHz
+	0,  // 2 kHz
+	-1, // 4 kHz（人耳最敏感区域）
+	1,  // 8 kHz
+	4,  // 16 kHz
 }
 
 // ============ SmartEQ 结构体 ============
@@ -338,7 +339,8 @@ func (eq *SmartEQ) runFFTAnalysis() {
 	// 低音量（α 正）→ Preamp 为正（整体提升）
 	// 高音量（α 负）→ Preamp 为负（整体衰减）
 	// Soft Limiter 会兜底防止削波
-	preampDB := alpha * 3.0
+	// 倍率降至 1.5，避免与频段增益叠加后超出软限幅线性区
+	preampDB := alpha * 1.5
 	eq.preampLinear = math.Pow(10, preampDB/20.0)
 
 	// 9. 重算 biquad 系数
