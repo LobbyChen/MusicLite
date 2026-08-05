@@ -79,7 +79,6 @@ type Player struct {
 	volume   int                   // 0-100
 	playMode string                // none | loopOne | random
 	queue    *PlayQueue            // 播放队列（非空时优先驱动进曲）
-	buffered *bufferedStreamer
 	// 智能均衡器启动参数（管线构建时应用到 SmartEQ 实例）
 	smartEQDefaultEnabled   bool
 	smartEQDefaultIntensity float64
@@ -116,9 +115,8 @@ func (p *Player) SmartEQ() *SmartEQ {
 // Start 初始化音频设备并启动 timeupdate 推送循环（在 app.startup 中调用）
 func (p *Player) Start(ctx context.Context) {
 	p.ctx = ctx
-	// 初始化 speaker：固定 44100Hz缓冲 5 秒，
-	// 较大的缓冲区能容忍 CPU 密集型软件导致的调度延迟，避免音频卡顿
-	if err := speaker.Init(playerSampleRate, playerSampleRate.N(5*time.Second)); err != nil {
+	// 初始化 speaker：固定 44100Hz，缓冲 1/3 秒
+	if err := speaker.Init(playerSampleRate, playerSampleRate.N(time.Second/3)); err != nil {
 		log.Printf("[Player] speaker.Init 失败: %v（后端播放不可用）", err)
 		p.ready = false
 	} else {
@@ -496,10 +494,7 @@ func (p *Player) rebuildPipeline(startPaused bool) {
 	paused := startPaused
 	p.mu.Unlock()
 
-	bufferCap := int(playerSampleRate) * 1
-	buffered := newBufferedStreamer(decoded, srcFmt.SampleRate, bufferCap)
-
-	resampled := beep.Resample(4, srcFmt.SampleRate, playerSampleRate, buffered)
+	resampled := beep.Resample(4, srcFmt.SampleRate, playerSampleRate, decoded)
 	// 管线：resampled → smartEQ → equalizer → ctrl → volume → speaker
 	// SmartEQ 插入在 resample 之后、图形 EQ 之前：先做智能动态增益，再叠加用户手动 EQ
 	p.mu.Lock()
@@ -539,7 +534,6 @@ func (p *Player) rebuildPipeline(startPaused bool) {
 	p.eq = eq
 	p.smartEQ = smartEQ
 	p.vol = volEff
-	p.buffered = buffered
 	p.paused = paused
 	p.mu.Unlock()
 
@@ -573,7 +567,6 @@ func (p *Player) stopPipeline() {
 	p.ctrl = nil
 	p.vol = nil
 	p.paused = true
-	p.buffered = nil
 	p.mu.Unlock()
 }
 
@@ -639,29 +632,32 @@ func (p *Player) toggle() {
 	}
 }
 
+// seek 跳转到指定秒数
 func (p *Player) seek(seconds float64) error {
 	if !p.ready {
 		return fmt.Errorf("音频设备未初始化")
 	}
 	p.mu.Lock()
-	buffered := p.buffered
+	decoded := p.decoded
+	srcFmt := p.srcFmt
 	eq := p.eq
 	smartEQ := p.smartEQ
-	if buffered == nil {
+	if decoded == nil {
 		p.mu.Unlock()
 		return fmt.Errorf("无曲目加载")
 	}
-	pos := int(seconds * float64(p.srcFmt.SampleRate))
+	pos := int(seconds * float64(srcFmt.SampleRate))
 	if pos < 0 {
 		pos = 0
 	}
-	// buffered.Seek 内部已处理缓冲重置+填充协程重启，且会代理到源解码器
-	// 不需要额外 speaker.Lock，因为 buffered.Seek 不涉及 speaker 状态
-	err := buffered.Seek(pos)
+	speaker.Lock()
+	err := decoded.Seek(pos)
+	speaker.Unlock()
 	p.mu.Unlock()
 	if err != nil {
 		return fmt.Errorf("跳转失败: %w", err)
 	}
+	// 跳转后清空 EQ / SmartEQ 滤波器状态，避免位置不连续带来的瞬态伪影
 	if eq != nil {
 		eq.Reset()
 	}
@@ -702,21 +698,25 @@ func (p *Player) stop() {
 	}
 }
 
+// restart 从头重新播放当前曲目
 func (p *Player) restart() error {
 	p.mu.Lock()
-	buffered := p.buffered
-	track := p.track
-	if buffered == nil {
+	if p.decoded == nil {
 		p.mu.Unlock()
 		return fmt.Errorf("无曲目加载")
 	}
+	decoded := p.decoded
+	track := p.track
 	p.mu.Unlock()
 
-	err := buffered.Seek(0)
+	speaker.Lock()
+	err := decoded.Seek(0)
+	speaker.Unlock()
 	if err != nil {
 		return fmt.Errorf("重播跳转失败: %w", err)
 	}
 
+	// 重建 Seq（旧 Seq 已结束，需要重新提交到 speaker）
 	p.rebuildPipeline(false)
 
 	if track != nil && track.ID > 0 && p.app != nil {
@@ -1008,170 +1008,3 @@ func volumeToGain(vol int) float64 {
 	}
 	return math.Log2(float64(vol) / 100.0)
 }
-
-// bufferedStreamer 异步预缓冲包装器
-// 解决 CPU 密集/GC 导致解码不及时引起的音频卡顿
-type bufferedStreamer struct {
-	mu         sync.Mutex
-	src        beep.StreamSeekCloser
-	buf        [][2]float64
-	head       int // 读指针
-	tail       int // 写指针
-	cap        int
-	done       bool
-	err        error
-	wake       chan struct{}
-	closed     chan struct{}
-	sampleRate beep.SampleRate
-}
-
-func newBufferedStreamer(src beep.StreamSeekCloser, sr beep.SampleRate, capacitySamples int) *bufferedStreamer {
-	bs := &bufferedStreamer{
-		src:        src,
-		buf:        make([][2]float64, capacitySamples),
-		cap:        capacitySamples,
-		wake:       make(chan struct{}, 1),
-		closed:     make(chan struct{}),
-		sampleRate: sr,
-	}
-	go bs.fillLoop()
-	return bs
-}
-
-func (bs *bufferedStreamer) fillLoop() {
-	tmp := make([][2]float64, 512) // 每次解码块大小
-	for {
-		select {
-		case <-bs.closed:
-			return
-		default:
-		}
-
-		bs.mu.Lock()
-		// 计算可写空间（环形缓冲）
-		free := bs.cap - (bs.tail-bs.head+bs.cap)%bs.cap
-		if free == 0 {
-			bs.mu.Unlock()
-			// 缓冲满，等待消费信号
-			select {
-			case <-bs.wake:
-			case <-bs.closed:
-				return
-			}
-			continue
-		}
-
-		toRead := free
-		if toRead > len(tmp) {
-			toRead = len(tmp)
-		}
-		bs.mu.Unlock()
-
-		// 在锁外执行耗时的解码操作
-		n, ok := bs.src.Stream(tmp[:toRead])
-
-		bs.mu.Lock()
-		if n > 0 {
-			for i := 0; i < n; i++ {
-				bs.buf[bs.tail%bs.cap] = tmp[i]
-				bs.tail++
-			}
-		}
-		if !ok || n == 0 {
-			bs.done = true
-			bs.err = bs.src.Err()
-			bs.mu.Unlock()
-			return
-		}
-		bs.mu.Unlock()
-	}
-}
-
-func (bs *bufferedStreamer) Stream(samples [][2]float64) (n int, ok bool) {
-	bs.mu.Lock()
-	defer bs.mu.Unlock()
-
-	available := bs.tail - bs.head
-	if available <= 0 {
-		if bs.done {
-			return 0, false
-		}
-		// 下溢：返回静音避免爆音，同时触发填充
-		for i := range samples {
-			samples[i] = [2]float64{}
-		}
-		select {
-		case bs.wake <- struct{}{}:
-		default:
-		}
-		return len(samples), true
-	}
-
-	toCopy := len(samples)
-	if toCopy > available {
-		toCopy = available
-	}
-
-	for i := 0; i < toCopy; i++ {
-		samples[i] = bs.buf[(bs.head+i)%bs.cap]
-	}
-	// 剩余部分填静音
-	for i := toCopy; i < len(samples); i++ {
-		samples[i] = [2]float64{}
-	}
-
-	bs.head += toCopy
-
-	// 消费了数据，通知填充协程
-	select {
-	case bs.wake <- struct{}{}:
-	default:
-	}
-
-	return len(samples), true
-}
-
-func (bs *bufferedStreamer) Err() error {
-	bs.mu.Lock()
-	defer bs.mu.Unlock()
-	return bs.err
-}
-
-// Seek 代理到源解码器并重置缓冲
-func (bs *bufferedStreamer) Seek(p int) error {
-	bs.mu.Lock()
-	defer bs.mu.Unlock()
-
-	// 关闭旧填充循环，重建
-	close(bs.closed)
-	bs.closed = make(chan struct{})
-	bs.wake = make(chan struct{}, 1)
-	bs.head = 0
-	bs.tail = 0
-	bs.done = false
-	bs.err = nil
-
-	err := bs.src.Seek(p)
-	if err != nil {
-		return err
-	}
-	go bs.fillLoop()
-	return nil
-}
-
-func (bs *bufferedStreamer) Close() error {
-	bs.mu.Lock()
-	select {
-	case <-bs.closed:
-		bs.mu.Unlock()
-		return nil
-	default:
-		close(bs.closed)
-	}
-	bs.mu.Unlock()
-	return bs.src.Close()
-}
-
-// Position/Len 代理到源（需 speaker.Lock 保护）
-func (bs *bufferedStreamer) Position() int { return bs.src.Position() }
-func (bs *bufferedStreamer) Len() int      { return bs.src.Len() }

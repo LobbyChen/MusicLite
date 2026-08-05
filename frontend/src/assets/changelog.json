@@ -1,6 +1,55 @@
 [
   {
     "date": "2026-08-05",
+    "version": "MiscLite Cuckoo Beta 0.5.2",
+    "sections": [
+      {
+        "type": "添加",
+        "items": [
+          "无"
+        ]
+      },
+      {
+        "type": "修改",
+        "items": [
+          "无"
+        ]
+      },
+      {
+        "type": "修复",
+        "items": [
+          "紧急回滚播放器管线修改"
+        ]
+      }
+    ]
+  },
+  {
+    "date": "2026-08-05",
+    "version": "MiscLite Cuckoo Beta 0.5.1",
+    "sections": [
+      {
+        "type": "添加",
+        "items": [
+          "无"
+        ]
+      },
+      {
+        "type": "修改",
+        "items": [
+          "无"
+        ]
+      },
+      {
+        "type": "修复",
+        "items": [
+          "紧急修复播放卡顿问题",
+          "紧急修复新UI播放器导致高cpu占用的问题"
+        ]
+      }
+    ]
+  },
+  {
+    "date": "2026-08-05",
     "version": "MiscLite Cuckoo Beta 0.5.0",
     "sections": [
       {
