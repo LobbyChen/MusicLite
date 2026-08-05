@@ -126,6 +126,7 @@ function renderLyrics(lyricsArray) {
         // 小卡片
         lyricsContentEl.innerHTML = '<div class="no-lyrics">' + t('player.noLyrics') + '</div>';
         lyricsPreviewEl.textContent = t('player.noLyrics');
+        lyricsPreviewEl.dataset.lastText = t('player.noLyrics');
         lyricsPreviewEl.classList.remove('active');
         // 全屏
         fullscreenLyricsContentEl.innerHTML = '<div class="no-lyrics">' + t('player.noLyrics') + '</div>';
@@ -175,6 +176,8 @@ function renderLyrics(lyricsArray) {
     });
 
     currentLyricIndex = -1;
+    // 清除预览缓存，强制下次 updateLyricsScroll 重新写入
+    delete lyricsPreviewEl.dataset.lastText;
     updateLyricsScroll(audioManager.getCurrentTime() || 0);
 }
 
@@ -333,13 +336,24 @@ function updateLyricsScroll(currentTime) {
         }
     }
 
-    // 更新小卡片预览
+    // 更新小卡片预览（仅在文本变化时写入，避免每帧 textContent 写入触发 DOM 标记）
+    let previewText;
+    let previewActive;
     if (newIndex >= 0 && parsedLyrics[newIndex]) {
-        lyricsPreviewEl.textContent = parsedLyrics[newIndex].text;
-        lyricsPreviewEl.classList.add('active');
+        previewText = parsedLyrics[newIndex].text;
+        previewActive = true;
     } else {
-        lyricsPreviewEl.textContent = parsedLyrics[0] ? parsedLyrics[0].text : t('player.noLyrics');
-        lyricsPreviewEl.classList.remove('active');
+        previewText = parsedLyrics[0] ? parsedLyrics[0].text : t('player.noLyrics');
+        previewActive = false;
+    }
+    if (lyricsPreviewEl.dataset.lastText !== previewText) {
+        lyricsPreviewEl.textContent = previewText;
+        lyricsPreviewEl.dataset.lastText = previewText;
+    }
+    if (previewActive) {
+        if (!lyricsPreviewEl.classList.contains('active')) lyricsPreviewEl.classList.add('active');
+    } else {
+        if (lyricsPreviewEl.classList.contains('active')) lyricsPreviewEl.classList.remove('active');
     }
 
     if (newIndex === currentLyricIndex) return;
@@ -662,6 +676,9 @@ let progressRafId = null;
 // 上次后端推送的位置与时间戳，用于帧间线性插值
 let lastSyncPos = 0;
 let lastSyncTs = 0;
+// 上次写入的时间文本，避免每帧重复写 textContent（formatTime 只精确到秒，
+// 但 rAF 每帧调用，无缓存会持续触发 DOM 标记）
+let lastTimeText = '';
 function startSmoothProgress() {
     if (progressRafId) return;
     lastSyncPos = audioManager.getCurrentTime();
@@ -680,7 +697,12 @@ function startSmoothProgress() {
         const percent = (clamped / duration) * 100;
         seekSlider.value = percent;
         updateProgressFill('seekProgress', percent);
-        currentTimeEl.textContent = formatTime(clamped);
+        // 时间文本只在变化时写入（每秒一次），避免 60fps 重复 DOM 写入
+        const timeText = formatTime(clamped);
+        if (timeText !== lastTimeText) {
+            currentTimeEl.textContent = timeText;
+            lastTimeText = timeText;
+        }
         updateLyricsScroll(clamped);
         progressRafId = requestAnimationFrame(tick);
     };
