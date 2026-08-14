@@ -1,3 +1,5 @@
+//go:build windows
+
 package main
 
 // ============ Windows 文件关联（设为默认播放器） ============
@@ -34,7 +36,7 @@ const progID = "MusicLite.AudioFile"
 // supportedExts 支持关联的音频扩展名
 var supportedExts = []string{".mp3", ".wav", ".flac", ".m4a", ".ogg", ".wma", ".aac", ".opus", ".ape", ".alac"}
 
-// SetAsDefaultPlayer 将 MusicLite 设为支持音频格式的默认播放器
+// SetAsDefaultPlayer 将 MusicLite 设为支持音频格式的默认播放器（Windows 实现）
 func (a *App) SetAsDefaultPlayer() error {
 	exePath, err := os.Executable()
 	if err != nil {
@@ -81,7 +83,7 @@ func (a *App) SetAsDefaultPlayer() error {
 	return nil
 }
 
-// IsDefaultPlayer 检查 MusicLite 是否为 .mp3 的默认播放器
+// IsDefaultPlayer 检查 MusicLite 是否为 .mp3 的默认播放器（Windows 实现）
 func (a *App) IsDefaultPlayer() (bool, error) {
 	k, err := registry.OpenKey(registry.CURRENT_USER, `Software\Classes\.mp3`, registry.QUERY_VALUE)
 	if err != nil {

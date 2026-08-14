@@ -81,18 +81,14 @@ func DefaultSettings() Settings {
 	}
 }
 
-// settingsFilePath 返回设置文件路径（%APPDATA%/MusicLite/settings.json）
+// settingsFilePath 返回设置文件路径（跨平台用户数据目录/MusicLite/settings.json）
 func settingsFilePath() string {
-	appData := os.Getenv("APPDATA")
-	if appData == "" {
-		appData = "."
-	}
-	dir := filepath.Join(appData, "MusicLite")
+	dir := filepath.Join(getUserDataDir(), "MusicLite")
 	os.MkdirAll(dir, 0755)
 	return filepath.Join(dir, "settings.json")
 }
 
-// settingsDir 返回设置文件所在目录（%APPDATA%/MusicLite）
+// settingsDir 返回设置文件所在目录（跨平台用户数据目录/MusicLite）
 func settingsDir() string {
 	return filepath.Dir(settingsFilePath())
 }

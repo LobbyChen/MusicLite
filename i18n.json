@@ -85,7 +85,7 @@
             "settings.more": "更多",
             "settings.defaultPlayer": "默认播放器",
             "settings.setAsDefault": "设为默认播放器",
-            "settings.isDefaultPlayer": "✓ 已设为默认",
+            "settings.isDefaultPlayer": "已设为默认",
             "settings.notDefaultPlayer": "未设为默认",
             "settings.changelog": "更新记录",
             "settings.openDataFolder": "打开数据文件夹",

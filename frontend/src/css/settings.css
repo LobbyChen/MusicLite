@@ -2239,16 +2239,18 @@ body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-empty 
 body[data-page="libraries"][data-new-ui="true"] .player-overlay {
     top: 0;
     padding-top: 32px; /* 避开自定义标题栏 */
-    background: transparent;
-    /* blur 值过高在 WebView2 中 GPU 开销巨大；20px + saturate(140%) 视觉接近但开销减半 */
-    backdrop-filter: blur(20px) saturate(140%);
-    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    /* 不使用 backdrop-filter：背景（library 页面）在播放期间静态，
+       backdrop-filter 仍会让合成器每帧重采样 backdrop 纹理（Chromium 已知行为）。
+       player-bg-layer 已提供封面模糊背景，叠加半透明底色即可达到视觉等效。 */
+    background-color: var(--bg-color);
     display: block;
+    /* 隔离合成边界：内部重绘不扩散到外部，外部也不污染本层 */
+    contain: layout paint;
 }
 body[data-page="libraries"][data-new-ui="true"] .player-overlay .player-bg-layer {
     opacity: 0.7;
-    /* 40px 模糊与 60px 视觉差异极小，但 GPU 采样工作量约降为 1/2.25 */
-    filter: blur(40px);
+    /* 30px 模糊视觉接近 40/60px，但 GPU 采样工作量显著降低 */
+    filter: blur(30px);
 }
 
 /* player-container：三行网格 header / content / bottom */

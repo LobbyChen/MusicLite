@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	goruntime "runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,7 +18,6 @@ import (
 
 	"github.com/getlantern/systray"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-	"golang.org/x/sys/windows/registry"
 )
 
 // App struct
@@ -547,14 +545,13 @@ func encodeCoverBase64(data []byte, mime string) string {
 }
 
 // GetInstalledFonts 返回系统中安装的字体名称列表（去重、排序）
-// Windows: 读注册表 HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts
-// 其他平台: 返回常用字体作为兜底
+// - Windows: 读注册表 HKLM/HKCU\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts
+// - macOS:   fc-list 或 ~/Library/Fonts 等目录
+// - Linux:   fc-list 或 ~/.local/share/fonts、/usr/share/fonts 等目录
+// 平台分派由 fonts_windows.go / fonts_notwindows.go 中的 readInstalledFonts 提供
 func (a *App) GetInstalledFonts() []string {
 	set := make(map[string]struct{})
-	if goruntime.GOOS == "windows" {
-		readRegistryFonts(registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts`, set)
-		readRegistryFonts(registry.CURRENT_USER, `SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts`, set)
-	}
+	readInstalledFonts(set)
 	list := make([]string, 0, len(set))
 	for name := range set {
 		list = append(list, name)
@@ -563,41 +560,13 @@ func (a *App) GetInstalledFonts() []string {
 		return strings.ToLower(list[i]) < strings.ToLower(list[j])
 	})
 	if len(list) == 0 {
-		list = []string{"Microsoft YaHei", "SimHei", "SimSun", "KaiTi", "FangSong", "Segoe UI", "Consolas", "Monaco", "Courier New", "Arial"}
+		// 任何平台读取失败时的通用兜底列表（中西文常用字体混合）
+		list = []string{
+			"Microsoft YaHei", "SimHei", "SimSun", "KaiTi", "FangSong",
+			"PingFang SC", "Hiragino Sans GB", "Heiti SC", "Songti SC",
+			"Noto Sans CJK SC", "Noto Serif CJK SC", "WenQuanYi Zen Hei", "WenQuanYi Micro Hei",
+			"Segoe UI", "Consolas", "Monaco", "Courier New", "Arial",
+		}
 	}
 	return list
-}
-
-// readRegistryFonts 打开指定注册表路径读取字体名；失败时静默跳过
-func readRegistryFonts(root registry.Key, path string, out map[string]struct{}) {
-	k, err := registry.OpenKey(root, path, registry.QUERY_VALUE)
-	if err != nil {
-		log.Printf("打开注册表字体键失败 %s: %v", path, err)
-		return
-	}
-	defer k.Close()
-	names, err := k.ReadValueNames(0)
-	if err != nil {
-		log.Printf("读取注册表字体值失败 %s: %v", path, err)
-		return
-	}
-	for _, name := range names {
-		// 键名格式: "Microsoft YaHei & Microsoft YaHei UI (TrueType)"、"Arial (TrueType)"
-		// 去掉尾部 (TrueType)/(OpenType) 等后缀，再按 &/& /, 拆分字体族名
-		clean := name
-		if i := strings.LastIndex(clean, " ("); i > 0 {
-			clean = clean[:i]
-		}
-		// 多个字体族名用 & 或 , 分隔（如 "微软雅黑 & 微软雅黑 UI"）
-		parts := strings.FieldsFunc(clean, func(r rune) bool {
-			return r == '&' || r == ','
-		})
-		for _, p := range parts {
-			p = strings.TrimSpace(p)
-			if p == "" {
-				continue
-			}
-			out[p] = struct{}{}
-		}
-	}
 }

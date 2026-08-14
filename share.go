@@ -1,62 +1,15 @@
 package main
 
-// ============ 打包分享功能 ============
+// ============ 打包分享功能（跨平台）============
 //
 // 用户右键点击"打包分享"后：
-// 0. 在 %TEMP%\<歌曲名称>_LiteShare.mp3 创建新文件
+// 0. 在 %TEMP%/<歌曲名称>_LiteShare.mp3 创建新文件
 // 1. 读取原文件音频写入新文件
 // 2. 将 Cover 图片和 LRC 歌词写入新文件的 ID3v2.4 标签
-// 3. 将新文件路径通过 CF_HDROP 写入系统剪贴板
+// 3. 将新文件路径写入系统剪贴板（各平台实现见 share_windows.go / share_notwindows.go）
 // 4. 前端显示"已生成分享并复制到剪贴板"提示
 //
-// dhowden/tag 库仅支持读取 ID3 标签，不支持写入，因此手动构建 ID3v2.4 标签。
-
-/*
-#cgo LDFLAGS: -lole32 -luser32
-
-#include <windows.h>
-#include <shlobj.h>
-
-// setClipboardFiles 将文件路径写入系统剪贴板（CF_HDROP 格式）
-// 返回 0=成功，其他=失败
-static int setClipboardFiles(const char* filePath) {
-    if (!filePath || filePath[0] == '\0') return 1;
-
-    // 转换为宽字符
-    int wlen = MultiByteToWideChar(CP_UTF8, 0, filePath, -1, NULL, 0);
-    if (wlen <= 0) return 2;
-
-    // DROPFILES 结构 + 宽字符路径（双终止符）
-    size_t dropSize = sizeof(DROPFILES) + (wlen + 1) * sizeof(wchar_t);
-
-    HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, dropSize);
-    if (!hMem) return 3;
-
-    DROPFILES* pDrop = (DROPFILES*)GlobalLock(hMem);
-    if (!pDrop) { GlobalFree(hMem); return 4; }
-
-    pDrop->pFiles = sizeof(DROPFILES);
-    pDrop->pt.x = 0;
-    pDrop->pt.y = 0;
-    pDrop->fNC = FALSE;
-    pDrop->fWide = TRUE;
-
-    wchar_t* pPath = (wchar_t*)((char*)pDrop + sizeof(DROPFILES));
-    MultiByteToWideChar(CP_UTF8, 0, filePath, -1, pPath, wlen);
-    pPath[wlen] = L'\0';
-
-    GlobalUnlock(hMem);
-
-    if (!OpenClipboard(NULL)) { GlobalFree(hMem); return 5; }
-    EmptyClipboard();
-    HANDLE result = SetClipboardData(CF_HDROP, hMem);
-    CloseClipboard();
-
-    if (!result) { GlobalFree(hMem); return 6; }
-    return 0;
-}
-*/
-import "C"
+// dhowden/tag 库仅支持读取 ID3 标签，不支持写入，因此手动构建 ID3v2.4 标签（纯 Go，跨平台）。
 
 import (
 	"bytes"
@@ -68,7 +21,7 @@ import (
 	"strings"
 )
 
-// ============ ID3v2.4 标签构建（纯 Go 实现） ============
+// ============ ID3v2.4 标签构建（纯 Go 实现，跨平台）============
 
 // synchsafeEncode 将整数编码为 4 字节 synchsafe integer（ID3v2 标准）
 func synchsafeEncode(size int) [4]byte {
@@ -185,20 +138,13 @@ func stripID3v2(data []byte) []byte {
 	return data[tagEnd:]
 }
 
-// ============ CF_HDROP 剪贴板操作 ============
-
-// setClipboardFilesGo 封装 CGO 调用，将文件路径写入剪贴板
-func setClipboardFilesGo(filePath string) error {
-	hr := C.setClipboardFiles(C.CString(filePath))
-	if hr != 0 {
-		return fmt.Errorf("剪贴板写入失败: %d", int(hr))
-	}
-	return nil
-}
-
 // ============ PackShare 打包分享主逻辑 ============
 
 // PackShare 打包分享：读取曲目音频，写入封面和歌词标签，复制到剪贴板
+// 剪贴板写入逻辑按平台分派：
+//   - Windows:   CF_HDROP (share_windows.go)
+//   - macOS:     AppleScript + NSPasteboard (share_notwindows.go)
+//   - Linux:     xclip / wl-copy (share_notwindows.go)
 func (a *App) PackShare(id int64) error {
 	rec, err := a.database.GetTrackByID(id)
 	if err != nil {
@@ -240,11 +186,12 @@ func (a *App) PackShare(id int64) error {
 	return nil
 }
 
-// sanitizeFilename 清理文件名中的非法字符
+// sanitizeFilename 清理文件名中的非法字符（跨平台）
 func sanitizeFilename(name string) string {
 	repl := func(r rune) rune {
 		switch r {
-		case '\\', '/', ':', '*', '?', '"', '<', '>', '|':
+		// Windows 非法字符 + Unix 下有特殊含义的字符统一替换
+		case '\\', '/', ':', '*', '?', '"', '<', '>', '|', '\t', '\n', '\r':
 			return '_'
 		}
 		return r

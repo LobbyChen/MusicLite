@@ -23,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 
 // 分段关键词（按出现顺序匹配）
-const SECTION_KEYWORDS = ['添加', '修改', '修复', '问题修复', '架构重构', '逻辑闭环', '基础动画添加'];
+const SECTION_KEYWORDS = ['添加', '修改', '修复', '问题修复', '架构重构','提示'];
 
 function getGitLog() {
     try {

@@ -771,19 +771,22 @@ function applyLibrariesWinUI3() {
     const main = document.querySelector('main');
     if (!header || !main) return;
 
-    // i18n 获取翻译（传递 fallback，确保找不到 key 时返回兜底值而非 undefined）
-    const t = (key, fallback) => {
+    // i18n 获取翻译（支持 fallback + 占位符参数传递）
+    // 用法：t(key, 'fallback文本', 'param0', 'param1') 或 t(key, 'fallback', { count: 5 })
+    const t = (key, ...args) => {
         try {
             if (window.i18n && typeof window.i18n.t === 'function') {
-                const v = window.i18n.t(key, fallback);
+                const v = window.i18n.t(key, ...args);
                 if (v !== undefined && v !== null) return v;
             }
             if (window.I18N && typeof window.I18N.t === 'function') {
-                const v = window.I18N.t(key, fallback);
+                const v = window.I18N.t(key, ...args);
                 if (v !== undefined && v !== null) return v;
             }
         } catch (e) {}
-        return fallback;
+        // 兜底：若 args[0] 是字符串（即 fallback），返回它；否则返回原始 key
+        if (args.length > 0 && typeof args[0] === 'string') return args[0];
+        return key;
     };
 
     // 创建左侧导航
@@ -924,19 +927,22 @@ function applyDesignerWinUI3() {
     const controls = document.querySelector('.designer-controls');
     if (!main || !controls) return;
 
-    // i18n 获取翻译（传递 fallback，确保找不到 key 时返回兜底值而非 undefined）
-    const t = (key, fallback) => {
+    // i18n 获取翻译（支持 fallback + 占位符参数传递）
+    // 用法：t(key, 'fallback文本', 'param0', 'param1') 或 t(key, 'fallback', { count: 5 })
+    const t = (key, ...args) => {
         try {
             if (window.i18n && typeof window.i18n.t === 'function') {
-                const v = window.i18n.t(key, fallback);
+                const v = window.i18n.t(key, ...args);
                 if (v !== undefined && v !== null) return v;
             }
             if (window.I18N && typeof window.I18N.t === 'function') {
-                const v = window.I18N.t(key, fallback);
+                const v = window.I18N.t(key, ...args);
                 if (v !== undefined && v !== null) return v;
             }
         } catch (e) {}
-        return fallback;
+        // 兜底：若 args[0] 是字符串（即 fallback），返回它；否则返回原始 key
+        if (args.length > 0 && typeof args[0] === 'string') return args[0];
+        return key;
     };
 
     // 创建左侧导航
@@ -1065,21 +1071,21 @@ function applyPlayerWinUI3() {
     const container = overlay.querySelector(':scope > .player-container');
     if (!container) return;
 
-    // i18n helper：支持 fallback
-    const t = (key, fallback) => {
+    // i18n helper：支持 fallback + 占位符参数传递
+    const t = (key, ...args) => {
         try {
             if (window.i18n && typeof window.i18n.t === 'function') {
-                const v = window.i18n.t(key, fallback);
+                const v = window.i18n.t(key, ...args);
                 if (v !== undefined && v !== null) return v;
-                return fallback;
             }
             if (window.I18N && typeof window.I18N.t === 'function') {
-                const v = window.I18N.t(key, fallback);
+                const v = window.I18N.t(key, ...args);
                 if (v !== undefined && v !== null) return v;
-                return fallback;
             }
         } catch (e) {}
-        return fallback;
+        // 兜底：若 args[0] 是字符串（即 fallback），返回它；否则返回原始 key
+        if (args.length > 0 && typeof args[0] === 'string') return args[0];
+        return key;
     };
 
     // SVG 清理：仅移除 width/height 属性让 CSS 接管尺寸，保留 viewBox 保证缩放比例。

@@ -88,6 +88,9 @@ export async function initI18n() {
     return initPromise;
 }
 
+// 匹配占位符：{0}, {1}, {count}, {user_name} 等
+const PLACEHOLDER_RE = /\{[a-zA-Z0-9_]+\}/;
+
 /**
  * 翻译键值
  * @param {string} key — 翻译键，如 'libraries.title'
@@ -101,15 +104,6 @@ export async function initI18n() {
 export function t(key, ...args) {
     if (key === undefined || key === null || key === '') return '';
     const k = String(key);
-
-    // 识别 fallback 参数：在第一个非占位参数之前、且是字符串的，作为兜底
-    // args 顺序：fallback?, ...positionalOrNamed
-    // 我们约定：若 args[0] 不是命名对象且看起来像文本（非空字符串），则视为 fallback
-    let fallback = undefined;
-    if (args.length > 0 && typeof args[0] === 'string') {
-        fallback = args[0];
-        args = args.slice(1);
-    }
 
     // 构造查找链：当前语言（标准化后）→ en-US → zh-CN → 当前语言 fallbackTranslations → zh-CN fallbackTranslations → 'en' fallback
     const lookupChain = [];
@@ -134,10 +128,25 @@ export function t(key, ...args) {
         }
     }
 
-    // 完全找不到：若有 fallback 则使用 fallback，否则返回 undefined
+    // ============ 关键：fallback 提取策略 ============
+    // 只有当：翻译字符串中不包含占位符 或 翻译完全找不到时，
+    // 才将第一个字符串参数视为 fallback。
+    // 如果翻译已包含占位符（如 {0}, {count}），则所有参数都应用于插值，
+    // 避免把 track.name / err.message 等合法的 {0} 填充值误当作 fallback 吃掉。
+    let fallback = undefined;
+    const strHasPlaceholder = str !== undefined && PLACEHOLDER_RE.test(str);
+    if (args.length > 0 && typeof args[0] === 'string') {
+        if (!strHasPlaceholder) {
+            fallback = args[0];
+            args = args.slice(1);
+        }
+        // strHasPlaceholder === true → 不提取 fallback，args 全部用于插值
+    }
+
+    // 完全找不到：若有 fallback 则用 fallback 作为待插值字符串，否则返回 undefined
     if (str === undefined) {
-        if (fallback !== undefined) return fallback;
-        return undefined;
+        if (fallback === undefined) return undefined;
+        str = fallback;
     }
 
     // 插值

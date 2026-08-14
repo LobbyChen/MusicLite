@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "MusicLite Cuckoo"
-!define PRODUCT_VERSION "0.5.0"
+!define PRODUCT_VERSION "0.5.3"
 !define PRODUCT_PUBLISHER "LobbyChen"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\MusicLite.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
@@ -47,7 +47,7 @@ var ICONS_GROUP
 ; MUI end ------
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "..\build\bin\MusicLiteCuckoo_B0.5.0_Setup_amd64.exe"
+OutFile "..\build\bin\MusicLiteCuckoo_B0.5.3_Setup_amd64.exe"
 InstallDir "$LOCALAPPDATA\Programs\MusicLiteCuckoo"
 InstallDirRegKey HKLM "${PRODUCT_DIR_REGKEY}" ""
 ShowInstDetails show
