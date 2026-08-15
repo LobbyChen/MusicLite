@@ -157,6 +157,9 @@ body::-webkit-scrollbar {
     justify-content: space-between;
     padding: 0 8px 0 14px;
     --wails-draggable: drag;
+    /* WebView2 原生 NonClientRegion 模式（Windows NonClientRegionSupport 开启时生效） */
+    app-region: drag;
+    -webkit-app-region: drag;
     user-select: none;
     z-index: 1000;
 }
@@ -184,6 +187,20 @@ body::-webkit-scrollbar {
     display: flex;
     gap: 2px;
     --wails-draggable: no-drag;
+    app-region: no-drag;
+    -webkit-app-region: no-drag;
+}
+
+/* titlebar 内所有交互控件也明确排除拖动区，避免误判 */
+.titlebar .titlebar-btn,
+.titlebar button,
+.titlebar input,
+.titlebar select,
+.titlebar textarea,
+.titlebar a {
+    --wails-draggable: no-drag;
+    app-region: no-drag;
+    -webkit-app-region: no-drag;
 }
 
 .titlebar-btn {

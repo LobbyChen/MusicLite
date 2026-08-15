@@ -3,12 +3,13 @@ package main
 import (
 	"embed"
 	"fmt"
-	"os"
-	"path/filepath"
+	"net/http"
+	"strings"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"MusicLite/app"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 //go:embed all:frontend/dist
@@ -16,63 +17,84 @@ var assets embed.FS
 
 func main() {
 	// 单实例控制：若有旧实例运行则 taskkill 后接管
-	ensureSingleInstance()
-	file := getFileInArgs()
-	// 创建应用实例并连接数据库
-	app, err := NewApp(dbFile, file)
-	if err != nil {
-		panic(err)
-	}
-	// 确保 i18n.json 已解压到用户数据目录（首次启动）
-	ensureI18nFile()
-	// 创建音频/封面请求处理器
-	audioHandler := NewAudioHandler(app.GetDatabase())
+	app.EnsureSingleInstance()
+	file := app.GetFileInArgs()
 
-	// 启动应用
-	err = wails.Run(&options.App{
-		Title:     "MusicLite",
-		Width:     1024,
-		Height:    580,
-		Frameless: isFrameless(), // 无原生边框：Windows/Linux 无，Mac 使用带边框但隐藏标题栏按钮
-		AssetServer: &assetserver.Options{
-			Assets:  assets,
-			Handler: audioHandler, // 处理 /audio/<id> 和 /cover/<id> 请求
+	// 确保 i18n.json 已解压到用户数据目录（首次启动）
+	app.EnsureI18nFile()
+
+	// 音频/封面处理器引用，在创建服务后赋值（供 AssetServer 中间件使用）
+	var audioHandler *app.AudioHandler
+
+	// 创建 v3 应用实例
+	wailsApp := application.New(application.Options{
+		Name:        "MusicLite",
+		Description: "MusicLite 离线音乐播放器",
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
+			// 中间件：拦截 /audio/ 和 /cover/ 请求交给 AudioHandler，
+			// 其余请求走默认文件服务器（嵌入的前端资源）
+			Middleware: func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if audioHandler != nil &&
+						(strings.HasPrefix(r.URL.Path, "/audio/") || strings.HasPrefix(r.URL.Path, "/cover/")) {
+						audioHandler.ServeHTTP(w, r)
+						return
+					}
+					next.ServeHTTP(w, r)
+				})
+			},
 		},
-		BackgroundColour: &options.RGBA{R: 18, G: 18, B: 18, A: 1},
-		Windows:          getWindowsOptions(), // Windows 平台专属选项（WebView 用户数据目录等）
-		Mac:              getMacOptions(),     // macOS 平台专属选项
-		Linux:            getLinuxOptions(),   // Linux 平台专属选项
-		// 启用文件拖放：Wails 拦截系统拖放，通过 runtime.OnFileDrop 事件
-		// 把完整文件路径传给前端，绕过 WebView 不暴露路径的安全限制
-		// DisableWebViewDrop=false 让 WebView 保留 drag 事件用于遮罩视觉反馈
-		DragAndDrop: &options.DragAndDrop{
-			EnableFileDrop:     true,
-			DisableWebViewDrop: false,
+		// 阻止最后一个窗口关闭时自动退出（最小化到托盘场景需要）
+		Windows: application.WindowsOptions{
+			DisableQuitOnLastWindowClosed: true,
 		},
-		OnStartup:     app.startup,
-		OnShutdown:    app.shutdown,
-		OnBeforeClose: app.onBeforeClose, // 关闭窗口时最小化到托盘而非退出
-		Bind: []interface{}{
-			app,
+		Linux: application.LinuxOptions{
+			DisableQuitOnLastWindowClosed: true,
 		},
 	})
 
+	// 创建主服务并连接数据库
+	svc, err := app.NewMusicService(wailsApp, app.DBFile, file)
+	if err != nil {
+		panic(err)
+	}
+
+	// 创建音频/封面请求处理器（生产模式用，通过 AssetServer 中间件路由）
+	audioHandler = app.NewAudioHandler(svc.GetDatabase())
+
+	// 注册服务（v3 Service 模式，替代 v2 的 Bind）
+	wailsApp.RegisterService(application.NewService(svc))
+
+	// 创建主窗口
+	mainWindow := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:           "main",
+		Title:          "MusicLite",
+		Width:          1024,
+		Height:         580,
+		Frameless:      true, // 无原生边框：前端自绘标题栏
+		EnableFileDrop: true, // 启用文件拖放
+		BackgroundColour: application.RGBA{
+			Red: 18, Green: 18, Blue: 18, Alpha: 255,
+		},
+		Windows: application.WindowsWindow{
+			// 开启 WebView2 原生 NonClientRegion 支持，让 CSS 的 app-region: drag 生效
+			// （配合 --wails-draggable 做双保险）
+			NonClientRegionSupport: true,
+		},
+	})
+
+	// 窗口关闭钩子：非托盘退出时最小化到托盘而非关闭
+	mainWindow.OnWindowEvent(events.Common.WindowClosing, func(event *application.WindowEvent) {
+		if !svc.IsTrayQuitting() {
+			event.Cancel()
+			mainWindow.Hide()
+		}
+	})
+
+	// 启动应用
+	err = wailsApp.Run()
 	if err != nil {
 		panic(fmt.Sprintf("Error: %s", err.Error()))
 	}
-}
-
-// isFrameless 返回各平台是否使用无边框模式
-// Windows/Linux 默认无边框，前端自绘标题栏
-// macOS 为兼容性保留原生标题栏（可在 getMacOptions 中进一步配置隐藏/自定义按钮）
-func isFrameless() bool {
-	// 统一无边框：前端自绘标题栏 + Wails 拖拽区
-	// 如需各平台差异化，可改为 runtime.GOOS 判断
-	return true
-}
-
-// 获取 exe 所在目录（工具函数，仅供 main.go 内部使用）
-func exeDir() string {
-	exePath, _ := os.Executable()
-	return filepath.Dir(exePath)
 }

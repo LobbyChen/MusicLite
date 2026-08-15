@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" type="text/css" href="/src/css/settings-apply.css" />
+    <link rel="stylesheet" type="text/css" href="/src/css/settings.css" />
+    <link rel="stylesheet" type="text/css" href="/src/css/tray-menu.css" />
+    <script type="module" src="/wails/runtime.js"></script>
+    <script src="/src/js/settings-apply.js" type="module"></script>
+    <script src="/src/js/tray-menu.js" type="module"></script>
+    <title>Tray Menu</title>
+</head>
+
+<body class="tray-menu-body">
+    <div class="tray-menu-wrap" id="trayMenuWrap">
+        <!-- 当前播放信息卡片 -->
+        <div class="tray-nowplaying" id="nowPlayingCard">
+            <img class="tray-cover" id="trayCover" alt="Cover" />
+            <div class="tray-nowplaying-info">
+                <div class="tray-track-name" id="trayTrackName" data-i18n="tray.noTrack">未在播放</div>
+                <div class="tray-artist-name" id="trayArtistName">&nbsp;</div>
+            </div>
+            <button class="tray-btn tray-playpause" id="playPauseBtn" title="播放/暂停" data-i18n-title="tray.playPause">
+                <svg class="icon-play" viewBox="0 0 24 24" width="18" height="18">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                <svg class="icon-pause" viewBox="0 0 24 24" width="18" height="18" style="display:none">
+                    <path d="M6 4h4v16H6zM14 4h4v16h-4z"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="tray-divider"></div>
+
+        <button class="tray-item" id="showMainBtn" data-i18n="tray.showMainWindow">
+            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 3h18v18H3zM5 5v14h14V5z"/></svg>
+            <span data-i18n="tray.showMainWindow">打开主界面</span>
+        </button>
+
+        <button class="tray-item" id="openSettingsBtn" data-i18n="tray.settings">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M19.14 12.94c.04-.3.06-.62.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96a7.029 7.029 0 00-1.62-.94l-.36-2.54A.49.49 0 0013.86 2h-3.73a.49.49 0 00-.49.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.49.49 0 00-.59.22L2.76 8.87c-.19.24-.16.58.12.82l2.02 1.58c-.05.3-.07.62-.07.94 0 .32.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.13.24.42.33.66.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.05.24.25.42.49.42h3.73c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.24.1.53 0 .66-.22l1.92-3.32a.49.49 0 00-.12-.61zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+            </svg>
+            <span data-i18n="tray.settings">设置</span>
+        </button>
+
+        <div class="tray-divider"></div>
+
+        <button class="tray-item tray-item-danger" id="quitBtn" data-i18n="tray.quit">
+            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67z"/><path d="M19 3h-8c-1.1 0-2 .9-2 2v3h2V5h8v14h-8v-3h-2v3c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+            <span data-i18n="tray.quit">退出</span>
+        </button>
+    </div>
+</body>
+
+</html>

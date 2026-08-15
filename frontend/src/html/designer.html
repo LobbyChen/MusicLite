@@ -7,8 +7,7 @@
     <link rel="stylesheet" type="text/css" href="/src/css/libraries.css" />
     <link rel="stylesheet" type="text/css" href="/src/css/settings.css" />
     <link rel="stylesheet" type="text/css" href="/src/css/designer.css" />
-    <script src="/wails/ipc.js"></script>
-    <script src="/wails/runtime.js"></script>
+    <script type="module" src="/wails/runtime.js"></script>
     <script src="/src/js/audio-manager.js" type="module"></script>
     <script src="/src/js/settings-apply.js" type="module"></script>
     <script src="/src/js/designer.js" type="module"></script>
@@ -32,7 +31,7 @@
                     </g>
                 </g>
             </svg>
-            <span class="titlebar-title">MusicLite Cuckoo</span>
+            <span class="titlebar-title" data-i18n="info.productNameFull">MusicLite Cuckoo</span>
         </div>
         <div class="titlebar-controls">
             <button class="titlebar-btn" id="minimizeBtn" title="最小化" data-i18n-title="titlebar.minimize">

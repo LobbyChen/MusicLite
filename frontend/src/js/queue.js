@@ -4,7 +4,7 @@
 import {
     QueueGetStatus, QueueRemoveAt, QueueClear, QueueShuffle,
     QueueMove, QueueJumpTo, QueueAddTrack
-} from '../../wailsjs/go/main/App.js';
+} from '@bindings/MusicLite/app/musicservice.js';
 import { t } from './i18n.js';
 
 const NP_BARS_HTML = '<span class="np-bars" aria-hidden="true"><i></i><i></i><i></i></span>';

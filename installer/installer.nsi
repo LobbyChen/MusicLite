@@ -47,7 +47,7 @@ var ICONS_GROUP
 ; MUI end ------
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "..\build\bin\MusicLiteCuckoo_B0.5.3_Setup_amd64.exe"
+OutFile "..\build\bin\MusicLiteCuckoo_B0.6.2_Setup_amd64.exe"
 InstallDir "$LOCALAPPDATA\Programs\MusicLiteCuckoo"
 InstallDirRegKey HKLM "${PRODUCT_DIR_REGKEY}" ""
 ShowInstDetails show
@@ -58,8 +58,8 @@ Section "MainSection" SEC01
   SetOverwrite ifnewer
   File "..\license\LICENCE.txt"
   SetOverwrite on
-  File "..\build\bin\MusicLite.exe"
-  File "..\build\bin\libfftw3-3.dll"
+  File "..\bin\MusicLite.exe"
+  File "..\libfftw3-3.dll"
 
 ; Shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application

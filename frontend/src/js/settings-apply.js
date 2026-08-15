@@ -1,4 +1,4 @@
-import { LoadSettings } from '../../wailsjs/go/main/App.js';
+import { LoadSettings } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, setLanguage, applyTranslations } from './i18n.js';
 
 const FONT_FALLBACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
@@ -561,9 +561,11 @@ const SettingsManager = {
         // 应用 i18n 翻译（在 DOM 和语言都就绪后）
         applyTranslations();
 
-        // 自定义标题栏文字
-        const titlebarText = (s.titlebar_text && s.titlebar_text.trim()) || 'MusicLite Cuckoo';
-        document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = titlebarText; });
+        // 自定义标题栏文字（用户未设置时，保留 data-i18n 翻译后的值）
+        if (s.titlebar_text && s.titlebar_text.trim()) {
+            const titlebarText = s.titlebar_text.trim();
+            document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = titlebarText; });
+        }
 
         return s;
     },
@@ -613,9 +615,11 @@ const SettingsManager = {
                 : 1;
             try { localStorage.setItem('musicLite.maxLyricLines', maxLines.toString()); } catch (e) {}
 
-            // 自定义标题栏文字
-            const titlebarText = (this.cached.titlebar_text && this.cached.titlebar_text.trim()) || 'MusicLite Cuckoo';
-            document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = titlebarText; });
+            // 自定义标题栏文字（用户未设置时保留 DOM 上已翻译的值）
+            if (this.cached.titlebar_text && this.cached.titlebar_text.trim()) {
+                const titlebarText = this.cached.titlebar_text.trim();
+                document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = titlebarText; });
+            }
         }
     },
 

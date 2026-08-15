@@ -1,7 +1,7 @@
-import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths, GetTotalListenTime, PickImageFile, PickLyricsFile, ReadFileForEdit, PackShare, GetNextTracks, GetPrevTracks, GetRandomTrack, QueueAddTrack, QueueAddAll, QueueClear, QueueGetStatus, QueueRemoveAt, QueueShuffle, QueueMove, QueueJumpTo } from '../../wailsjs/go/main/App.js';
-import { OnFileDrop } from '../../wailsjs/runtime/runtime.js';
+import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths, GetTotalListenTime, PickImageFile, PickLyricsFile, ReadFileForEdit, PackShare, GetNextTracks, GetPrevTracks, GetRandomTrack, QueueAddTrack, QueueAddAll, QueueClear, QueueGetStatus, QueueRemoveAt, QueueShuffle, QueueMove, QueueJumpTo } from '@bindings/MusicLite/app/musicservice.js';
 import { openPlayer } from './player.js';
 import { initI18n, t } from './i18n.js';
+import { Window } from '@wailsio/runtime';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
 // 用法：applyMarquee(el) —— el 是承载歌名的容器（如 .mini-title）
@@ -50,8 +50,8 @@ function applyMarquee(el) {
 window.applyMarquee = applyMarquee;
 
 // ============ 标题栏窗口控制 ============
-document.getElementById('minimizeBtn')?.addEventListener('click', () => window.runtime?.WindowMinimise());
-document.getElementById('closeBtn')?.addEventListener('click', () => window.runtime?.WindowHide());
+document.getElementById('minimizeBtn')?.addEventListener('click', () => Window.Minimise());
+document.getElementById('closeBtn')?.addEventListener('click', () => Window.Hide());
 
 // DOM Elements
 const fileBtn = document.getElementById("openFileBtn");
@@ -124,9 +124,30 @@ document.addEventListener("drop", (e) => {
     dropOverlay?.classList.remove('active');
 });
 
-// Wails 原生文件拖放：提供完整文件路径，绕过 WebView2 安全限制
-// useDropTarget=false 让 Wails 不拦截 drop target，由前端自己处理 UI
-OnFileDrop(async (_x, _y, paths) => {
+// Wails v3 原生文件拖放：覆盖 window._wails.handlePlatformFileDrop 获取完整路径
+// v3 API 签名: HandlePlatformFileDrop(filenames, x, y) — 与旧版 OnFileDrop(x,y,paths) 参数顺序相反
+// useDropTarget=false: 让 Wails 不拦截 drop target，由前端自己处理 UI
+function _registerFileDropV3(callback) {
+    const install = () => {
+        if (window._wails) {
+            window._wails.handlePlatformFileDrop = (filenames, x, y) => {
+                callback(x, y, Array.isArray(filenames) ? filenames : []);
+            };
+            return true;
+        }
+        return false;
+    };
+    if (!install()) {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', install, { once: true });
+        }
+        // 兜底：一帧后重试（@wailsio/runtime 可能还没初始化 window._wails）
+        setTimeout(install, 0);
+        setTimeout(install, 50);
+    }
+}
+
+_registerFileDropV3(async (_x, _y, paths) => {
     if (!paths || paths.length === 0) return;
     // 编辑弹窗打开时，拖放走封面/歌词导入
     if (isEditModalActive()) {
@@ -134,7 +155,7 @@ OnFileDrop(async (_x, _y, paths) => {
         return;
     }
     await doImportPaths(paths);
-}, false);
+});
 
 async function doImportPaths(paths) {
     try {
@@ -251,7 +272,7 @@ async function getListMode() {
         }
     } catch (e) {}
     try {
-        const { LoadSettings } = await import('../../wailsjs/go/main/App.js');
+        const { LoadSettings } = await import('@bindings/MusicLite/app/musicservice.js');
         const s = await LoadSettings();
         return (s.list_mode === 'card' || s.list_mode === 'list') ? s.list_mode : 'card';
     } catch (e) {
@@ -283,7 +304,7 @@ async function getSortMode() {
         }
     } catch (e) {}
     try {
-        const { LoadSettings } = await import('../../wailsjs/go/main/App.js');
+        const { LoadSettings } = await import('@bindings/MusicLite/app/musicservice.js');
         const s = await LoadSettings();
         return (s.sort_mode === 'recent' || s.sort_mode === 'title' || s.sort_mode === 'artist') ? s.sort_mode : 'recent';
     } catch (e) {
@@ -326,7 +347,7 @@ async function setListMode(mode) {
     } catch (e) {}
     // 异步保存到后端（不阻塞 UI）
     try {
-        const { LoadSettings, SaveSettings } = await import('../../wailsjs/go/main/App.js');
+        const { LoadSettings, SaveSettings } = await import('@bindings/MusicLite/app/musicservice.js');
         const s = await LoadSettings();
         s.list_mode = mode;
         await SaveSettings(s);
@@ -350,7 +371,7 @@ async function setSortMode(mode) {
         localStorage.setItem('cachedSettings', JSON.stringify(obj));
     } catch (e) {}
     try {
-        const { LoadSettings, SaveSettings } = await import('../../wailsjs/go/main/App.js');
+        const { LoadSettings, SaveSettings } = await import('@bindings/MusicLite/app/musicservice.js');
         const s = await LoadSettings();
         s.sort_mode = mode;
         await SaveSettings(s);
@@ -1401,7 +1422,7 @@ function showStatsModal(message) {
 }
 
 // ============ 初始化 ============
-document.addEventListener("DOMContentLoaded", async function () {
+async function initLibrariesPage() {
     // 阻止触摸板双指缩放（WebView2 将其映射为 ctrl+wheel）及键盘缩放快捷键
     window.addEventListener('wheel', (e) => {
         if (e.ctrlKey) { e.preventDefault(); }
@@ -1613,7 +1634,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         // 删除检查：若恢复的曲目已不存在，清理状态并隐藏迷你播放器
         if (currentTrack) {
             try {
-                const { GetTrack } = await import('../../wailsjs/go/main/App.js');
+                const { GetTrack } = await import('@bindings/MusicLite/app/musicservice.js');
                 await GetTrack(Number(currentTrack.id));
             } catch (err) {
                 window.audioManager.clearTrack();
@@ -1712,4 +1733,11 @@ document.addEventListener("DOMContentLoaded", async function () {
             }
         });
     });
-});
+}
+
+// 安全启动：ES 模块执行时 DOMContentLoaded 可能已触发，需双重检查
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initLibrariesPage);
+} else {
+    initLibrariesPage();
+}

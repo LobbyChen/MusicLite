@@ -2,7 +2,7 @@
 // 与库视图共享同一个 window.audioManager，切换视图时后端播放不中断，保持连续。
 // 音频解码与输出全部在 Go 后端完成，本视图只负责 UI 控制与状态展示，
 // 通过 audioManager（订阅后端 Wails Events）获取播放状态。
-import { GetTrack, GetNextTracks, GetPrevTracks, GetRandomTrack, QueueGetStatus, QueueGetNext, QueueGetPrev } from '../../wailsjs/go/main/App.js';
+import { GetTrack, GetNextTracks, GetPrevTracks, GetRandomTrack, QueueGetStatus, QueueGetNext, QueueGetPrev } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, t } from './i18n.js';
 import { EqualizerPanel } from './equalizer.js';
 import { QueuePanel } from './queue.js';

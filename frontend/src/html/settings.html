@@ -5,8 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <link rel="stylesheet" type="text/css" href="/src/css/settings.css" />
         <link rel="stylesheet" type="text/css" href="/src/css/libraries.css" />
-        <script src="/wails/ipc.js"></script>
-        <script src="/wails/runtime.js"></script>
+        <script type="module" src="/wails/runtime.js"></script>
         <script src="/src/js/audio-manager.js" type="module"></script>
         <script src="/src/js/settings-apply.js" type="module"></script>
         <script src="/src/js/settings.js" type="module"></script>
@@ -27,7 +26,7 @@
             </g>
             </g>
             </svg>
-                <span class="titlebar-title">MusicLite Cuckoo</span>
+                <span class="titlebar-title" data-i18n="info.productNameFull">MusicLite Cuckoo</span>
             </div>
             <div class="titlebar-controls">
                 <button class="titlebar-btn" id="minimizeBtn" title="最小化" data-i18n-title="titlebar.minimize">
@@ -239,7 +238,7 @@
             <section class="settings-section" data-section-id="about">
                 <h2 data-i18n="settings.about">关于</h2>
                 <div class="about-info">
-                    <p><strong>MusicLite Cuckoo</strong>Beta 0.5.2</p>
+                    <p><strong>MusicLite Cuckoo</strong>Beta 0.6.2</p>
                     <p class="text-muted" data-i18n="settings.aboutDesc">轻量级离线音乐播放器</p>
                     <p class="text-muted" data-i18n="settings.builtWith">基于 Wails v2 构建</p>
                     <p class="text-muted" data-i18n="settings.ExperienmentWarnMsg">实验性分支构建</p>

@@ -1,5 +1,67 @@
 [
   {
+    "date": "2026-08-15",
+    "version": "MiscLite Cuckoo Beta 0.6.2",
+    "sections": [
+      {
+        "type": "添加",
+        "items": [
+          "新的托盘菜单",
+          "跨平台的支持"
+        ]
+      },
+      {
+        "type": "修改",
+        "items": [
+          "整体迁移至wails V3"
+        ]
+      },
+      {
+        "type": "修复",
+        "items": [
+          "正式修复新UI的背景刷新导致GPU占用较高的问题"
+        ]
+      },
+      {
+        "type": "提示",
+        "items": [
+          "可能存在些许小问题",
+          "即将开源"
+        ]
+      }
+    ]
+  },
+  {
+    "date": "2026-08-14",
+    "version": "MiscLite Cuckoo Beta 0.5.3",
+    "sections": [
+      {
+        "type": "添加",
+        "items": [
+          "部分cpp库和windows依赖进行完全的跨平台重构"
+        ]
+      },
+      {
+        "type": "修改",
+        "items": [
+          "无"
+        ]
+      },
+      {
+        "type": "修复",
+        "items": [
+          "启用新UI后,部分i18n占位符未被替代"
+        ]
+      },
+      {
+        "type": "提示",
+        "items": [
+          "下次提交时本项目将迁移到wails v3"
+        ]
+      }
+    ]
+  },
+  {
     "date": "2026-08-05",
     "version": "MiscLite Cuckoo Beta 0.5.2",
     "sections": [
@@ -651,12 +713,16 @@
     "version": "MiscLite Beta 0.2.1",
     "sections": [
       {
-        "type": "逻辑闭环",
-        "items": []
+        "type": "其他",
+        "items": [
+          "逻辑闭环"
+        ]
       },
       {
-        "type": "基础动画添加",
-        "items": []
+        "type": "其他",
+        "items": [
+          "基础动画添加"
+        ]
       }
     ]
   },

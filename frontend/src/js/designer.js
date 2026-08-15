@@ -1,8 +1,9 @@
 // designer.js — 独立设计器页面逻辑
 // 迁移自原"外观设置"，提供圆角 / 模糊 / 阴影 / 辉光 / 字体晕影 / 动画速度 / 主题色
 // 等几乎所有 CSS 变量的实时控件。修改实时生效，保存后持久化到 settings.json。
-import { LoadSettings, SaveSettings, ResetSettings } from '../../wailsjs/go/main/App.js';
+import { LoadSettings, SaveSettings, ResetSettings } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, t, applyTranslations } from './i18n.js';
+import { Window } from '@wailsio/runtime';
 
 // ============ 长歌名滚动显示（与 settings.js 一致） ============
 function applyMarquee(el) {
@@ -43,8 +44,8 @@ function applyMarquee(el) {
 }
 
 // ============ 标题栏窗口控制 ============
-document.getElementById('minimizeBtn')?.addEventListener('click', () => window.runtime?.WindowMinimise());
-document.getElementById('closeBtn')?.addEventListener('click', () => window.runtime?.WindowHide());
+document.getElementById('minimizeBtn')?.addEventListener('click', () => Window.Minimise());
+document.getElementById('closeBtn')?.addEventListener('click', () => Window.Hide());
 
 // DOM Elements
 const backBtn = document.getElementById('backBtn');
@@ -517,7 +518,7 @@ function initMiniPlayer() {
 }
 
 // ============ 初始化 ============
-document.addEventListener('DOMContentLoaded', async () => {
+async function initDesignerPage() {
     // 阻止触摸板/键盘缩放
     window.addEventListener('wheel', (e) => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
     window.addEventListener('keydown', (e) => {
@@ -534,4 +535,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.settings-section').forEach((sec, i) => {
         sec.style.setProperty('--sec-i', i);
     });
-});
+}
+
+// 安全启动：ES 模块执行时 DOMContentLoaded 可能已触发，需双重检查
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDesignerPage);
+} else {
+    initDesignerPage();
+}

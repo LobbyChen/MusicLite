@@ -1,5 +1,6 @@
-import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, PlayerSetSmartEQEnabled, PlayerSetSmartEQIntensity, HotkeyApply, HotkeyGetActionList } from '../../wailsjs/go/main/App.js';
+import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, PlayerSetSmartEQEnabled, PlayerSetSmartEQIntensity, HotkeyApply, HotkeyGetActionList } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
+import { Window } from '@wailsio/runtime';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
 function applyMarquee(el) {
@@ -40,9 +41,9 @@ function applyMarquee(el) {
 }
 
 // ============ 标题栏窗口控制 ============
-document.getElementById('minimizeBtn')?.addEventListener('click', () => window.runtime?.WindowMinimise());
+document.getElementById('minimizeBtn')?.addEventListener('click', () => Window.Minimise());
 // 关闭按钮：隐藏到托盘而非退出（后台播放）
-document.getElementById('closeBtn')?.addEventListener('click', () => window.runtime?.WindowHide());
+document.getElementById('closeBtn')?.addEventListener('click', () => Window.Hide());
 
 // DOM Elements
 const backBtn = document.getElementById('backBtn');
@@ -352,7 +353,7 @@ function closeChangelogModal() {
 }
 
 // ============ 初始化 ============
-document.addEventListener('DOMContentLoaded', async () => {
+async function initSettingsPage() {
     // 阻止触摸板双指缩放及键盘缩放快捷键
     window.addEventListener('wheel', (e) => {
         if (e.ctrlKey) { e.preventDefault(); }
@@ -377,7 +378,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.settings-section').forEach((sec, i) => {
         sec.style.setProperty('--sec-i', i);
     });
-});
+}
+
+// 安全启动：ES 模块执行时 DOMContentLoaded 可能已触发，需双重检查
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSettingsPage);
+} else {
+    initSettingsPage();
+}
 
 // ============ 迷你播放器（设置页也能控制播放） ============
 function initMiniPlayer() {
@@ -1128,9 +1136,14 @@ function setupEventListeners() {
     if (titlebarTextInput) {
         titlebarTextInput.addEventListener('input', () => {
             currentSettings.titlebar_text = titlebarTextInput.value;
-            // 实时预览：立即更新当前页标题栏
-            const txt = (titlebarTextInput.value && titlebarTextInput.value.trim()) || 'MusicLite Cuckoo';
-            document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = txt; });
+            // 实时预览：有自定义文字则覆盖，否则恢复翻译（data-i18n）
+            const custom = titlebarTextInput.value.trim();
+            if (custom) {
+                document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = custom; });
+            } else {
+                // 无自定义：先重新 applyTranslations 以翻译 data-i18n 元素
+                applyTranslations();
+            }
             markChanged();
         });
     }
@@ -1433,9 +1446,11 @@ async function saveSettings() {
             setLanguage(currentSettings.language);
             applyTranslations();
         }
-        // 应用标题栏文字
-        const titlebarText = (currentSettings.titlebar_text && currentSettings.titlebar_text.trim()) || 'MusicLite Cuckoo';
-        document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = titlebarText; });
+        // 应用标题栏文字（有自定义则覆盖，否则保留翻译值）
+        if (currentSettings.titlebar_text && currentSettings.titlebar_text.trim()) {
+            const custom = currentSettings.titlebar_text.trim();
+            document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = custom; });
+        }
         // 同步全局快捷键配置到后端 HotkeyManager
         try { await HotkeyApply(); } catch (_) {}
         showToast(t('libraries.saved'), 'success');

@@ -1,107 +1,142 @@
-// audio-manager.js — 音频播放管理器（后端驱动版）
+// audio-manager.js — 音频播放管理器（轮询驱动版）
 //
-// 重构后音频解码与输出全部在 Go 后端完成（player.go），前端只负责控制。
-// Go 后端是播放状态的唯一可信源，通过 Wails Events 推送状态；本类是前端的
-// 薄封装，对外保留与旧版相同的事件接口（play/pause/timeupdate/loadedmetadata/
-// ended/trackloaded/trackcleared/modechange），让 player.js / libraries.js
-// 以最小改动迁移。
+// 设计：Go 后端是播放状态的唯一可信源。前端不依赖 Wails Events.On
+// 推送（v3 IPC 时序不可靠），而是每 500ms 调用 PlayerGetState() 绑定
+// 拉取快照，通过 diff 对比上一帧状态，自动 emit 对应的 UI 事件。
 //
-// 跨页连续性：Go 进程在前端切页时持续播放，本类在构造时订阅后端事件，
-// restore() 时向后端查询一次状态快照并同步 UI，无需依赖 localStorage 续播。
-import { PlayerLoad, PlayerPlay, PlayerPause, PlayerSeek, PlayerStop, PlayerGetState, PlayerTogglePlayMode, PlayerGetPlayMode, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume } from '../../wailsjs/go/main/App.js';
-import { EventsOn } from '../../wailsjs/runtime/runtime.js';
+// 对外保留与旧版完全相同的事件接口：
+//   play / pause / timeupdate / loadedmetadata / trackloaded /
+//   trackcleared / modechange / volumemodechange / volumechange /
+//   ended / error
+// 让 player.js / libraries.js / designer.js 以零改动迁移。
+//
+// 仅保留 Events.On 用于一次性动作事件（player:ended / tray:toggle-play），
+// 这类事件无法通过轮询可靠检测；若 Events.On 不可用，最坏只是停止时
+// 不自动播放下一首，用户手动点击即可。
+
+import { PlayerLoad, PlayerPlay, PlayerPause, PlayerSeek, PlayerStop, PlayerGetState, PlayerTogglePlayMode, PlayerGetPlayMode, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume } from '@bindings/MusicLite/app/musicservice.js';
+import { Events } from '@wailsio/runtime';
 
 class AudioManager {
 	constructor() {
 		this.currentTrack = null;
 		this.listeners = new Map();
 
-		// 播放状态缓存（来自后端事件，前端只读）
+		// 播放状态缓存（来自后端快照，前端只读）
 		this._isPlaying = false;
 		this._currentTime = 0;
 		this._duration = 0;
 		this._volume = 70;
 
-		// 音量模式：'synth'（合成器，由后端 Player 控制）| 'master'（系统主音量）
-		// 与 settings.js 共享 localStorage key 'musicLite.volumeMode'
+		// 音量模式
 		this._volumeMode = localStorage.getItem('musicLite.volumeMode') || 'synth';
 
-		// 播放模式: 'none' | 'loopOne' | 'random'（缓存后端值，localStorage 用于即时 UI）
+		// 播放模式
 		this.playMode = localStorage.getItem('playMode') || 'none';
 
-		// 加载中标记：loadTrack 返回的 Promise，play() 需等待它完成避免空播放
+		// 加载中标记
 		this._pendingLoad = null;
 
-		this._bindBackendEvents();
+		// 启动轮询
+		this._pollTimer = null;
+		this._startPolling();
+
+		// 保留 Events.On 用于一次性动作事件
+		this._bindActionEvents();
 	}
 
-	// 订阅后端推送的播放器事件
-	_bindBackendEvents() {
-		// 曲目加载完成：同步元数据与时长
-		EventsOn('player:trackloaded', (data) => {
-			if (!data) return;
-			const track = data.track;
-			if (track) {
-				this.currentTrack = track;
-				try { localStorage.setItem('currentTrack', JSON.stringify(track)); } catch (e) {}
-				document.title = track.name || track.Name || 'MusicLite';
-				this.emit('trackloaded', track);
-			}
-			if (data.duration && data.duration !== this._duration) {
-				this._duration = data.duration;
-				this.emit('loadedmetadata', { duration: this._duration });
-			}
-		});
+	// ============ 核心轮询：每 500ms 拉取后端状态，diff 后 emit UI 事件 ============
+	_startPolling() {
+		if (this._pollTimer) clearInterval(this._pollTimer);
+		this._pollTimer = setInterval(() => this._pollState(), 500);
+	}
 
-		// 状态变更：播放/暂停/停止
-		EventsOn('player:state', (data) => {
-			if (!data) return;
-			if (typeof data.duration === 'number' && data.duration > 0 && data.duration !== this._duration) {
-				this._duration = data.duration;
-				this.emit('loadedmetadata', { duration: this._duration });
-			}
-			if (typeof data.position === 'number') {
-				this._currentTime = data.position;
-			}
-			const wasPlaying = this._isPlaying;
-			this._isPlaying = !!data.isPlaying;
-			if (this._isPlaying && !wasPlaying) {
-				this.emit('play');
-			} else if (!this._isPlaying && wasPlaying) {
-				this.emit('pause');
-			}
-		});
+	async _pollState() {
+		let state;
+		try {
+			state = await PlayerGetState();
+		} catch (e) {
+			// IPC 尚未就绪，下次轮询自动重试
+			return;
+		}
+		if (!state) return;
 
-		// 周期位置更新（仅播放中）
-		EventsOn('player:timeupdate', (data) => {
-			if (!data) return;
-			if (typeof data.position === 'number') this._currentTime = data.position;
-			if (typeof data.duration === 'number' && data.duration > 0 && data.duration !== this._duration) {
-				this._duration = data.duration;
+		// ---- 1. 曲目变更检测 ----
+		const newTrack = state.track || null;
+		const trackChanged = newTrack && (!this.currentTrack || this.currentTrack.id !== newTrack.id);
+		if (trackChanged) {
+			this.currentTrack = newTrack;
+			try { localStorage.setItem('currentTrack', JSON.stringify(newTrack)); } catch (e) {}
+			document.title = newTrack.name || newTrack.Name || 'MusicLite';
+			// 先同步时长，再 emit trackloaded（让 UI 拿到正确的 duration）
+			if (typeof state.duration === 'number' && state.duration > 0) {
+				this._duration = state.duration;
+			}
+			this.emit('trackloaded', newTrack);
+			if (this._duration > 0) {
 				this.emit('loadedmetadata', { duration: this._duration });
 			}
-			this.emit('timeupdate', {
-				currentTime: this._currentTime,
-				duration: this._duration
+		}
+
+		// ---- 2. 时长变更（非切曲但后端解码完成后时长更新） ----
+		if (!trackChanged && typeof state.duration === 'number' && state.duration > 0 && state.duration !== this._duration) {
+			this._duration = state.duration;
+			this.emit('loadedmetadata', { duration: this._duration });
+		}
+
+		// ---- 3. 播放/暂停状态变更 ----
+		const wasPlaying = this._isPlaying;
+		this._isPlaying = !!state.isPlaying;
+		if (this._isPlaying && !wasPlaying) {
+			this.emit('play');
+		} else if (!this._isPlaying && wasPlaying) {
+			this.emit('pause');
+		}
+
+		// ---- 4. 进度更新 ----
+		// 播放中：emit timeupdate 让 UI 刷新进度条和歌词
+		// 暂停/停止：只更新内部缓存，不 emit（避免无意义的 UI 刷新）
+		if (typeof state.position === 'number') {
+			this._currentTime = state.position;
+			if (this._isPlaying) {
+				this.emit('timeupdate', {
+					currentTime: this._currentTime,
+					duration: this._duration
+				});
+			}
+		}
+
+		// ---- 5. 播放模式变更 ----
+		if (state.playMode && state.playMode !== this.playMode) {
+			this.playMode = state.playMode;
+			try { localStorage.setItem('playMode', state.playMode); } catch (e) {}
+			this.emit('modechange', state.playMode);
+		}
+	}
+
+	// ============ 一次性动作事件（保留 Events.On，轮询无法替代） ============
+	_bindActionEvents() {
+		try {
+			// player:ended：队列空时后端通知前端选下一首（轮询只能检测到
+			// isPlaying=false，无法区分"暂停"和"结束"，所以保留 Events.On）
+			Events.On('player:ended', () => {
+				this._isPlaying = false;
+				this._currentTime = 0;
+				this.emit('ended');
 			});
-		});
-
-		// 曲目自然结束（后端已处理单曲循环，这里仅顺序/随机模式触发）
-		EventsOn('player:ended', () => {
-			this._isPlaying = false;
-			this._currentTime = 0;
-			this.emit('ended');
-		});
-
-		// 播放模式变更
-		EventsOn('player:modechange', (mode) => {
-			this.playMode = mode;
-			try { localStorage.setItem('playMode', mode); } catch (e) {}
-			this.emit('modechange', mode);
-		});
+		} catch (e) {
+			// Events.On 不可用时，轮询仍能同步 play/pause/timeupdate，
+			// 只是自动播放下一首功能不可用（用户手动点击即可）
+		}
+		try {
+			// 托盘播放/暂停
+			Events.On('tray:toggle-play', () => {
+				this.toggle();
+			});
+		} catch (e) {}
 	}
 
-	// 比较曲目是否相同（按 id）
+	// ============ 曲目比较（按 id） ============
 	_sameTrack(track) {
 		if (!track || !this.currentTrack) return false;
 		if (track.id !== undefined && this.currentTrack.id !== undefined) {
@@ -110,12 +145,14 @@ class AudioManager {
 		return false;
 	}
 
+	// ============ 控制方法（调用后端绑定，保持 UI 接口不变） ============
+
 	// 加载曲目：调用后端解码并构建播放管线（加载后处于暂停态）
 	loadTrack(track) {
 		if (!track || track.id === undefined || track.id === null) return;
 		// 同曲目跳过，避免重复解码打断后端播放
 		if (this._sameTrack(track)) {
-			this.currentTrack = track; // 更新可能变更的字段
+			this.currentTrack = track;
 			try { localStorage.setItem('currentTrack', JSON.stringify(track)); } catch (e) {}
 			this.emit('trackloaded', track);
 			return;
@@ -165,8 +202,6 @@ class AudioManager {
 	}
 
 	// 设置音量（按当前 volume_mode 路由到对应后端接口）
-	// synth 模式 → SetApplicationVolume（后端 Player beep effects.Volume）
-	// master 模式 → SetSystemMasterVolume（Windows 系统主音量）
 	setVolume(value) {
 		const vol = Math.max(0, Math.min(100, Math.round(value)));
 		this._volume = vol;
@@ -184,13 +219,11 @@ class AudioManager {
 		return this._volume;
 	}
 
-	// 切换音量模式（设置页点击 synth/master 时调用）
-	// 切换后从对应音源读取真实音量并更新缓存，让播放器滑块立即反映新模式
+	// 切换音量模式
 	async setVolumeMode(mode) {
 		if (mode !== 'synth' && mode !== 'master') return;
 		this._volumeMode = mode;
 		try { localStorage.setItem('musicLite.volumeMode', mode); } catch (e) {}
-		// 读取新模式下的真实音量并更新缓存
 		try {
 			const realVol = mode === 'master'
 				? await GetSystemMasterVolume()
@@ -222,8 +255,7 @@ class AudioManager {
 		return this._isPlaying;
 	}
 
-	// 切换播放模式（委托后端，后端处理单曲循环）
-	// 后端会通过 player:modechange 事件同步，这里也乐观更新返回值
+	// 切换播放模式（委托后端）
 	async togglePlayMode() {
 		try {
 			const mode = await PlayerTogglePlayMode();
@@ -241,8 +273,7 @@ class AudioManager {
 		return this.playMode;
 	}
 
-	// 从后端实时查询最新播放模式并同步缓存（用于 playNextTrack 等关键决策点）
-	// 避免 togglePlayMode 异步未完成或跨页状态不同步时读到旧值
+	// 从后端实时查询最新播放模式
 	async fetchPlayMode() {
 		try {
 			const mode = await PlayerGetPlayMode();
@@ -258,7 +289,7 @@ class AudioManager {
 		}
 	}
 
-	// 清除当前曲目（曲目被删除等场景）
+	// 清除当前曲目
 	clearTrack() {
 		try { PlayerStop(); } catch (e) { console.warn('PlayerStop failed:', e); }
 		this.currentTrack = null;
@@ -271,7 +302,7 @@ class AudioManager {
 		this.emit('trackcleared');
 	}
 
-	// 事件系统
+	// ============ 事件系统（与旧版完全兼容） ============
 	on(event, callback) {
 		if (!this.listeners.has(event)) {
 			this.listeners.set(event, []);
@@ -295,58 +326,25 @@ class AudioManager {
 		}
 	}
 
-	// 从后端恢复播放状态（页面加载时调用一次）
-	// Go 进程跨页持久播放，这里只查询快照并同步 UI
+	// ============ 初始状态恢复（页面加载时调用一次） ============
+	// 轮询已经覆盖初始状态同步，这里只触发一次立即轮询 + 同步音量
 	async restore() {
+		// 立即轮询一次（不等 500ms 定时器）
+		await this._pollState();
+		// 同步音量
 		try {
-			const state = await PlayerGetState();
-			if (state && state.track) {
-				this.currentTrack = state.track;
-				this._isPlaying = !!state.isPlaying;
-				this._currentTime = state.position || 0;
-				this._duration = state.duration || 0;
-				// 音量按 volume_mode 从对应音源读取真实值（master 模式下 PlayerGetState 的 volume 不代表系统音量）
-				try {
-					this._volume = this._volumeMode === 'master'
-						? await GetSystemMasterVolume()
-						: (state.volume || await GetApplicationVolume());
-					if (typeof this._volume !== 'number' || isNaN(this._volume)) this._volume = 70;
-					try { localStorage.setItem('volume', this._volume.toString()); } catch (e) {}
-				} catch (e) {
-					this._volume = state.volume || 70;
-				}
-				try { localStorage.setItem('currentTrack', JSON.stringify(state.track)); } catch (e) {}
-				document.title = state.track.name || state.track.Name || 'MusicLite';
-				this.emit('trackloaded', state.track);
-				if (this._duration > 0) {
-					this.emit('loadedmetadata', { duration: this._duration });
-				}
-				if (this._isPlaying) {
-					this.emit('play');
-				} else {
-					this.emit('pause');
-				}
+			const vol = this._volumeMode === 'master'
+				? await GetSystemMasterVolume()
+				: await GetApplicationVolume();
+			if (typeof vol === 'number' && !isNaN(vol)) {
+				this._volume = vol;
+				try { localStorage.setItem('volume', vol.toString()); } catch (e) {}
 			}
-			// 同步播放模式
-			try {
-				const mode = await PlayerGetPlayMode();
-				if (mode) {
-					this.playMode = mode;
-					try { localStorage.setItem('playMode', mode); } catch (e) {}
-				}
-			} catch (e) {}
 		} catch (e) {
-			console.warn('restore 查询后端状态失败:', e);
+			// IPC 未就绪，轮询会在后续自动同步
 		}
 	}
 }
 
 // 每个页面独立创建实例
 window.audioManager = new AudioManager();
-
-// 监听托盘"播放/暂停"菜单事件（由后端 tray.go 通过 Wails EventsEmit 发送）
-if (window.runtime && typeof window.runtime.EventsOn === 'function') {
-	window.runtime.EventsOn('tray:toggle-play', () => {
-		window.audioManager.toggle();
-	});
-}

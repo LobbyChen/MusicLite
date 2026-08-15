@@ -1,0 +1,153 @@
+/* ========== 前端托盘菜单窗口样式 ==========
+   菜单窗口固定宽度，暗色背景，不显示滚动条，点击遮罩外即关闭。
+
+   注意：settings-apply.js 实际注入的变量名是：
+     --bg-color / --card-bg / --text-primary / --text-secondary
+     --accent-color / --accent-hover / --accent-glow
+     --border-color / --hover-color
+   这里在 :root 上做一层"别名映射"，把 tray-menu.css 内部使用的
+   --surface / --text / --accent / --border 等映射到上面的真实变量，
+   同时保留"深色默认回退"，防止 settings-apply 加载失败时样式错乱。*/
+
+/* ---- 变量别名映射：settings-apply 变量 → tray-menu 内部变量 ---- */
+:root {
+    /* 背景：菜单整体背景 → card-bg；次级面板 → hover-color（或半透明） */
+    --surface:     var(--card-bg, #1e1f22);
+    --surface-2:   var(--hover-color, rgba(255,255,255,0.04));
+    /* 文字：主文 → text-primary；次要文 → text-secondary（已和 settings 一致，这里仅兜底） */
+    --text:        var(--text-primary, #e6e6e6);
+    --text-secondary: var(--text-secondary, #a7a9ad);
+    /* 主题色：accent → accent-color；accent-hover 原生存在；accent-soft 用半透明派生 */
+    --accent:           var(--accent-color, #1db954);
+    --accent-hover:     var(--accent-hover, #1a9e47);
+    --accent-soft:      color-mix(in srgb, var(--accent-color, #1db954) 14%, transparent);
+    /* 边框 */
+    --border:           var(--border-color, rgba(255,255,255,0.08));
+    /* 危险色（退出按钮） */
+    --danger:           #ff5f57;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+    color: var(--text, #e6e6e6);
+    font-family: var(--player-font, system-ui), "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: calc(var(--base-font-size, 14px) * 0.95);
+}
+
+.tray-menu-body {
+    background: var(--surface, #1e1f22);
+    border-radius: var(--design-radius, 14px);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45),
+                0 0 0 1px var(--border, rgba(255,255,255,0.06));
+    backdrop-filter: blur(var(--design-blur, 18px));
+    -webkit-backdrop-filter: blur(var(--design-blur, 18px));
+}
+
+.tray-menu-wrap {
+    width: 100%;
+    height: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* ---- 封面图 ---- */
+.tray-cover {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--surface-2, rgba(255,255,255,0.03));
+    border: 1px solid var(--border, rgba(255,255,255,0.05));
+}
+
+.tray-nowplaying {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface-2, rgba(255,255,255,0.03));
+    border-radius: 10px;
+    border: 1px solid var(--border, rgba(255,255,255,0.05));
+}
+.tray-nowplaying-info {
+    flex: 1;
+    min-width: 0;
+}
+.tray-track-name {
+    font-weight: 600;
+    color: var(--text, #e6e6e6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.4;
+}
+.tray-artist-name {
+    margin-top: 2px;
+    font-size: 0.85em;
+    color: var(--text-secondary, #a7a9ad);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tray-btn {
+    border: 1px solid var(--border, rgba(255,255,255,0.08));
+    background: var(--accent-soft, rgba(29,185,84,0.14));
+    color: var(--accent, #1db954);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: transform 0.12s ease, background 0.15s ease;
+    flex-shrink: 0;
+}
+.tray-btn:hover {
+    background: var(--accent, #1db954);
+    color: #fff;
+}
+.tray-btn:active { transform: scale(0.94); }
+
+.tray-divider {
+    height: 1px;
+    margin: 4px 8px;
+    background: var(--border, rgba(255,255,255,0.08));
+}
+
+.tray-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text, #e6e6e6);
+    font-size: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+.tray-item:hover {
+    background: var(--accent-soft, rgba(29,185,84,0.14));
+    color: var(--accent, #1db954);
+}
+.tray-item svg { flex-shrink: 0; opacity: 0.85; }
+.tray-item:hover svg { opacity: 1; }
+
+.tray-item-danger { color: var(--danger, #ff5f57); }
+.tray-item-danger:hover {
+    background: rgba(255, 95, 87, 0.14);
+    color: var(--danger, #ff5f57);
+}

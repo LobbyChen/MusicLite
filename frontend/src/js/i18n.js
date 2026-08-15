@@ -8,7 +8,7 @@
 //   t('libraries.title');      // 翻译；找不到时返回 undefined（不会返回原始 key）
 //   applyTranslations();       // 翻译页面所有 [data-i18n] 元素，找不到的保留 DOM 内原始文本
 
-import { GetI18nData } from '../../wailsjs/go/main/App.js';
+import { GetI18nData } from '@bindings/MusicLite/app/musicservice.js';
 
 // 翻译数据：{ 'zh-CN': { 'key': 'value', ... }, 'en-US': { ... } }
 let translations = {};

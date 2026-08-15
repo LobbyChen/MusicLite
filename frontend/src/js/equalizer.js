@@ -1,8 +1,10 @@
 // equalizer.js — 均衡器面板逻辑（模块化）
 // 与后端 Equalizer（equalizer.go，biquad peaking filter）实时联动。
 // 面板在 player-overlay 内，支持点击空白处或按 ESC 关闭。
-import { PlayerGetEqFreqs, PlayerGetEqGains, PlayerSetEqBand, PlayerSetEqGains,
-    PlayerSetEqEnabled, PlayerGetEqEnabled, PlayerResetEq } from '../../wailsjs/go/main/App.js';
+import {
+    PlayerSetEqBand, PlayerGetEqGains, PlayerGetEqFreqs, PlayerGetEqBandCount,
+    PlayerSetEqEnabled, PlayerSetEqGains, PlayerGetEqEnabled, PlayerResetEq
+} from '@bindings/MusicLite/app/musicservice.js';
 import { t } from './i18n.js';
 
 const LS_GAINS = 'musicLite.eqGains';

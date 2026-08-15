@@ -1,3 +1,18 @@
+/* 全局：移除所有按钮 hover/focus 时的浏览器默认浅色轮廓 */
+button:hover,
+button:focus,
+button:focus-visible,
+[role="button"]:hover,
+[role="button"]:focus,
+[role="button"]:focus-visible,
+input[type="checkbox"]:hover,
+input[type="checkbox"]:focus,
+input[type="radio"]:hover,
+input[type="radio"]:focus {
+    outline: none;
+    outline-offset: 0;
+}
+
 /* Base styles - will be overridden by theme */
 :root {
     --bg-color: #121212;
@@ -100,6 +115,9 @@ html body[data-page="settings"] ::-webkit-scrollbar {
     justify-content: space-between;
     padding: 0 8px 0 14px;
     --wails-draggable: drag;
+    /* WebView2 原生 NonClientRegion 模式（Windows NonClientRegionSupport 开启时生效） */
+    app-region: drag;
+    -webkit-app-region: drag;
     user-select: none;
     z-index: 1000;
 }
@@ -127,6 +145,20 @@ html body[data-page="settings"] ::-webkit-scrollbar {
     display: flex;
     gap: 2px;
     --wails-draggable: no-drag;
+    app-region: no-drag;
+    -webkit-app-region: no-drag;
+}
+
+/* titlebar 内所有交互控件也明确排除拖动区，避免误判 */
+.titlebar .titlebar-btn,
+.titlebar button,
+.titlebar input,
+.titlebar select,
+.titlebar textarea,
+.titlebar a {
+    --wails-draggable: no-drag;
+    app-region: no-drag;
+    -webkit-app-region: no-drag;
 }
 
 .titlebar-btn {
@@ -855,6 +887,8 @@ body[data-page="designer"] .btn:active {
     align-items: center;
     justify-content: center;
     --wails-draggable: no-drag;
+    app-region: no-drag;
+    -webkit-app-region: no-drag;
 }
 
 .changelog-close:hover {
