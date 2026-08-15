@@ -2459,8 +2459,15 @@ body.lyric-anim-none .fs-lyric-line {
  *   - 按钮脉冲光泽
  */
 
-/* -------- Epic：全局透视 + 弹性曲线升级 -------- */
-body[data-anim="3"] {
+/* -------- Epic：内容容器透视（不在 body 上设置，避免破坏 fixed 定位） -------- */
+/* 注意：perspective 若设置在 body，会创建新 containing block，
+   导致 position: fixed 的 .save-bar / .mini-player / .modal-backdrop 
+   不再相对于视口定位，出现"位置跑到下方"等问题。
+   因此只给内容容器和 modal-backdrop（fixed 但自身内含 3D 子元素）单独设置。 */
+body[data-anim="3"] header,
+body[data-anim="3"] main,
+body[data-anim="3"] .modal-backdrop,
+body[data-anim="3"] .player-overlay.active {
     perspective: 1200px;
 }
 

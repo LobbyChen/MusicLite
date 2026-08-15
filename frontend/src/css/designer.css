@@ -10,10 +10,16 @@
     gap: 32px;
     padding: 0 380px 120px 40px;
     align-items: flex-start;
-    /* 禁用 mainFadeIn 动画：该动画的 transform: translateY(0) 会为
-     * position:fixed 的后代创建包含块，导致预览区随页面滚动而非固定。 */
+    /* 禁用动画/transform/perspective：避免为内部 position:fixed 的
+     * .designer-preview-aside 创建包含块，导致预览区随页面滚动。 */
     animation: none !important;
     transform: none !important;
+    perspective: none !important;
+}
+
+/* Epic 模式下，仅在 designer-controls 内设置 perspective（不含 fixed 的预览区） */
+body[data-anim="3"] .designer-controls {
+    perspective: 1200px;
 }
 
 .designer-controls {
