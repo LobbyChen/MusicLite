@@ -1,8 +1,36 @@
-build
-node_modules
-frontend/dist
-.VSCodeCounter
+# ===== Build Outputs =====
+build/bin/
+*.exe
+*.AppImage
+*.dmg
+*.deb
+*.rpm
+*.msi
+
+# ===== Dependencies =====
+node_modules/
+vendor/
+
+# ===== Runtime / User Data =====
 *.db
+*.tmp
+*.log
+listen_stats.json
+settings.json
+
+# ===== IDE / OS =====
+.task
+.VSCodeCounter
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# ===== Misc =====
 *.hintrc
 *.py
-*.md
+frontend/dist/

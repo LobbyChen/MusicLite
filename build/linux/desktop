@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=MusicLite Cuckoo
+Comment=MusicLite
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/musiclite %u
+Terminal=false
+Type=Application
+Icon=musiclite
+Categories=Utility;
+StartupWMClass=musiclite
+
+ 
