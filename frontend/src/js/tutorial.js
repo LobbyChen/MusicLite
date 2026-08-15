@@ -68,6 +68,27 @@ function clearState() {
     try { localStorage.removeItem(TUTORIAL_STORAGE_KEY); } catch (e) {}
 }
 
+// ---------- 工具：确保目标元素所在 section 处于可见状态 ----------
+// 新 UI 的 winui3 / tabs 布局会把非激活的 .settings-section 设为 display:none，
+// 此时 getBoundingClientRect 返回 0，导致高亮框与 tooltip 定位错乱。
+// 这里在测量前把目标所在的 section 激活（并同步左侧导航项 / 顶部选项卡状态）。
+// 对 scroll / columns 布局无副作用（.active 不影响它们的显示）。
+function activateSectionForTarget(target) {
+    const section = target.closest('.settings-section[data-section-id]');
+    if (!section) return;
+    if (section.classList.contains('active')) return; // 已可见
+    const sectionId = section.dataset.sectionId;
+    // 切换 section 可见性
+    document.querySelectorAll('.settings-section[data-section-id]').forEach(sec => {
+        sec.classList.toggle('active', sec === section);
+    });
+    // 同步 winui3 左侧导航项 / tabs 顶部选项卡的激活状态
+    document.querySelectorAll('.winui3-nav-item, .settings-tab').forEach(item => {
+        const tid = item.dataset.navTarget || item.dataset.tabTarget;
+        item.classList.toggle('active', tid === sectionId);
+    });
+}
+
 // ---------- 工具：i18n 格式化 ----------
 function tfmt(key, ...args) {
     let s = window.__tutorialT ? window.__tutorialT(key) : key;
@@ -218,6 +239,10 @@ class TutorialRunner {
         if (step.selector) {
             target = document.querySelector(step.selector);
             if (target) {
+                // 新 UI（winui3 / tabs 布局）下，非激活的 section 为 display:none，
+                // getBoundingClientRect 会返回 0 导致定位错乱。
+                // 这里先确保目标所在的 section 被激活可见，再进行测量。
+                activateSectionForTarget(target);
                 // 如果目标不可见，滚动到它
                 const r = target.getBoundingClientRect();
                 if (r.top < 0 || r.bottom > window.innerHeight) {

@@ -1,6 +1,24 @@
 [
   {
     "date": "2026-08-15",
+    "version": "feat(user):新增教程功能",
+    "sections": [
+      {
+        "type": "其他",
+        "items": [
+          "设置界面新增教程功能"
+        ]
+      },
+      {
+        "type": "其他",
+        "items": [
+          "设置界面添加github仓库按钮"
+        ]
+      }
+    ]
+  },
+  {
+    "date": "2026-08-15",
     "version": "docs: 添加演示图片并更新 README",
     "sections": []
   },
