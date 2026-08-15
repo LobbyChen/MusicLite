@@ -306,3 +306,23 @@ func (a *MusicService) OpenAppDataFolder() error {
 		return exec.Command("xdg-open", dir).Start()
 	}
 }
+
+// GitHubRepoURL 项目 GitHub 仓库地址
+const GitHubRepoURL = "https://github.com/LobbyChen/MusicLite"
+
+// OpenGitHubRepo 在系统默认浏览器中打开项目 GitHub 仓库页面
+func (a *MusicService) OpenGitHubRepo() error {
+	return openURL(GitHubRepoURL)
+}
+
+// openURL 跨平台在系统默认浏览器中打开指定 URL
+func openURL(url string) error {
+	switch runtime.GOOS {
+	case "windows":
+		return exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", url).Start()
+	case "darwin":
+		return exec.Command("open", url).Start()
+	default:
+		return exec.Command("xdg-open", url).Start()
+	}
+}

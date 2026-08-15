@@ -2976,3 +2976,175 @@ body[data-page="designer"][data-new-ui="true"] .save-bar {
         max-height: none;
     }
 }
+
+/* ============ 使用教程 Tutorial Overlay ============ */
+.tutorial-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 2147483000;
+    pointer-events: none;
+    backdrop-filter: blur(2px);
+}
+.tutorial-highlight {
+    position: absolute;
+    top: 0; left: 0; width: 0; height: 0;
+    border-radius: 8px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55),
+                0 0 0 2px rgba(29, 185, 84, 0.95),
+                0 0 24px rgba(29, 185, 84, 0.45);
+    z-index: 2147483001;
+    pointer-events: none;
+    transition: all 250ms cubic-bezier(0.22, 1, 0.36, 1);
+    box-sizing: border-box;
+}
+.tutorial-tooltip {
+    position: absolute;
+    top: 0; left: 0;
+    width: 340px;
+    max-width: calc(100vw - 16px);
+    background: #ffffff;
+    color: #1a1a1a;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35),
+                0 0 0 1px rgba(0, 0, 0, 0.08);
+    padding: 16px 18px 14px;
+    z-index: 2147483002;
+    font-family: system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    box-sizing: border-box;
+}
+.tutorial-tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+.tutorial-page-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #1DB954;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+.tutorial-step-indicator {
+    font-size: 0.75rem;
+    color: #666;
+    font-variant-numeric: tabular-nums;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.05);
+}
+.tutorial-tooltip-body {
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: #1a1a1a;
+    margin-bottom: 16px;
+    min-height: 2.4em;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.tutorial-tooltip-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+.tutorial-nav {
+    display: flex;
+    gap: 8px;
+}
+.tutorial-btn {
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: #f4f4f4;
+    color: #1a1a1a;
+    font-size: 0.82rem;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 150ms ease;
+    font-family: inherit;
+    line-height: 1.2;
+}
+.tutorial-btn:hover {
+    background: #e8e8e8;
+    border-color: rgba(0, 0, 0, 0.2);
+}
+.tutorial-btn:active {
+    transform: translateY(1px);
+}
+.tutorial-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.tutorial-btn-primary {
+    background: #1DB954;
+    color: #ffffff;
+    border-color: #1DB954;
+}
+.tutorial-btn-primary:hover {
+    background: #17a84a;
+    border-color: #17a84a;
+    color: #ffffff;
+}
+.tutorial-btn-skip {
+    background: transparent;
+    border: 1px solid transparent;
+    color: #666;
+}
+.tutorial-btn-skip:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #1a1a1a;
+    border-color: transparent;
+}
+
+/* ---------- 深色主题适配（body 上有 data-theme 或 背景为暗色时） ---------- */
+body[data-theme="dark"] .tutorial-tooltip,
+body.dark-theme .tutorial-tooltip {
+    background: #1f1f1f;
+    color: #f0f0f0;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6),
+                0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+body[data-theme="dark"] .tutorial-tooltip-header,
+body.dark-theme .tutorial-tooltip-header {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+body[data-theme="dark"] .tutorial-tooltip-body,
+body.dark-theme .tutorial-tooltip-body {
+    color: #f0f0f0;
+}
+body[data-theme="dark"] .tutorial-step-indicator,
+body.dark-theme .tutorial-step-indicator {
+    color: #aaa;
+    background: rgba(255, 255, 255, 0.06);
+}
+body[data-theme="dark"] .tutorial-btn,
+body.dark-theme .tutorial-btn {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: #2a2a2a;
+    color: #f0f0f0;
+}
+body[data-theme="dark"] .tutorial-btn:hover,
+body.dark-theme .tutorial-btn:hover {
+    background: #333;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+body[data-theme="dark"] .tutorial-btn-skip,
+body.dark-theme .tutorial-btn-skip {
+    background: transparent;
+    border-color: transparent;
+    color: #aaa;
+}
+body[data-theme="dark"] .tutorial-btn-skip:hover,
+body.dark-theme .tutorial-btn-skip:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #f0f0f0;
+}
+
+/* 新 UI 场景下让 tooltip 与新视觉风格对齐 */
+body[data-new-ui="true"] .tutorial-tooltip {
+    border-radius: var(--w3-radius-lg, 12px);
+}

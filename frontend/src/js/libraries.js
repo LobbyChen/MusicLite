@@ -2,6 +2,7 @@ import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack ,
 import { openPlayer } from './player.js';
 import { initI18n, t } from './i18n.js';
 import { Window } from '@wailsio/runtime';
+import { resumeTutorialIfAny } from './tutorial.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
 // 用法：applyMarquee(el) —— el 是承载歌名的容器（如 .mini-title）
@@ -1733,6 +1734,9 @@ async function initLibrariesPage() {
             }
         });
     });
+
+    // 使用教程：从设置页跳转到本页时恢复引导进度
+    resumeTutorialIfAny('libraries', t);
 }
 
 // 安全启动：ES 模块执行时 DOMContentLoaded 可能已触发，需双重检查

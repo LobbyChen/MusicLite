@@ -326,6 +326,14 @@ export function OpenAppDataFolder() {
 }
 
 /**
+ * OpenGitHubRepo 在系统默认浏览器中打开项目 GitHub 仓库页面
+ * @returns {$CancellablePromise<void>}
+ */
+export function OpenGitHubRepo() {
+    return $Call.ByID(1460875157);
+}
+
+/**
  * OpenSettingsWindow 暴露给前端：从托盘菜单 / 主界面打开设置窗口
  * @returns {$CancellablePromise<void>}
  */

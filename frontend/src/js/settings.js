@@ -1,6 +1,7 @@
-import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, PlayerSetSmartEQEnabled, PlayerSetSmartEQIntensity, HotkeyApply, HotkeyGetActionList } from '@bindings/MusicLite/app/musicservice.js';
+import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, OpenGitHubRepo, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, PlayerSetSmartEQEnabled, PlayerSetSmartEQIntensity, HotkeyApply, HotkeyGetActionList } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
 import { Window } from '@wailsio/runtime';
+import { startTutorialFromSettings, resumeTutorialIfAny } from './tutorial.js';
 
 // ============ 长歌名滚动显示：检测溢出后用 Web Animations API 驱动滚动 ============
 function applyMarquee(el) {
@@ -59,6 +60,8 @@ const importBtn = document.getElementById('import-settings-btn');
 const resetBtn = document.getElementById('reset-settings-btn');
 const changelogBtn = document.getElementById('changelog-btn');
 const openDataFolderBtn = document.getElementById('open-data-folder-btn');
+const openGitHubBtn = document.getElementById('open-github-btn');
+const startTutorialBtn = document.getElementById('start-tutorial-btn');
 const changelogModal = document.getElementById('changelogModal');
 const changelogClose = document.getElementById('changelogClose');
 const changelogBody = document.getElementById('changelogBody');
@@ -1232,6 +1235,24 @@ function setupEventListeners() {
                 }
             });
         }
+        // 在系统默认浏览器中打开项目 GitHub 仓库
+        if (openGitHubBtn) {
+            openGitHubBtn.addEventListener('click', async () => {
+                try {
+                    await OpenGitHubRepo();
+                } catch (e) {
+                    showToast(t('settings.openGitHubFailed'), 'error');
+                }
+            });
+        }
+        // 启动使用教程（全新开始，总是从设置页第 0 步开始）
+        if (startTutorialBtn) {
+            startTutorialBtn.addEventListener('click', () => {
+                startTutorialFromSettings(t);
+            });
+        }
+        // 若教程中途跳转回此页，恢复引导
+        resumeTutorialIfAny('settings', t);
         if (changelogClose) {
             changelogClose.addEventListener('click', closeChangelogModal);
         }

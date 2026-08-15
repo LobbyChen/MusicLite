@@ -1,6 +1,21 @@
 [
   {
     "date": "2026-08-15",
+    "version": "docs: 添加演示图片并更新 README",
+    "sections": []
+  },
+  {
+    "date": "2026-08-15",
+    "version": "chore: 移除二进制文件并更新 .gitignore",
+    "sections": []
+  },
+  {
+    "date": "2026-08-15",
+    "version": "MiscLite Cuckoo Beta 0.6.4     我们的第一次git",
+    "sections": []
+  },
+  {
+    "date": "2026-08-15",
     "version": "MiscLite Cuckoo Beta 0.6.2",
     "sections": [
       {

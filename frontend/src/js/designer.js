@@ -4,6 +4,7 @@
 import { LoadSettings, SaveSettings, ResetSettings } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, t, applyTranslations } from './i18n.js';
 import { Window } from '@wailsio/runtime';
+import { resumeTutorialIfAny } from './tutorial.js';
 
 // ============ 长歌名滚动显示（与 settings.js 一致） ============
 function applyMarquee(el) {
@@ -535,6 +536,9 @@ async function initDesignerPage() {
     document.querySelectorAll('.settings-section').forEach((sec, i) => {
         sec.style.setProperty('--sec-i', i);
     });
+
+    // 使用教程：从音乐库页跳转到本页时恢复引导进度
+    resumeTutorialIfAny('designer', t);
 }
 
 // 安全启动：ES 模块执行时 DOMContentLoaded 可能已触发，需双重检查
