@@ -6,6 +6,26 @@ build/bin/
 *.deb
 *.rpm
 *.msi
+.task/
+# Build outputs
+/bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Wails generated
+frontend/bindings/
+
+# Task cache
+.task/
+
+# IDE & OS
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
+
 
 # ===== Dependencies =====
 node_modules/
