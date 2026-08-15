@@ -4,7 +4,8 @@
 
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](./license/LICENCE.txt)
 [![Wails](https://img.shields.io/badge/wails-v3-ff5722.svg)](https://wails.io/)
-[![Go](https://img.shields.io/badge/go-1.21+-00ADD8.svg)](https://go.dev/)
+[![Platforms](https://img.shields.io/badge/Platforms-Windows|Linux|MacOS-brightgreen)](#)
+[![Go](https://img.shields.io/badge/go-1.21+-00ADD8.svg?logo=go)](https://go.dev/)
 
 **MusicLite Cuckoo** 是一款专注于本地播放体验的桌面音乐应用，通过 Wails v3 框架实现高性能的跨平台桌面封装。
 
@@ -21,6 +22,22 @@
 - **📦 打包分享**：将曲目、封面、歌词嵌入 ID3v2 标签并复制到剪贴板
 - **⏱️ 听歌统计**：记录每首歌曲的累计播放时长
 - **🪟 两种UI可选**：可选的两种UI配置
+
+## 演示
+### 传统UI中文主界面
+<img src=".\example\main_old_cn.png" alt="中文主界面">
+
+### 新UI中文主界面
+
+<img src=".\example\main_new_cn.png" alt="中文主界面">
+
+### 传统UI设计器
+
+<img src=".\example\designer_old.png" alt="中文主界面">
+
+### 传统UI设置界面调色演示
+
+<img src=".\example\sett_old_color.png" alt="中文主界面">
 
 ## 快速开始
 
