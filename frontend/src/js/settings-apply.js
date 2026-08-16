@@ -1888,7 +1888,10 @@ function applyLibrariesWinUI3() {
         btn.className = 'winui3-nav-item' + (item.active ? ' active' : '');
         btn.dataset.navPane = item.id;
         const label = t(item.labelKey, item.fallback);
-        btn.innerHTML = '<span class="winui3-nav-icon">' + item.icon + '</span><span class="winui3-nav-label">' + label + '</span>';
+        // 关键：写入 data-i18n，让后续 applyTranslations() 能在 i18n 数据就绪后重新翻译。
+        // 本函数在 DOMContentLoaded 阶段同步执行，往往早于后端 i18n 数据加载完成，
+        // 此时 t() 只能返回中文 fallback；若不挂 data-i18n，侧边栏会一直停留在中文。
+        btn.innerHTML = '<span class="winui3-nav-icon">' + item.icon + '</span><span class="winui3-nav-label" data-i18n="' + item.labelKey + '">' + label + '</span>';
         if (item.url) {
             btn.addEventListener('click', () => { window.location.href = item.url; });
         } else if (item.id === 'library') {
@@ -1986,6 +1989,8 @@ function applyDesignerWinUI3() {
     const navTitle = document.createElement('span');
     navTitle.className = 'winui3-nav-title';
     navTitle.textContent = t('designer.title', '设计器');
+    // 挂 data-i18n，确保 i18n 数据就绪后 applyTranslations() 能重新翻译（与导航项同理）
+    navTitle.setAttribute('data-i18n', 'designer.title');
     navHeader.appendChild(navTitle);
     nav.appendChild(navHeader);
 
@@ -2022,7 +2027,8 @@ function applyDesignerWinUI3() {
         const btn = document.createElement('button');
         btn.className = 'winui3-nav-item' + (i === 0 ? ' active' : '');
         btn.dataset.navSection = secId;
-        btn.innerHTML = '<span class="winui3-nav-icon">' + icon + '</span><span class="winui3-nav-label">' + label + '</span>';
+        // 挂 data-i18n，确保 i18n 数据就绪后 applyTranslations() 能重新翻译（导航项在 DOMContentLoaded 阶段构建，可能早于 i18n 加载完成）
+        btn.innerHTML = '<span class="winui3-nav-icon">' + icon + '</span><span class="winui3-nav-label" data-i18n="' + labelKey + '">' + label + '</span>';
         btn.addEventListener('click', () => {
             sections.forEach(s => s.style.display = 'none');
             sec.style.display = 'block';

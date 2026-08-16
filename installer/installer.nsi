@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "MusicLite Cuckoo"
-!define PRODUCT_VERSION "0.6.3"
+!define PRODUCT_VERSION "0.7.0"
 !define PRODUCT_PUBLISHER "LobbyChen"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\MusicLite.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
@@ -21,7 +21,7 @@
 !insertmacro MUI_PAGE_WELCOME
 ; License page
 !define MUI_LICENSEPAGE_CHECKBOX
-!insertmacro MUI_PAGE_LICENSE "..\license\LICENCE.txt"
+!insertmacro MUI_PAGE_LICENSE "..\LICENSE.txt"
 ; Directory page
 !insertmacro MUI_PAGE_DIRECTORY
 ; Start menu page
@@ -47,7 +47,7 @@ var ICONS_GROUP
 ; MUI end ------
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "..\build\bin\MusicLiteCuckoo_B0.6.2_Setup_amd64.exe"
+OutFile "..\build\bin\MusicLiteCuckoo_B0.7.0_Setup_amd64.exe"
 InstallDir "$LOCALAPPDATA\Programs\MusicLiteCuckoo"
 InstallDirRegKey HKLM "${PRODUCT_DIR_REGKEY}" ""
 ShowInstDetails show
@@ -56,10 +56,16 @@ ShowUnInstDetails show
 Section "MainSection" SEC01
   SetOutPath "$INSTDIR"
   SetOverwrite ifnewer
-  File "..\license\LICENCE.txt"
+  File "..\LICENSE.txt"
   SetOverwrite on
   File "..\bin\MusicLite.exe"
-  File "..\libfftw3-3.dll"
+  File "..\libs\libfftw3-3.dll"
+  File "..\libs\avcodec-63.dll"
+  File "..\libs\avdevice-63.dll"
+  File "..\libs\avformat-63.dll"
+  File "..\libs\avutil-61.dll"
+  File "..\libs\swresample-7.dll"
+  File "..\libs\swscale-10.dll"
 
 ; Shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application

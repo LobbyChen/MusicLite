@@ -1,11 +1,18 @@
 # MusicLite Cuckoo
 
 > 轻量级、跨平台的离线音乐播放器
+<div align="center">
 
-[![License](https://img.shields.io/badge/license-GPL-blue.svg)](./license/LICENCE.txt)
-[![Wails](https://img.shields.io/badge/wails-v3-ff5722.svg)](https://wails.io/)
-[![Platforms](https://img.shields.io/badge/Platforms-Windows|Linux|MacOS-brightgreen)](#)
-[![Go](https://img.shields.io/badge/go-1.21+-00ADD8.svg?logo=go)](https://go.dev/)
+[![License](https://img.shields.io/badge/license-GPL-blue.svg)](./LICENSE.txt)  [![Wails](https://img.shields.io/badge/wails-v3-ff5722.svg)](https://wails.io/) [![Platforms](https://img.shields.io/badge/Platforms-Windows|Linux|MacOS-brightgreen)](#)   [![Go](https://img.shields.io/badge/go-1.21+-00ADD8.svg?logo=go)](https://go.dev/)
+
+</div>
+<div align="center">
+
+[English](README.en.md) · [简体中文](README.md)
+
+</div>
+
+
 
 **MusicLite Cuckoo** 是一款专注于本地播放体验的桌面音乐应用，通过 Wails v3 框架实现高性能的跨平台桌面封装。
 
@@ -35,7 +42,9 @@
 
 <img src=".\example\designer_old.png" alt="中文主界面">
 
-### 
+### 新UI 半透明背景
+
+<img src=".\example\main_translucent.png" alt="半透明新UI">
 
 ## 快速开始
 
