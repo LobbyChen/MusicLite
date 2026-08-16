@@ -10,47 +10,48 @@ import (
 
 // Settings 应用设置结构体
 type Settings struct {
-	Theme          string  `json:"theme"`           // "dark" | "light" | "accent" | "custom"
-	PlayerFont     string  `json:"player_font"`     // 播放器字体
-	LyricsFont     string  `json:"lyrics_font"`     // 歌词字体
-	UIScale        int     `json:"ui_scale"`        // 界面缩放比例 (20-500)，默认 100
-	LyricsScale    int     `json:"lyrics_scale"`    // 歌词缩放比例 (20-500)，默认 100
-	LastTrackID    int64   `json:"last_track_id"`   // 上次播放的曲目ID
-	LastPosition   int64   `json:"last_position"`   // 上次播放位置（秒）
-	Volume         int     `json:"volume"`          // 音量 0-100
-	AccentColor    string  `json:"accent_color"`    // 自定义主题色（十六进制，如 #1DB954）
-	Language       string  `json:"language"`        // 界面语言："zh-CN" | "en"
-	LyricAnimation string  `json:"lyric_animation"` // 全屏歌词切换动画："fade" | "slide-up" | "slide-left" | "zoom" | "none"
-	ListMode       string  `json:"list_mode"`       // 音乐库列表模式："card" | "list"
-	AnimationLevel int     `json:"animation_level"` // 界面动画级别：0=无 1=基础 2=增强(默认) 3=华丽
-	VolumeMode     string  `json:"volume_mode"`     // 音量模式："synth"（合成器，默认）| "master"（系统主音量）
-	MaxLyricLines  int     `json:"max_lyric_lines"` // 同一时间戳最多允许同时显示歌词行数（1-10，默认1）
-	SortMode       string  `json:"sort_mode"`       // 音乐库排序方式："recent"（默认）| "title" | "artist"
+	Theme          string `json:"theme"`           // "dark" | "light" | "accent" | "custom"
+	PlayerFont     string `json:"player_font"`     // 播放器字体
+	LyricsFont     string `json:"lyrics_font"`     // 歌词字体
+	UIScale        int    `json:"ui_scale"`        // 界面缩放比例 (20-500)，默认 100
+	LyricsScale    int    `json:"lyrics_scale"`    // 歌词缩放比例 (20-500)，默认 100
+	LastTrackID    int64  `json:"last_track_id"`   // 上次播放的曲目ID
+	LastPosition   int64  `json:"last_position"`   // 上次播放位置（秒）
+	Volume         int    `json:"volume"`          // 音量 0-100
+	AccentColor    string `json:"accent_color"`    // 自定义主题色（十六进制，如 #1DB954）
+	Language       string `json:"language"`        // 界面语言："zh-CN" | "en"
+	LyricAnimation string `json:"lyric_animation"` // 全屏歌词切换动画："fade" | "slide-up" | "slide-left" | "zoom" | "none"
+	ListMode       string `json:"list_mode"`       // 音乐库列表模式："card" | "list"
+	AnimationLevel int    `json:"animation_level"` // 界面动画级别：0=无 1=基础 2=增强(默认) 3=华丽
+	VolumeMode     string `json:"volume_mode"`     // 音量模式："synth"（合成器，默认）| "master"（系统主音量）
+	MaxLyricLines  int    `json:"max_lyric_lines"` // 同一时间戳最多允许同时显示歌词行数（1-10，默认1）
+	SortMode       string `json:"sort_mode"`       // 音乐库排序方式："recent"（默认）| "title" | "artist"
 	// 背景（全页面生效：图片或视频）
-	BgType    string  `json:"bg_type"`    // "none" | "image" | "video"
-	BgURL     string  `json:"bg_url"`     // 图片为 dataURL；视频为本地绝对文件路径（file:// 或纯路径）
-	BgFit     string  `json:"bg_fit"`     // "cover" 铺满全屏 | "contain" 完整显示 | "fill" 拉伸填满 | "none" 原尺寸居中 | "scaledown" 智能缩放
-	BgOpacity float64 `json:"bg_opacity"` // 背景不透明度 0-1，默认 0.9
-	BgOverlay float64 `json:"bg_overlay"` // 前景遮罩（暗/浅色）强度 0-1，默认 0.2（提高文字对比度）
-	BgBlur    int     `json:"bg_blur"`    // 背景模糊程度 0-30（像素），默认 0
-	BgLoop    bool    `json:"bg_loop"`    // 视频是否循环（默认 true）
-	BgMuted   bool    `json:"bg_muted"`   // 视频是否静音（默认 true，推荐开启避免干扰）
+	BgType          string  `json:"bg_type"`           // "none" | "image" | "video"
+	BgURL           string  `json:"bg_url"`            // 图片为 dataURL；视频为本地绝对文件路径（file:// 或纯路径）
+	BgFit           string  `json:"bg_fit"`            // "cover" 铺满全屏 | "contain" 完整显示 | "fill" 拉伸填满 | "none" 原尺寸居中 | "scaledown" 智能缩放
+	BgOpacity       float64 `json:"bg_opacity"`        // 背景不透明度 0-1，默认 0.9
+	BgOverlay       float64 `json:"bg_overlay"`        // 前景遮罩（暗/浅色）强度 0-1，默认 0.2（提高文字对比度）
+	BgBlur          int     `json:"bg_blur"`           // 背景模糊程度 0-30（像素），默认 0
+	BgLoop          bool    `json:"bg_loop"`           // 视频是否循环（默认 true）
+	BgMuted         bool    `json:"bg_muted"`          // 视频是否静音（默认 true，推荐开启避免干扰）
 	BgGlassDisabled bool    `json:"bg_glass_disabled"` // 有背景时关闭所有容器毛玻璃（backdrop-filter）效果，避免边界与撕裂
 	WindowAlpha     float64 `json:"window_alpha"`      // 整窗透明度 0.01-1.0，默认 1；对桌面透出实现 Aero 效果
 	AeroBlur        int     `json:"aero_blur"`         // Aero 透明模式下的背景模糊量（px，0-40，默认 0）；0=关闭模糊
 	// 设计令牌（设计器实时调整，持久化到 settings.json）
-	DesignRadius    float64 `json:"design_radius"`     // 圆角（px，0-28，默认 10）
-	DesignBlur      int     `json:"design_blur"`       // 毛玻璃模糊量（px，0-40，默认 16）
-	DesignAnimMult  float64 `json:"design_anim_mult"`  // 动画速度倍率（0.3-2.5，默认 1.0）
-	DesignShadow    float64 `json:"design_shadow"`     // 浮层阴影强度（0-1，默认 0.45）
-	DesignGlow      float64 `json:"design_glow"`        // 主题色辉光范围（0-1，默认 0.35）
-	DesignTextGlow  float64 `json:"design_text_glow"`  // 字体晕影强度（0-1，默认 0）
-	TitlebarText   string  `json:"titlebar_text"`     // 自定义标题栏文字（空则使用默认 "MusicLite Cuckoo"）
-	SmartEQEnabled   bool    `json:"smart_eq_enabled"`     // 智能均衡器开关
-	SmartEQIntensity float64 `json:"smart_eq_intensity"`   // 智能均衡器补偿强度 0-1
+	DesignRadius     float64 `json:"design_radius"`      // 圆角（px，0-28，默认 10）
+	DesignBlur       int     `json:"design_blur"`        // 毛玻璃模糊量（px，0-40，默认 16）
+	DesignAnimMult   float64 `json:"design_anim_mult"`   // 动画速度倍率（0.3-2.5，默认 1.0）
+	DesignShadow     float64 `json:"design_shadow"`      // 浮层阴影强度（0-1，默认 0.45）
+	DesignGlow       float64 `json:"design_glow"`        // 主题色辉光范围（0-1，默认 0.35）
+	DesignTextGlow   float64 `json:"design_text_glow"`   // 字体晕影强度（0-1，默认 0）
+	TitlebarText     string  `json:"titlebar_text"`      // 自定义标题栏文字（空则使用默认 "MusicLite Cuckoo"）
+	SmartEQEnabled   bool    `json:"smart_eq_enabled"`   // 智能均衡器开关
+	SmartEQIntensity float64 `json:"smart_eq_intensity"` // 智能均衡器补偿强度 0-1
 	// 设置界面布局与新 UI
 	SettingsLayout string `json:"settings_layout"` // 设置界面布局："scroll"（默认）| "columns" | "tabs"
-	NewUIEnabled   bool   `json:"new_ui_enabled"`   // 新风格 UI 开关
+	NewUIEnabled   bool   `json:"new_ui_enabled"`  // 新风格 UI 开关
+	VoidMode       bool   `json:"void_mode"`       // 虚空模式：界面颠倒 + 全黑 + 鼠标手电筒（需自行寻找退出按钮）
 	// 全局快捷键（3 个）
 	HotkeyPlayPause HotkeyConfig `json:"hotkey_playpause"` // 播放 / 暂停切换
 	HotkeyNext      HotkeyConfig `json:"hotkey_next"`      // 下一曲
@@ -60,47 +61,47 @@ type Settings struct {
 // DefaultSettings 返回默认设置
 func DefaultSettings() Settings {
 	return Settings{
-		Theme:          "dark",
-		PlayerFont:     "system-ui",
-		LyricsFont:     "Consolas, Monaco, monospace",
-		UIScale:        135,
-		LyricsScale:    135,
-		LastTrackID:    0,
-		LastPosition:   0,
-		Volume:         70,
-		AccentColor:    "#1DB954",
-		Language:       "zh-CN",
-		LyricAnimation: "fade",
-		ListMode:       "card",
-		AnimationLevel: 2,
-		VolumeMode:     "synth",
-		MaxLyricLines:  1,
-		SortMode:       "recent",
-		BgType:         "none",
-		BgURL:          "",
-		BgFit:          "cover",
-		BgOpacity:      0.9,
-		BgOverlay:      0.2,
-		BgBlur:         0,
-		BgLoop:         true,
-		BgMuted:        true,
-		BgGlassDisabled: false,
-		WindowAlpha:     1.0,
-		AeroBlur:        0,
-		DesignRadius:   10,
-		DesignBlur:     16,
-		DesignAnimMult: 1.0,
-		DesignShadow:   0.45,
-		DesignGlow:     0.35,
-		DesignTextGlow: 0,
-		TitlebarText:      "MusicLite Cuckoo",
+		Theme:            "dark",
+		PlayerFont:       "system-ui",
+		LyricsFont:       "Consolas, Monaco, monospace",
+		UIScale:          135,
+		LyricsScale:      135,
+		LastTrackID:      0,
+		LastPosition:     0,
+		Volume:           70,
+		AccentColor:      "#1DB954",
+		Language:         "zh-CN",
+		LyricAnimation:   "fade",
+		ListMode:         "card",
+		AnimationLevel:   2,
+		VolumeMode:       "synth",
+		MaxLyricLines:    1,
+		SortMode:         "recent",
+		BgType:           "none",
+		BgURL:            "",
+		BgFit:            "cover",
+		BgOpacity:        0.9,
+		BgOverlay:        0.2,
+		BgBlur:           0,
+		BgLoop:           true,
+		BgMuted:          true,
+		BgGlassDisabled:  false,
+		WindowAlpha:      1.0,
+		AeroBlur:         0,
+		DesignRadius:     10,
+		DesignBlur:       16,
+		DesignAnimMult:   1.0,
+		DesignShadow:     0.45,
+		DesignGlow:       0.35,
+		DesignTextGlow:   0,
+		TitlebarText:     "MusicLite Cuckoo",
 		SmartEQEnabled:   false,
 		SmartEQIntensity: 0.7,
-		SettingsLayout:  "scroll",
-		NewUIEnabled:    false,
-		HotkeyPlayPause: HotkeyConfig{Enabled: false, Keys: ""},
-		HotkeyNext:      HotkeyConfig{Enabled: false, Keys: ""},
-		HotkeyPrev:      HotkeyConfig{Enabled: false, Keys: ""},
+		SettingsLayout:   "scroll",
+		NewUIEnabled:     false,
+		HotkeyPlayPause:  HotkeyConfig{Enabled: false, Keys: ""},
+		HotkeyNext:       HotkeyConfig{Enabled: false, Keys: ""},
+		HotkeyPrev:       HotkeyConfig{Enabled: false, Keys: ""},
 	}
 }
 
@@ -250,6 +251,9 @@ func (a *MusicService) LoadSettings() Settings {
 		}
 		if !has4("new_ui_enabled") {
 			s.NewUIEnabled = def.NewUIEnabled
+		}
+		if !has4("void_mode") {
+			s.VoidMode = def.VoidMode
 		}
 	}
 	// 设计令牌：兼容旧版设置文件（缺失时用默认值补齐，越界时钳制到合法范围）

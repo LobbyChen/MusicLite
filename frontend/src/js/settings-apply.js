@@ -1,4 +1,4 @@
-import { LoadSettings } from '@bindings/MusicLite/app/musicservice.js';
+import { LoadSettings, SaveSettings } from '@bindings/MusicLite/app/musicservice.js';
 import { CheckI18nNewKeys, ConfirmI18nMerge } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, setLanguage, applyTranslations, reloadI18n } from './i18n.js';
 
@@ -180,6 +180,183 @@ function applyNewUI(enabled) {
         document.body.setAttribute('data-new-ui', enabled ? 'true' : 'false');
     }
     try { localStorage.setItem('musicLite.newUIEnabled', enabled ? '1' : '0'); } catch (e) {}
+}
+
+// ============ 虚空模式（Void Mode）============
+// 界面上下颠倒 + 文字/背景/控件全黑 + 鼠标即手电筒（照亮边缘）+ 滚轮调节光圈（最大 30px）
+// 退出按钮隐藏于黑暗之中，需自行寻找。
+let _voidCssInjected = false;
+let _voidModeActive = false;
+let _voidFlashlightRadius = 16; // 默认光圈半径（px）
+let _voidMaskEl = null;
+let _voidExitBtnEl = null;
+let _voidEventsBound = false;
+
+function injectVoidCSSOnce() {
+    if (_voidCssInjected) return;
+    _voidCssInjected = true;
+    const css = `
+/* ===== 虚空模式：颠倒 + 全黑 + 手电筒 ===== */
+html[data-void-mode="true"] {
+    transform: rotate(180deg) !important;
+    transform-origin: center center !important;
+}
+html[data-void-mode="true"] body {
+    background-color: #000 !important;
+}
+/* 所有元素主体强制全黑；以 inset 阴影描出 1px 亮灰"边缘"，
+   平时被全黑遮罩盖住，仅手电筒光圈内透出，呈现"照亮边缘"效果 */
+html[data-void-mode="true"] *:not(.void-flashlight-mask):not(.void-exit-btn) {
+    background-color: #000 !important;
+    background-image: none !important;
+    color: #000 !important;
+    text-shadow: none !important;
+    box-shadow: inset 0 0 0 1px #6a6a6a !important;
+}
+html[data-void-mode="true"] img,
+html[data-void-mode="true"] video {
+    filter: brightness(0) !important;
+}
+html[data-void-mode="true"] svg {
+    fill: #000 !important;
+    stroke: #000 !important;
+    color: #000 !important;
+}
+/* 手电筒遮罩：全黑覆盖层，用 mask 在鼠标位置挖一个柔和的洞，透出下层亮灰边缘 */
+.void-flashlight-mask {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 2147483646;
+    background: #000;
+    -webkit-mask-image: radial-gradient(circle var(--flashlight-radius, 16px) at var(--flashlight-x, 50%) var(--flashlight-y, 50%), transparent 0%, transparent 45%, rgba(0,0,0,0.55) 75%, #000 100%);
+    mask-image: radial-gradient(circle var(--flashlight-radius, 16px) at var(--flashlight-x, 50%) var(--flashlight-y, 50%), transparent 0%, transparent 45%, rgba(0,0,0,0.55) 75%, #000 100%);
+}
+/* 隐藏的退出按钮：极小、近乎隐形，置于角落；抵消页面旋转保持正向 */
+.void-exit-btn {
+    position: fixed;
+    bottom: 3px;
+    right: 3px;
+    width: 12px;
+    height: 12px;
+    padding: 0;
+    margin: 0;
+    background: #000 !important;
+    border: 1px solid #6a6a6a !important;
+    color: #000 !important;
+    cursor: pointer;
+    z-index: 2147483645;
+    transform: rotate(180deg);
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+.void-exit-btn:hover {
+    border-color: #9a9a9a !important;
+}
+`;
+    const style = document.createElement('style');
+    style.id = 'ml-void-mode-css';
+    style.textContent = css;
+    (document.head || document.documentElement).appendChild(style);
+}
+
+function _voidBindEventsOnce() {
+    if (_voidEventsBound) return;
+    _voidEventsBound = true;
+
+    // 鼠标移动 → 手电筒跟随。
+    // 注意：html 旋转 180° 后，fixed 遮罩的坐标系也跟着反转，
+    // 视口 (clientX, clientY) 对应遮罩坐标 (innerWidth - clientX, innerHeight - clientY)。
+    document.addEventListener('mousemove', (e) => {
+        if (!_voidModeActive || !_voidMaskEl) return;
+        const x = window.innerWidth - e.clientX;
+        const y = window.innerHeight - e.clientY;
+        _voidMaskEl.style.setProperty('--flashlight-x', x + 'px');
+        _voidMaskEl.style.setProperty('--flashlight-y', y + 'px');
+    }, { passive: true });
+
+    // 滚轮 → 调节光圈半径，范围 4-30px
+    window.addEventListener('wheel', (e) => {
+        if (!_voidModeActive) return;
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 1 : -1;
+        let r = _voidFlashlightRadius + delta;
+        r = Math.max(4, Math.min(300, r));
+        if (r !== _voidFlashlightRadius) {
+            _voidFlashlightRadius = r;
+            if (_voidMaskEl) _voidMaskEl.style.setProperty('--flashlight-radius', r + 'px');
+        }
+    }, { passive: false });
+}
+
+function _voidEnsureElements() {
+    if (!_voidMaskEl || !_voidMaskEl.isConnected) {
+        if (_voidMaskEl && !_voidMaskEl.isConnected) _voidMaskEl = null;
+        _voidMaskEl = document.createElement('div');
+        _voidMaskEl.className = 'void-flashlight-mask';
+        _voidMaskEl.style.setProperty('--flashlight-radius', _voidFlashlightRadius + 'px');
+        _voidMaskEl.style.setProperty('--flashlight-x', (window.innerWidth / 2) + 'px');
+        _voidMaskEl.style.setProperty('--flashlight-y', (window.innerHeight / 2) + 'px');
+        (document.body || document.documentElement).appendChild(_voidMaskEl);
+    }
+    if (!_voidExitBtnEl || !_voidExitBtnEl.isConnected) {
+        if (_voidExitBtnEl && !_voidExitBtnEl.isConnected) _voidExitBtnEl = null;
+        _voidExitBtnEl = document.createElement('button');
+        _voidExitBtnEl.className = 'void-exit-btn';
+        _voidExitBtnEl.setAttribute('aria-label', '退出虚空模式');
+        _voidExitBtnEl.title = '';
+        _voidExitBtnEl.addEventListener('click', async () => {
+            // 退出虚空模式并持久化
+            applyVoidMode(false);
+            try {
+                let s = SettingsManager.cached;
+                if (!s) {
+                    try { s = await LoadSettings(); } catch (e) { s = {}; }
+                }
+                s.void_mode = false;
+                if (SettingsManager.cached) SettingsManager.cached.void_mode = false;
+                await SaveSettings(s);
+                // 通知其他页面同步
+                try {
+                    localStorage.setItem('settingsUpdated', Date.now().toString());
+                    localStorage.setItem('cachedSettings', JSON.stringify(s));
+                } catch (e) {}
+            } catch (e) {
+                console.warn('[void-mode] 退出保存失败：', e);
+            }
+        });
+        (document.body || document.documentElement).appendChild(_voidExitBtnEl);
+    }
+}
+
+function applyVoidMode(enabled) {
+    const root = document.documentElement;
+    // 托盘菜单窗口小且独立，颠倒后将无法操作，故跳过虚空模式
+    if (enabled && document.body && document.body.classList.contains('tray-menu-body')) {
+        try { localStorage.setItem('musicLite.voidMode', '0'); } catch (e) {}
+        return;
+    }
+    if (enabled) {
+        injectVoidCSSOnce();
+        _voidBindEventsOnce();
+        root.setAttribute('data-void-mode', 'true');
+        // 确保 DOM 就绪后再创建元素
+        if (document.body) {
+            _voidEnsureElements();
+        } else {
+            document.addEventListener('DOMContentLoaded', _voidEnsureElements, { once: true });
+        }
+        _voidModeActive = true;
+    } else {
+        root.removeAttribute('data-void-mode');
+        _voidModeActive = false;
+        if (_voidMaskEl) { _voidMaskEl.remove(); _voidMaskEl = null; }
+        if (_voidExitBtnEl) { _voidExitBtnEl.remove(); _voidExitBtnEl = null; }
+    }
+    try { localStorage.setItem('musicLite.voidMode', enabled ? '1' : '0'); } catch (e) {}
 }
 
 // BgFit 内部映射：友好标识 → object-fit 实际属性（UI 不暴露属性名）
@@ -1493,6 +1670,8 @@ const SettingsManager = {
         applySettingsLayout(s.settings_layout);
         // 新风格 UI 开关
         applyNewUI(s.new_ui_enabled);
+        // 虚空模式
+        applyVoidMode(s.void_mode);
 
         // 同一时间戳歌词行数（同步到 localStorage，供 player.js 读取）
         const maxLines = (typeof s.max_lyric_lines === 'number' && s.max_lyric_lines >= 1 && s.max_lyric_lines <= 10)
@@ -1532,7 +1711,7 @@ const SettingsManager = {
     },
 
     // 重新应用（设置保存后调用）
-    reapply() {
+    async reapply() {
         if (this.cached) {
             document.body.setAttribute('data-theme', this.cached.theme || 'dark');
             document.documentElement.setAttribute('data-theme', this.cached.theme || 'dark');
@@ -1570,6 +1749,8 @@ const SettingsManager = {
             applySettingsLayout(this.cached.settings_layout);
             // 新风格 UI 开关
             applyNewUI(this.cached.new_ui_enabled);
+            // 虚空模式
+            applyVoidMode(this.cached.void_mode);
 
             // 同一时间戳歌词行数（同步到 localStorage）
             const maxLines = (typeof this.cached.max_lyric_lines === 'number' && this.cached.max_lyric_lines >= 1 && this.cached.max_lyric_lines <= 10)
@@ -1636,6 +1817,11 @@ const SettingsManager = {
     // 暴露给设计器实时预览：新风格 UI 开关
     applyNewUI(enabled) {
         applyNewUI(enabled);
+    },
+
+    // 暴露给设置页：虚空模式开关
+    applyVoidMode(enabled) {
+        applyVoidMode(enabled);
     },
 
     // 暴露给设置页实时预览：背景（图片或视频）
@@ -1743,6 +1929,14 @@ if (document.readyState === 'loading') {
     try {
         const v = localStorage.getItem('musicLite.newUIEnabled');
         if (v !== null) applyNewUI(v === '1');
+    } catch (e) {}
+})();
+
+// 同步应用虚空模式（在 DOMContentLoaded 之前应用，避免首屏先正常后颠倒的闪烁）
+(function syncApplyVoidMode() {
+    try {
+        const v = localStorage.getItem('musicLite.voidMode');
+        if (v === '1') applyVoidMode(true);
     } catch (e) {}
 })();
 
@@ -2523,6 +2717,11 @@ function _buildDiffBrief(report) {
             const rest = d.changed_keys.length - MAX_SHOW;
             parts.push(`<span class="i18n-diff-tag i18n-diff-tag--chg">${_t('i18n.changedKeys', 'Updated keys:')}</span> ${show}${rest > 0 ? moreTpl(rest) : ''}`);
         }
+        if (d.obsolete_keys && d.obsolete_keys.length) {
+            const show = d.obsolete_keys.slice(0, MAX_SHOW).join(', ');
+            const rest = d.obsolete_keys.length - MAX_SHOW;
+            parts.push(`<span class="i18n-diff-tag i18n-diff-tag--obs">${_t('i18n.obsoleteKeys', 'Obsolete keys:')}</span> ${show}${rest > 0 ? moreTpl(rest) : ''}`);
+        }
         if (parts.length === 0) continue;
         const title = d.lang_native || d.lang_code || '';
         lines.push(`<div class="i18n-diff-line"><strong>${title}</strong><br/>&nbsp;&nbsp;${parts.join('<br/>&nbsp;&nbsp;')}</div>`);
@@ -2531,6 +2730,7 @@ function _buildDiffBrief(report) {
 }
 
 // 确认覆盖对话框：创建专用 modal（不与删除/设置的 confirm 复用，避免互相冲突）
+// 返回 { confirmed: bool, removeObsolete: bool }
 function _openI18nUpdateModal(report) {
     return new Promise((resolve) => {
         const id = 'i18n-update-modal';
@@ -2551,7 +2751,7 @@ function _openI18nUpdateModal(report) {
 #i18n-update-modal .modal h3 { margin: 0 0 8px; font-size: 16px; }
 #i18n-update-modal .modal > p { margin: 0 0 12px; opacity: .88; font-size: 13.5px; line-height: 1.55; }
 .i18n-diff-box {
-  margin: 4px 0 16px; padding: 10px 12px; border-radius: 8px;
+  margin: 4px 0 12px; padding: 10px 12px; border-radius: 8px;
   background: color-mix(in srgb, var(--card-bg, #1e1e1e) 62%, transparent);
   border: 1px solid color-mix(in srgb, var(--border-color, #333) 60%, transparent);
   max-height: 240px; overflow: auto; font-size: 12.5px; line-height: 1.6;
@@ -2560,6 +2760,12 @@ function _openI18nUpdateModal(report) {
 .i18n-diff-tag { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11.5px; margin-right: 4px; }
 .i18n-diff-tag--new { background: color-mix(in srgb, var(--accent-color, #1db954) 32%, transparent); color: var(--accent-color, #1db954); }
 .i18n-diff-tag--chg { background: color-mix(in srgb, #ffb020 32%, transparent); color: #ffb020; }
+.i18n-diff-tag--obs { background: color-mix(in srgb, #ff5252 28%, transparent); color: #ff5252; }
+.i18n-opt-row {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 14px;
+  font-size: 13px; opacity: .92; cursor: pointer; user-select: none;
+}
+.i18n-opt-row input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent-color, #1db954); }
 #i18n-update-modal .modal-buttons { justify-content: flex-end; gap: 8px; display: flex; }
 #i18n-update-modal .btn {
   padding: 7px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 13.5px;
@@ -2580,12 +2786,19 @@ function _openI18nUpdateModal(report) {
         const descText = _t('i18n.updateDesc', 'Built-in translations include new entries or corrections. Sync them to your local file?');
         const mergeText = _t('i18n.merge', 'Sync Now');
         const skipText = _t('i18n.skip', 'Later');
+        const cleanObsText = _t('i18n.cleanObsolete', 'Also clean obsolete keys (removed from built-in)');
         const brief = _buildDiffBrief(report);
+        // 是否有冗余键 → 决定是否展示「清理冗余键」选项
+        const hasObsolete = !!(report && report.total_obsolete && report.total_obsolete > 0);
+        const obsoleteOpt = hasObsolete
+            ? `<label class="i18n-opt-row"><input type="checkbox" id="i18n-chk-clean"/><span>${cleanObsText}</span></label>`
+            : '';
         backdrop.innerHTML = `
 <div class="modal" role="dialog" aria-modal="true" aria-labelledby="i18n-modal-title">
   <h3 id="i18n-modal-title">${titleText}</h3>
   <p>${descText}</p>
   <div class="i18n-diff-box">${brief || '<em style="opacity:.7">—</em>'}</div>
+  ${obsoleteOpt}
   <div class="modal-buttons">
     <button class="btn" id="i18n-btn-skip">${skipText}</button>
     <button class="btn btn-primary" id="i18n-btn-merge">${mergeText}</button>
@@ -2596,10 +2809,11 @@ function _openI18nUpdateModal(report) {
         // 应用翻译到按钮/标题（如果之后 reload 也会重写）
         applyTranslations();
 
-        const cleanup = (ok) => {
+        const cleanup = (confirmed) => {
+            const removeObsolete = hasObsolete && !!(backdrop.querySelector('#i18n-chk-clean') && backdrop.querySelector('#i18n-chk-clean').checked);
             backdrop.classList.add('closing');
             setTimeout(() => { backdrop.remove(); }, 200);
-            resolve(ok);
+            resolve({ confirmed, removeObsolete });
         };
 
         backdrop.querySelector('#i18n-btn-skip').addEventListener('click', () => cleanup(false));
@@ -2614,9 +2828,10 @@ function _openI18nUpdateModal(report) {
 }
 
 /**
- * 启动时调用：检查内嵌 vs 用户本地 i18n 是否有新键/值变更。
+ * 启动时调用：检查内嵌 vs 用户本地 i18n 是否有差异（缺失键 / 值变更 / 冗余键）。
  * 若无差异 → 直接返回；
  * 若有差异 → 弹确认框；用户点"同步更新"后执行合并 + 重新拉取翻译 + 刷新 UI。
+ * 用户可在弹窗里勾选「同时清理冗余键」来删除用户文件中内嵌已不存在的旧键。
  */
 async function checkAndPromptI18nUpdate() {
     // 单会话内只检查一次（避免多窗口/反复进入设置页反复弹）
@@ -2638,11 +2853,12 @@ async function checkAndPromptI18nUpdate() {
 
     if (!report || !report.has_new) return;
 
-    const ok = await _openI18nUpdateModal(report);
-    if (!ok) return;
+    const choice = await _openI18nUpdateModal(report);
+    if (!choice || !choice.confirmed) return;
 
     // keepCustom=true：只补齐缺失语言/键，保留用户已自定义值
-    const result = await ConfirmI18nMerge(true);
+    // removeObsolete：由弹窗复选框决定是否清理冗余键
+    const result = await ConfirmI18nMerge(true, !!choice.removeObsolete);
     if (!result || !result.ok) {
         const msg = (result && result.message) ? result.message : '';
         _i18nToast(_t('i18n.mergedFail', `Failed to write translation file: ${msg || '(unknown)'}`, { msg: msg || '' }));

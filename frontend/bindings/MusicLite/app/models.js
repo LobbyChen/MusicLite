@@ -93,6 +93,201 @@ export class I18nData {
 }
 
 /**
+ * I18nMergeResult 合并执行结果
+ */
+export class I18nMergeResult {
+    /**
+     * Creates a new I18nMergeResult instance.
+     * @param {Partial<I18nMergeResult>} [$$source = {}] - The source object to create the I18nMergeResult.
+     */
+    constructor($$source = {}) {
+        if (!("ok" in $$source)) {
+            /**
+             * @member
+             * @type {boolean}
+             */
+            this["ok"] = false;
+        }
+        if (!("message" in $$source)) {
+            /**
+             * 成功 / 失败提示（会走前端本地 i18n，这里只给英文兜底文案）
+             * @member
+             * @type {string}
+             */
+            this["message"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new I18nMergeResult instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {I18nMergeResult}
+     */
+    static createFrom($$source = {}) {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new I18nMergeResult(/** @type {Partial<I18nMergeResult>} */($$parsedSource));
+    }
+}
+
+/**
+ * I18nNewKeysReport 返回给前端的差异报告
+ */
+export class I18nNewKeysReport {
+    /**
+     * Creates a new I18nNewKeysReport instance.
+     * @param {Partial<I18nNewKeysReport>} [$$source = {}] - The source object to create the I18nNewKeysReport.
+     */
+    constructor($$source = {}) {
+        if (!("has_new" in $$source)) {
+            /**
+             * 是否存在任何差异（新语言/新键/值变更/冗余键）
+             * @member
+             * @type {boolean}
+             */
+            this["has_new"] = false;
+        }
+        if (!("total_new" in $$source)) {
+            /**
+             * 新键总数（跨语言汇总）
+             * @member
+             * @type {number}
+             */
+            this["total_new"] = 0;
+        }
+        if (!("total_chg" in $$source)) {
+            /**
+             * 值变化键总数（跨语言汇总）
+             * @member
+             * @type {number}
+             */
+            this["total_chg"] = 0;
+        }
+        if (!("total_obsolete" in $$source)) {
+            /**
+             * 冗余键总数（跨语言汇总）
+             * @member
+             * @type {number}
+             */
+            this["total_obsolete"] = 0;
+        }
+        if (!("new_langs" in $$source)) {
+            /**
+             * 内嵌比用户多出来的语言代码
+             * @member
+             * @type {string[]}
+             */
+            this["new_langs"] = [];
+        }
+        if (!("diffs" in $$source)) {
+            /**
+             * 按语言分组的具体差异
+             * @member
+             * @type {LangKeyDiff[]}
+             */
+            this["diffs"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new I18nNewKeysReport instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {I18nNewKeysReport}
+     */
+    static createFrom($$source = {}) {
+        const $$createField4_0 = $$createType2;
+        const $$createField5_0 = $$createType4;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("new_langs" in $$parsedSource) {
+            $$parsedSource["new_langs"] = $$createField4_0($$parsedSource["new_langs"]);
+        }
+        if ("diffs" in $$parsedSource) {
+            $$parsedSource["diffs"] = $$createField5_0($$parsedSource["diffs"]);
+        }
+        return new I18nNewKeysReport(/** @type {Partial<I18nNewKeysReport>} */($$parsedSource));
+    }
+}
+
+/**
+ * LangKeyDiff 单个语言的键差异
+ */
+export class LangKeyDiff {
+    /**
+     * Creates a new LangKeyDiff instance.
+     * @param {Partial<LangKeyDiff>} [$$source = {}] - The source object to create the LangKeyDiff.
+     */
+    constructor($$source = {}) {
+        if (!("lang_code" in $$source)) {
+            /**
+             * 如 zh-CN / en-US
+             * @member
+             * @type {string}
+             */
+            this["lang_code"] = "";
+        }
+        if (!("lang_native" in $$source)) {
+            /**
+             * 该语言的 lang.name 翻译，用于 UI 展示
+             * @member
+             * @type {string}
+             */
+            this["lang_native"] = "";
+        }
+        if (!("new_keys" in $$source)) {
+            /**
+             * 内嵌比用户多出来的键（用户缺失，需要补全）
+             * @member
+             * @type {string[]}
+             */
+            this["new_keys"] = [];
+        }
+        if (!("changed_keys" in $$source)) {
+            /**
+             * 两边都有但内嵌新版本值不同的键
+             * @member
+             * @type {string[]}
+             */
+            this["changed_keys"] = [];
+        }
+        if (!("obsolete_keys" in $$source)) {
+            /**
+             * 用户有但内嵌没有的键（冗余/旧版残留，可选清理）
+             * @member
+             * @type {string[]}
+             */
+            this["obsolete_keys"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LangKeyDiff instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {LangKeyDiff}
+     */
+    static createFrom($$source = {}) {
+        const $$createField2_0 = $$createType2;
+        const $$createField3_0 = $$createType2;
+        const $$createField4_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("new_keys" in $$parsedSource) {
+            $$parsedSource["new_keys"] = $$createField2_0($$parsedSource["new_keys"]);
+        }
+        if ("changed_keys" in $$parsedSource) {
+            $$parsedSource["changed_keys"] = $$createField3_0($$parsedSource["changed_keys"]);
+        }
+        if ("obsolete_keys" in $$parsedSource) {
+            $$parsedSource["obsolete_keys"] = $$createField4_0($$parsedSource["obsolete_keys"]);
+        }
+        return new LangKeyDiff(/** @type {Partial<LangKeyDiff>} */($$parsedSource));
+    }
+}
+
+/**
  * PickedFile 文件选择/读取的统一返回结构（用于编辑弹窗的封面/歌词导入）
  */
 export class PickedFile {
@@ -198,7 +393,7 @@ export class PlayerState {
      * @returns {PlayerState}
      */
     static createFrom($$source = {}) {
-        const $$createField0_0 = $$createType3;
+        const $$createField0_0 = $$createType6;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("track" in $$parsedSource) {
             $$parsedSource["track"] = $$createField0_0($$parsedSource["track"]);
@@ -241,7 +436,7 @@ export class QueueItem {
      * @returns {QueueItem}
      */
     static createFrom($$source = {}) {
-        const $$createField0_0 = $$createType2;
+        const $$createField0_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("track" in $$parsedSource) {
             $$parsedSource["track"] = $$createField0_0($$parsedSource["track"]);
@@ -291,7 +486,7 @@ export class QueueStatus {
      * @returns {QueueStatus}
      */
     static createFrom($$source = {}) {
-        const $$createField0_0 = $$createType5;
+        const $$createField0_0 = $$createType8;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("items" in $$parsedSource) {
             $$parsedSource["items"] = $$createField0_0($$parsedSource["items"]);
@@ -616,6 +811,14 @@ export class Settings {
              */
             this["new_ui_enabled"] = false;
         }
+        if (!("void_mode" in $$source)) {
+            /**
+             * 虚空模式：界面颠倒 + 全黑 + 鼠标手电筒（需自行寻找退出按钮）
+             * @member
+             * @type {boolean}
+             */
+            this["void_mode"] = false;
+        }
         if (!("hotkey_playpause" in $$source)) {
             /**
              * 全局快捷键（3 个）
@@ -651,18 +854,18 @@ export class Settings {
      * @returns {Settings}
      */
     static createFrom($$source = {}) {
-        const $$createField38_0 = $$createType6;
-        const $$createField39_0 = $$createType6;
-        const $$createField40_0 = $$createType6;
+        const $$createField39_0 = $$createType9;
+        const $$createField40_0 = $$createType9;
+        const $$createField41_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("hotkey_playpause" in $$parsedSource) {
-            $$parsedSource["hotkey_playpause"] = $$createField38_0($$parsedSource["hotkey_playpause"]);
+            $$parsedSource["hotkey_playpause"] = $$createField39_0($$parsedSource["hotkey_playpause"]);
         }
         if ("hotkey_next" in $$parsedSource) {
-            $$parsedSource["hotkey_next"] = $$createField39_0($$parsedSource["hotkey_next"]);
+            $$parsedSource["hotkey_next"] = $$createField40_0($$parsedSource["hotkey_next"]);
         }
         if ("hotkey_prev" in $$parsedSource) {
-            $$parsedSource["hotkey_prev"] = $$createField40_0($$parsedSource["hotkey_prev"]);
+            $$parsedSource["hotkey_prev"] = $$createField41_0($$parsedSource["hotkey_prev"]);
         }
         return new Settings(/** @type {Partial<Settings>} */($$parsedSource));
     }
@@ -723,8 +926,11 @@ export class TrayState {
 // Private type creation functions
 const $$createType0 = $Create.Map($Create.Any, $Create.Any);
 const $$createType1 = $Create.Map($Create.Any, $$createType0);
-const $$createType2 = format$0.MscData.createFrom;
-const $$createType3 = $Create.Nullable($$createType2);
-const $$createType4 = QueueItem.createFrom;
-const $$createType5 = $Create.Array($$createType4);
-const $$createType6 = HotkeyConfig.createFrom;
+const $$createType2 = $Create.Array($Create.Any);
+const $$createType3 = LangKeyDiff.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = format$0.MscData.createFrom;
+const $$createType6 = $Create.Nullable($$createType5);
+const $$createType7 = QueueItem.createFrom;
+const $$createType8 = $Create.Array($$createType7);
+const $$createType9 = HotkeyConfig.createFrom;

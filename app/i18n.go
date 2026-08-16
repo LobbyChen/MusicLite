@@ -46,19 +46,21 @@ type I18nData struct {
 
 // LangKeyDiff 单个语言的键差异
 type LangKeyDiff struct {
-	LangCode    string   `json:"lang_code"`    // 如 zh-CN / en-US
-	LangNative  string   `json:"lang_native"`  // 该语言的 lang.name 翻译，用于 UI 展示
-	NewKeys     []string `json:"new_keys"`     // 内嵌比用户多出来的键
-	ChangedKeys []string `json:"changed_keys"` // 两边都有但内嵌新版本值不同的键
+	LangCode     string   `json:"lang_code"`     // 如 zh-CN / en-US
+	LangNative   string   `json:"lang_native"`   // 该语言的 lang.name 翻译，用于 UI 展示
+	NewKeys      []string `json:"new_keys"`      // 内嵌比用户多出来的键（用户缺失，需要补全）
+	ChangedKeys  []string `json:"changed_keys"`  // 两边都有但内嵌新版本值不同的键
+	ObsoleteKeys []string `json:"obsolete_keys"` // 用户有但内嵌没有的键（冗余/旧版残留，可选清理）
 }
 
 // I18nNewKeysReport 返回给前端的差异报告
 type I18nNewKeysReport struct {
-	HasNew   bool          `json:"has_new"`   // 是否存在需要用户覆盖的新键/值
-	TotalNew int           `json:"total_new"` // 新键总数（跨语言汇总）
-	TotalChg int           `json:"total_chg"` // 值变化键总数（跨语言汇总）
-	NewLangs []string      `json:"new_langs"` // 内嵌比用户多出来的语言代码
-	Diffs    []LangKeyDiff `json:"diffs"`     // 按语言分组的具体差异
+	HasNew        bool          `json:"has_new"`        // 是否存在任何差异（新语言/新键/值变更/冗余键）
+	TotalNew      int           `json:"total_new"`      // 新键总数（跨语言汇总）
+	TotalChg      int           `json:"total_chg"`      // 值变化键总数（跨语言汇总）
+	TotalObsolete int           `json:"total_obsolete"` // 冗余键总数（跨语言汇总）
+	NewLangs      []string      `json:"new_langs"`      // 内嵌比用户多出来的语言代码
+	Diffs         []LangKeyDiff `json:"diffs"`          // 按语言分组的具体差异
 }
 
 // backendStrings 后端使用的文案子集（从 I18nData 提取）
@@ -111,10 +113,11 @@ func loadExternalI18n() *I18nData {
 }
 
 // mergeI18n 将内嵌版本中"外部文件缺失的语言和键"补进外部文件
-// keepCustom=true → 不覆盖外部文件已有的值（保留用户/导入包的自定义）
+// keepCustom=true  → 不覆盖外部文件已有的值（保留用户/导入包的自定义）
 // keepCustom=false → 内嵌值覆盖外部文件中同键不同值的条目
+// removeObsolete=true → 删除外部文件中"内嵌没有的键"（旧版残留/冗余键）
 // 返回合并后的数据
-func mergeI18n(embedded, external *I18nData, keepCustom bool) *I18nData {
+func mergeI18n(embedded, external *I18nData, keepCustom bool, removeObsolete bool) *I18nData {
 	if external == nil || external.Languages == nil {
 		return embedded
 	}
@@ -156,6 +159,22 @@ func mergeI18n(embedded, external *I18nData, keepCustom bool) *I18nData {
 			} else if !keepCustom && existing != v {
 				// 用户选择"强制覆盖"时，同键不同值也用内嵌值覆盖
 				extDict[k] = v
+			}
+		}
+	}
+
+	// 清理冗余键：删除用户有但内嵌没有的键（仅在内嵌存在该语言时才清理）
+	if removeObsolete {
+		for lang, extDict := range merged.Languages {
+			embDict, ok := embedded.Languages[lang]
+			if !ok {
+				// 内嵌没有这个语言（用户自定义语言），不清理
+				continue
+			}
+			for k := range extDict {
+				if _, exists := embDict[k]; !exists {
+					delete(extDict, k)
+				}
 			}
 		}
 	}
@@ -214,7 +233,8 @@ func diffI18n(embedded, external *I18nData) I18nNewKeysReport {
 			})
 			continue
 		}
-		var newKeys, chgKeys []string
+		var newKeys, chgKeys, obsoleteKeys []string
+		// 1) 遍历内嵌：找出"用户缺失的键"和"值变更的键"
 		for k, v := range embDict {
 			ev, exists := extDict[k]
 			if !exists {
@@ -223,19 +243,27 @@ func diffI18n(embedded, external *I18nData) I18nNewKeysReport {
 				chgKeys = append(chgKeys, k)
 			}
 		}
-		if len(newKeys) > 0 || len(chgKeys) > 0 {
+		// 2) 遍历用户：找出"内嵌没有的键"（冗余/旧版残留）
+		for k := range extDict {
+			if _, exists := embDict[k]; !exists {
+				obsoleteKeys = append(obsoleteKeys, k)
+			}
+		}
+		if len(newKeys) > 0 || len(chgKeys) > 0 || len(obsoleteKeys) > 0 {
 			rep.TotalNew += len(newKeys)
 			rep.TotalChg += len(chgKeys)
+			rep.TotalObsolete += len(obsoleteKeys)
 			rep.Diffs = append(rep.Diffs, LangKeyDiff{
-				LangCode:    code,
-				LangNative:  langName(extDict, code),
-				NewKeys:     newKeys,
-				ChangedKeys: chgKeys,
+				LangCode:     code,
+				LangNative:   langName(extDict, code),
+				NewKeys:      newKeys,
+				ChangedKeys:  chgKeys,
+				ObsoleteKeys: obsoleteKeys,
 			})
 		}
 	}
 
-	rep.HasNew = len(rep.NewLangs) > 0 || rep.TotalNew > 0 || rep.TotalChg > 0
+	rep.HasNew = len(rep.NewLangs) > 0 || rep.TotalNew > 0 || rep.TotalChg > 0 || rep.TotalObsolete > 0
 	return rep
 }
 
@@ -286,7 +314,6 @@ func resetI18nCache() {
 //   - 外部文件不存在 → 解压内嵌版本
 //   - 外部文件存在   → 不做任何合并/写回，留给前端通过 CheckI18nNewKeys + ConfirmI18nMerge 处理
 func EnsureI18nFile() {
-	embedded := loadEmbeddedI18n()
 	externalPath := i18nFilePath()
 
 	if _, err := os.Stat(externalPath); err == nil {
@@ -317,10 +344,11 @@ type I18nMergeResult struct {
 }
 
 // ConfirmI18nMerge 用户确认覆盖后执行合并。
-// keepCustom=true  → 仅补齐缺失的语言/键，保留用户已自定义值（推荐默认）
-// keepCustom=false → 同键不同值也强制用内嵌值覆盖（慎用）
+// keepCustom=true     → 仅补齐缺失的语言/键，保留用户已自定义值（推荐默认）
+// keepCustom=false    → 同键不同值也强制用内嵌值覆盖（慎用）
+// removeObsolete=true → 删除用户文件中"内嵌没有的键"（旧版残留/冗余键）
 // 写回外部文件并使后端缓存失效，返回 I18nMergeResult。
-func (a *MusicService) ConfirmI18nMerge(keepCustom bool) I18nMergeResult {
+func (a *MusicService) ConfirmI18nMerge(keepCustom bool, removeObsolete bool) I18nMergeResult {
 	emb := loadEmbeddedI18n()
 	ext := loadExternalI18n()
 
@@ -336,7 +364,7 @@ func (a *MusicService) ConfirmI18nMerge(keepCustom bool) I18nMergeResult {
 		return I18nMergeResult{OK: true, Message: "Embedded i18n written."}
 	}
 
-	merged := mergeI18n(emb, ext, keepCustom)
+	merged := mergeI18n(emb, ext, keepCustom, removeObsolete)
 	mergedBytes, err := json.MarshalIndent(merged, "", "  ")
 	if err != nil {
 		return I18nMergeResult{OK: false, Message: "Marshal failed: " + err.Error()}

@@ -84,6 +84,7 @@ const smartEQModeBtns = document.querySelectorAll('.anim-level-btn[data-smarteq-
 const smartEQIntensitySlider = document.getElementById('smarteq-intensity');
 const smartEQIntensityValue = document.getElementById('smarteq-intensity-value');
 const newUIModeBtns = document.querySelectorAll('.anim-level-btn[data-newui-mode]');
+const voidModeBtns = document.querySelectorAll('.anim-level-btn[data-void-mode]');
 
 // ============ 全局快捷键 ============
 const HOTKEY_ACTIONS = [
@@ -509,6 +510,13 @@ function applySettingsToUI(s) {
     });
     if (window.MusicLiteSettings) window.MusicLiteSettings.applyNewUI(newUIOn);
 
+    // 虚空模式开关
+    const voidOn = s.void_mode || false;
+    voidModeBtns.forEach(btn => {
+        btn.classList.toggle('active', (btn.dataset.voidMode === 'on') === voidOn);
+    });
+    if (window.MusicLiteSettings) window.MusicLiteSettings.applyVoidMode(voidOn);
+
     // 设置界面布局模式（新UI开启时强制使用 WinUI3 NavigationView 布局）
     if (newUIOn) {
         applyWinUI3Layout();
@@ -854,6 +862,25 @@ function setupEventListeners() {
                 applySettingsLayoutMode(currentSettings.settings_layout || 'scroll');
             }
             markChanged();
+        });
+    });
+
+    // 虚空模式开关：开启后界面将颠倒全黑，无法正常操作，故立即保存持久化；
+    // 退出需在虚空模式下自行寻找隐藏的退出按钮。
+    voidModeBtns.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const on = btn.dataset.voidMode === 'on';
+            currentSettings.void_mode = on;
+            voidModeBtns.forEach(b => b.classList.toggle('active', b === btn));
+            if (on) {
+                // 启用：先持久化保存，再进入虚空（确保即便程序异常关闭也已保存）
+                await saveSettings();
+                if (window.MusicLiteSettings) window.MusicLiteSettings.applyVoidMode(true);
+            } else {
+                // 关闭：先退出虚空恢复正常界面，再保存
+                if (window.MusicLiteSettings) window.MusicLiteSettings.applyVoidMode(false);
+                await saveSettings();
+            }
         });
     });
 

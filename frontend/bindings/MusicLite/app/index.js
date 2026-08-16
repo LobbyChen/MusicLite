@@ -10,6 +10,9 @@ export {
 export {
     HotkeyConfig,
     I18nData,
+    I18nMergeResult,
+    I18nNewKeysReport,
+    LangKeyDiff,
     PickedFile,
     PlayerState,
     QueueItem,
