@@ -3,10 +3,21 @@ package app
 // ============ 后端 i18n：统一文案加载机制 ============
 //
 // 初始 i18n.json 通过 go:embed 打包进二进制；首次启动时解压到
-// %APPDATA%/MusicLite/i18n.json；再次启动时将外部文件与内嵌版本
-// 合并——以内嵌为基准补齐外部文件缺失的语言和键，但不覆盖用户
-// 已自定义的值。这样既能保留用户/导入包的修改，又能让新版本的
-// 新增语言和键对用户可用。
+// %APPDATA%/MusicLite/i18n.json。
+//
+// 启动流程（用户确认合并模式）：
+//   1. main.go 调用 EnsureI18nFile()：
+//        - 外部文件不存在 → 直接解压内嵌版本（无需询问）
+//        - 外部文件存在 → 只读取内容，不做任何合并或写回操作
+//   2. 前端 DOM ready 后，调用 CheckI18nNewKeys()：
+//        - 以内嵌为基准 vs 用户外部文件，统计"新增的语言/新增的键/值变更"，
+//          按语言分组后把差异列表返回给前端
+//        - 无差异 → 返回 has_new=false，前端不弹窗
+//        - 有差异 → 返回 has_new=true + 差异摘要，前端弹确认框询问用户是否覆盖
+//   3. 用户点击"是" → 前端调用 ConfirmI18nMerge(keepCustom=true)：
+//        - keepCustom=true  → mergeI18n 策略：内嵌补齐缺失键，不覆盖用户已自定义的值
+//        - 合并后写回外部文件，并使 Go 侧缓存失效，让下次 GetI18nData 读到最新数据
+//   4. 前端完成合并后自行 reload 翻译（重新调 GetI18nData + applyTranslations）。
 //
 // 前端通过 App.GetI18nData() 获取完整翻译数据；后端通过
 // getBackendStrings() 获取自身所需字段。
@@ -29,8 +40,25 @@ func i18nFilePath() string {
 
 // I18nData 统一翻译数据结构（前后端共享）
 type I18nData struct {
-	Version   int                              `json:"version"`
-	Languages map[string]map[string]string     `json:"languages"`
+	Version   int                          `json:"version"`
+	Languages map[string]map[string]string `json:"languages"`
+}
+
+// LangKeyDiff 单个语言的键差异
+type LangKeyDiff struct {
+	LangCode    string   `json:"lang_code"`    // 如 zh-CN / en-US
+	LangNative  string   `json:"lang_native"`  // 该语言的 lang.name 翻译，用于 UI 展示
+	NewKeys     []string `json:"new_keys"`     // 内嵌比用户多出来的键
+	ChangedKeys []string `json:"changed_keys"` // 两边都有但内嵌新版本值不同的键
+}
+
+// I18nNewKeysReport 返回给前端的差异报告
+type I18nNewKeysReport struct {
+	HasNew   bool          `json:"has_new"`   // 是否存在需要用户覆盖的新键/值
+	TotalNew int           `json:"total_new"` // 新键总数（跨语言汇总）
+	TotalChg int           `json:"total_chg"` // 值变化键总数（跨语言汇总）
+	NewLangs []string      `json:"new_langs"` // 内嵌比用户多出来的语言代码
+	Diffs    []LangKeyDiff `json:"diffs"`     // 按语言分组的具体差异
 }
 
 // backendStrings 后端使用的文案子集（从 I18nData 提取）
@@ -68,10 +96,25 @@ func loadEmbeddedI18n() *I18nData {
 	return data
 }
 
+// loadExternalI18n 读取用户外部 i18n.json，失败返回 nil
+func loadExternalI18n() *I18nData {
+	p := i18nFilePath()
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return nil
+	}
+	var d I18nData
+	if json.Unmarshal(b, &d) != nil || d.Languages == nil {
+		return nil
+	}
+	return &d
+}
+
 // mergeI18n 将内嵌版本中"外部文件缺失的语言和键"补进外部文件
-// 不覆盖外部文件已有的值（保留用户/导入包的自定义）
+// keepCustom=true → 不覆盖外部文件已有的值（保留用户/导入包的自定义）
+// keepCustom=false → 内嵌值覆盖外部文件中同键不同值的条目
 // 返回合并后的数据
-func mergeI18n(embedded, external *I18nData) *I18nData {
+func mergeI18n(embedded, external *I18nData, keepCustom bool) *I18nData {
 	if external == nil || external.Languages == nil {
 		return embedded
 	}
@@ -84,7 +127,7 @@ func mergeI18n(embedded, external *I18nData) *I18nData {
 		merged.Version = external.Version
 	}
 
-	// 先把外部文件的内容复制进来（保留用户自定义）
+	// 先把外部文件的内容复制进来（保留用户自定义起点）
 	for lang, dict := range external.Languages {
 		copied := map[string]string{}
 		for k, v := range dict {
@@ -93,7 +136,7 @@ func mergeI18n(embedded, external *I18nData) *I18nData {
 		merged.Languages[lang] = copied
 	}
 
-	// 再用内嵌版本补齐：缺失的语言整体补上；已有语言中缺失的键补上
+	// 再用内嵌版本补齐：缺失的语言整体补上；已有语言按 keepCustom 决定是否覆盖
 	for lang, embeddedDict := range embedded.Languages {
 		extDict, ok := merged.Languages[lang]
 		if !ok {
@@ -105,9 +148,13 @@ func mergeI18n(embedded, external *I18nData) *I18nData {
 			merged.Languages[lang] = copied
 			continue
 		}
-		// 外部文件有这个语言，逐键补齐缺失项
+		// 外部文件有这个语言，逐键处理
 		for k, v := range embeddedDict {
-			if _, exists := extDict[k]; !exists {
+			existing, exists := extDict[k]
+			if !exists {
+				extDict[k] = v
+			} else if !keepCustom && existing != v {
+				// 用户选择"强制覆盖"时，同键不同值也用内嵌值覆盖
 				extDict[k] = v
 			}
 		}
@@ -116,7 +163,85 @@ func mergeI18n(embedded, external *I18nData) *I18nData {
 	return merged
 }
 
-// loadI18nData 加载 i18n 数据（已由 ensureI18nFile 合并并写回外部文件）
+// diffI18n 比较内嵌 vs 用户外部文件，返回差异报告。
+// external 为 nil 时视为"全量新增"（前端一般不会走到这里，因为 EnsureI18nFile 首次启动会直接解压）。
+func diffI18n(embedded, external *I18nData) I18nNewKeysReport {
+	rep := I18nNewKeysReport{
+		Diffs: []LangKeyDiff{},
+	}
+	if embedded == nil || embedded.Languages == nil {
+		return rep
+	}
+
+	langName := func(dict map[string]string, code string) string {
+		if n, ok := dict["lang.name"]; ok && n != "" {
+			return n
+		}
+		return code
+	}
+
+	// 新语言：内嵌有但外部没有
+	var extLangs map[string]map[string]string
+	if external != nil && external.Languages != nil {
+		extLangs = external.Languages
+	}
+
+	for code := range embedded.Languages {
+		if extLangs == nil {
+			rep.NewLangs = append(rep.NewLangs, code)
+			continue
+		}
+		if _, ok := extLangs[code]; !ok {
+			rep.NewLangs = append(rep.NewLangs, code)
+		}
+	}
+
+	// 每个已有语言的键级差异
+	for code, embDict := range embedded.Languages {
+		extDict, ok := extLangs[code]
+		if !ok {
+			// 整门新语言，单独列在 NewLangs 下；同时把它的所有键都视作"新键"，
+			// 放在 Diffs 里，UI 可以统一展示。
+			newKeys := make([]string, 0, len(embDict))
+			for k := range embDict {
+				newKeys = append(newKeys, k)
+			}
+			rep.TotalNew += len(newKeys)
+			rep.Diffs = append(rep.Diffs, LangKeyDiff{
+				LangCode:   code,
+				LangNative: langName(embDict, code),
+				NewKeys:    newKeys,
+			})
+			continue
+		}
+		var newKeys, chgKeys []string
+		for k, v := range embDict {
+			ev, exists := extDict[k]
+			if !exists {
+				newKeys = append(newKeys, k)
+			} else if ev != v {
+				chgKeys = append(chgKeys, k)
+			}
+		}
+		if len(newKeys) > 0 || len(chgKeys) > 0 {
+			rep.TotalNew += len(newKeys)
+			rep.TotalChg += len(chgKeys)
+			rep.Diffs = append(rep.Diffs, LangKeyDiff{
+				LangCode:    code,
+				LangNative:  langName(extDict, code),
+				NewKeys:     newKeys,
+				ChangedKeys: chgKeys,
+			})
+		}
+	}
+
+	rep.HasNew = len(rep.NewLangs) > 0 || rep.TotalNew > 0 || rep.TotalChg > 0
+	return rep
+}
+
+// loadI18nData 加载 i18n 数据
+// 当外部文件存在时优先使用外部文件（即使它缺少新键，前端会主动触发合并流程来补齐）。
+// 外部文件不存在/损坏时直接回落到内嵌版本。
 func loadI18nData() *I18nData {
 	cachedI18nLock.RLock()
 	if cachedI18n != nil {
@@ -137,7 +262,7 @@ func loadI18nData() *I18nData {
 	embedded := loadEmbeddedI18n()
 	data := embedded
 
-	// 尝试加载外部文件（ensureI18nFile 已经做过合并）
+	// 尝试加载外部文件
 	externalPath := i18nFilePath()
 	if externalBytes, err := os.ReadFile(externalPath); err == nil {
 		var external I18nData
@@ -150,50 +275,80 @@ func loadI18nData() *I18nData {
 	return data
 }
 
-// EnsureI18nFile 启动时调用：确保外部 i18n.json 存在并与内嵌版本合并
-// - 外部文件不存在：解压内嵌版本
-// - 外部文件存在：以内嵌为基准补齐缺失的语言和键（不覆盖已有值），写回外部文件
+// resetI18nCache 清空缓存，用于合并写回外部文件后，让下次 GetI18nData 重新读取
+func resetI18nCache() {
+	cachedI18nLock.Lock()
+	defer cachedI18nLock.Unlock()
+	cachedI18n = nil
+}
+
+// EnsureI18nFile 启动时调用：
+//   - 外部文件不存在 → 解压内嵌版本
+//   - 外部文件存在   → 不做任何合并/写回，留给前端通过 CheckI18nNewKeys + ConfirmI18nMerge 处理
 func EnsureI18nFile() {
 	embedded := loadEmbeddedI18n()
 	externalPath := i18nFilePath()
 
-	if _, err := os.Stat(externalPath); err != nil {
-		// 首次启动：直接解压内嵌版本
-		embeddedBytes, _ := embeddedI18nFS.ReadFile("i18n.json")
+	if _, err := os.Stat(externalPath); err == nil {
+		// 外部文件已存在：启动时不自动合并
+		return
+	}
+
+	// 首次启动：直接解压内嵌版本
+	embeddedBytes, _ := embeddedI18nFS.ReadFile("i18n.json")
+	_ = os.MkdirAll(settingsDir(), 0755)
+	_ = os.WriteFile(externalPath, embeddedBytes, 0644)
+}
+
+// ================ 暴露给前端的方法（挂在 MusicService 上）================
+
+// CheckI18nNewKeys 检查内嵌 i18n 相对于用户外部文件是否存在新键/值变更，返回差异报告。
+// 前端据此决定是否弹窗询问用户覆盖。
+func (a *MusicService) CheckI18nNewKeys() I18nNewKeysReport {
+	emb := loadEmbeddedI18n()
+	ext := loadExternalI18n()
+	return diffI18n(emb, ext)
+}
+
+// I18nMergeResult 合并执行结果
+type I18nMergeResult struct {
+	OK      bool   `json:"ok"`
+	Message string `json:"message"` // 成功 / 失败提示（会走前端本地 i18n，这里只给英文兜底文案）
+}
+
+// ConfirmI18nMerge 用户确认覆盖后执行合并。
+// keepCustom=true  → 仅补齐缺失的语言/键，保留用户已自定义值（推荐默认）
+// keepCustom=false → 同键不同值也强制用内嵌值覆盖（慎用）
+// 写回外部文件并使后端缓存失效，返回 I18nMergeResult。
+func (a *MusicService) ConfirmI18nMerge(keepCustom bool) I18nMergeResult {
+	emb := loadEmbeddedI18n()
+	ext := loadExternalI18n()
+
+	if ext == nil {
+		// 外部文件不存在，首次启动场景一般不会走到这里；兜底直接写内嵌。
+		externalPath := i18nFilePath()
 		_ = os.MkdirAll(settingsDir(), 0755)
-		_ = os.WriteFile(externalPath, embeddedBytes, 0644)
-		return
-	}
-
-	// 外部文件已存在：加载并合并
-	externalBytes, err := os.ReadFile(externalPath)
-	if err != nil {
-		return
-	}
-	var external I18nData
-	if json.Unmarshal(externalBytes, &external) != nil {
-		// 外部文件损坏：回退为内嵌版本
 		embeddedBytes, _ := embeddedI18nFS.ReadFile("i18n.json")
-		_ = os.WriteFile(externalPath, embeddedBytes, 0644)
-		return
-	}
-
-	merged := mergeI18n(embedded, &external)
-
-	// 写回外部文件（仅在内容有变化时写入，避免每次启动都改文件时间）
-	if mergedBytes, err := json.MarshalIndent(merged, "", "  "); err == nil {
-		// 简单对比：合并后字节数与原文件不同就写回
-		// （更精确的对比需要反序列化后逐项比较，这里用字节数近似）
-		if len(mergedBytes) != len(externalBytes) {
-			_ = os.WriteFile(externalPath, mergedBytes, 0644)
-		} else {
-			// 字节数相同也可能内容有差异（键顺序），做一次序列化对比
-			reExternal, _ := json.MarshalIndent(&external, "", "  ")
-			if string(reExternal) != string(mergedBytes) {
-				_ = os.WriteFile(externalPath, mergedBytes, 0644)
-			}
+		if err := os.WriteFile(externalPath, embeddedBytes, 0644); err != nil {
+			return I18nMergeResult{OK: false, Message: "Failed to write i18n.json: " + err.Error()}
 		}
+		resetI18nCache()
+		return I18nMergeResult{OK: true, Message: "Embedded i18n written."}
 	}
+
+	merged := mergeI18n(emb, ext, keepCustom)
+	mergedBytes, err := json.MarshalIndent(merged, "", "  ")
+	if err != nil {
+		return I18nMergeResult{OK: false, Message: "Marshal failed: " + err.Error()}
+	}
+
+	if err := os.WriteFile(i18nFilePath(), mergedBytes, 0644); err != nil {
+		return I18nMergeResult{OK: false, Message: "Write failed: " + err.Error()}
+	}
+
+	// 写回成功：清空 Go 侧缓存，下次 GetI18nData 会重新读取最新合并结果
+	resetI18nCache()
+	return I18nMergeResult{OK: true, Message: "Merged successfully."}
 }
 
 // GetI18nData 暴露给前端：返回完整翻译数据

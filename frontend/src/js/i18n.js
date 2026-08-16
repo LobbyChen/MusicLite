@@ -88,6 +88,19 @@ export async function initI18n() {
     return initPromise;
 }
 
+/**
+ * 重新从后端拉取翻译并刷新当前语言（用户确认合并 i18n 后调用）。
+ * 调用后会让下次 initI18n() 重新走后端。
+ * @returns {Promise<void>}
+ */
+export async function reloadI18n() {
+    // 让 initPromise 与 initialized 都重置，确保下次 initI18n() 重新拉取
+    initialized = false;
+    initPromise = null;
+    await initI18n();
+    setLanguage(currentLanguage);
+}
+
 // 匹配占位符：{0}, {1}, {count}, {user_name} 等
 const PLACEHOLDER_RE = /\{[a-zA-Z0-9_]+\}/;
 
@@ -264,4 +277,4 @@ export function applyTranslations() {
 }
 
 // 暴露到全局，供非模块脚本使用
-window.i18n = { initI18n, t, setLanguage, getCurrentLanguage, applyTranslations, getAvailableLanguages };
+window.i18n = { initI18n, reloadI18n, t, setLanguage, getCurrentLanguage, applyTranslations, getAvailableLanguages };

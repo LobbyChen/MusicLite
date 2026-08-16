@@ -1,5 +1,6 @@
 import { LoadSettings } from '@bindings/MusicLite/app/musicservice.js';
-import { initI18n, setLanguage, applyTranslations } from './i18n.js';
+import { CheckI18nNewKeys, ConfirmI18nMerge } from '@bindings/MusicLite/app/musicservice.js';
+import { initI18n, setLanguage, applyTranslations, reloadI18n } from './i18n.js';
 
 const FONT_FALLBACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 const DEFAULT_ACCENT = '#1db954';
@@ -1600,6 +1601,15 @@ const SettingsManager = {
             applyWindowAlpha(this.cached.window_alpha);
             // Aero 模糊量
             applyAeroBlur(this.cached.aero_blur);
+
+            // i18n 新键检查：检测到内嵌翻译有更新时提示用户确认覆盖。
+            // 放在 apply() 末尾：i18n 已初始化 + UI 已渲染，
+            // 翻译查找能命中中文/英文本地文案，弹窗才能本地化显示。
+            try {
+                await checkAndPromptI18nUpdate();
+            } catch (e) {
+                console.warn('[i18n] 更新检查失败：', e);
+            }
         }
     },
 
@@ -2432,6 +2442,221 @@ function restorePlayerWinUI3() {
 
     delete overlay._w3Moves;
     overlay.dataset.wui3Player = '';
+}
+
+// ============================================================
+// i18n 新键检查 & 确认覆盖流程
+// ============================================================
+
+// 简易 toast（兜底，没有独立的 toast 系统时也能提示）
+function _i18nToast(msg) {
+    const id = 'i18n-toast';
+    let el = document.getElementById(id);
+    if (!el) {
+        el = document.createElement('div');
+        el.id = id;
+        Object.assign(el.style, {
+            position: 'fixed',
+            left: '50%',
+            bottom: '64px',
+            transform: 'translateX(-50%)',
+            padding: '10px 18px',
+            borderRadius: '8px',
+            background: 'rgba(0,0,0,0.78)',
+            color: '#fff',
+            fontSize: '13px',
+            lineHeight: '1.5',
+            zIndex: 2147483000,
+            pointerEvents: 'none',
+            opacity: 0,
+            transition: 'opacity .22s ease, transform .22s ease',
+            maxWidth: '80vw',
+            wordBreak: 'break-word'
+        });
+        document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    // 触发 reflow 后再显示
+    requestAnimationFrame(() => {
+        el.style.opacity = '1';
+        el.style.transform = 'translateX(-50%) translateY(-6px)';
+    });
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(-50%) translateY(0)';
+    }, 3200);
+}
+
+// 获取 i18n 翻译，找不到就用 fallback
+function _t(key, fallback, ...args) {
+    try {
+        if (window.i18n && typeof window.i18n.t === 'function') {
+            const v = window.i18n.t(key, ...args);
+            if (v !== undefined && v !== null) return v;
+        }
+    } catch (_) {}
+    if (typeof fallback === 'string' && fallback !== '') return fallback;
+    return key;
+}
+
+// 构造差异摘要（控制在 5 行内，避免弹窗过大）
+function _buildDiffBrief(report) {
+    const lines = [];
+    const MAX_SHOW = 4; // 每种 diff 最多展示前 4 个键名
+    const moreTpl = (n) => _t('i18n.itemsMore', ` (and ${n} more)`, n);
+
+    if (report && report.new_langs && report.new_langs.length > 0) {
+        lines.push(`<div class="i18n-diff-line"><strong>${_t('i18n.newLangs', 'New languages:')}</strong> ${report.new_langs.join(', ')}</div>`);
+    }
+
+    const diffs = (report && Array.isArray(report.diffs)) ? report.diffs : [];
+    for (const d of diffs) {
+        let parts = [];
+        if (d.new_keys && d.new_keys.length) {
+            const show = d.new_keys.slice(0, MAX_SHOW).join(', ');
+            const rest = d.new_keys.length - MAX_SHOW;
+            parts.push(`<span class="i18n-diff-tag i18n-diff-tag--new">${_t('i18n.newKeys', 'New keys:')}</span> ${show}${rest > 0 ? moreTpl(rest) : ''}`);
+        }
+        if (d.changed_keys && d.changed_keys.length) {
+            const show = d.changed_keys.slice(0, MAX_SHOW).join(', ');
+            const rest = d.changed_keys.length - MAX_SHOW;
+            parts.push(`<span class="i18n-diff-tag i18n-diff-tag--chg">${_t('i18n.changedKeys', 'Updated keys:')}</span> ${show}${rest > 0 ? moreTpl(rest) : ''}`);
+        }
+        if (parts.length === 0) continue;
+        const title = d.lang_native || d.lang_code || '';
+        lines.push(`<div class="i18n-diff-line"><strong>${title}</strong><br/>&nbsp;&nbsp;${parts.join('<br/>&nbsp;&nbsp;')}</div>`);
+    }
+    return lines.join('');
+}
+
+// 确认覆盖对话框：创建专用 modal（不与删除/设置的 confirm 复用，避免互相冲突）
+function _openI18nUpdateModal(report) {
+    return new Promise((resolve) => {
+        const id = 'i18n-update-modal';
+        if (document.getElementById(id)) {
+            document.getElementById(id).remove();
+        }
+        const style = document.createElement('style');
+        style.id = 'i18n-update-modal-style';
+        style.textContent = `
+#i18n-update-modal.modal-backdrop.active .modal,
+#i18n-update-modal.modal-backdrop.active { opacity: 1; pointer-events: auto; }
+#i18n-update-modal.modal-backdrop.closing { pointer-events: none; }
+#i18n-update-modal.modal-backdrop.closing .modal { transform: scale(.96); opacity: 0; }
+#i18n-update-modal .modal {
+  transform: scale(.98); opacity: 0; transition: transform .18s ease, opacity .18s ease;
+  max-width: 520px; width: calc(100% - 40px); padding: 20px 22px 16px;
+}
+#i18n-update-modal .modal h3 { margin: 0 0 8px; font-size: 16px; }
+#i18n-update-modal .modal > p { margin: 0 0 12px; opacity: .88; font-size: 13.5px; line-height: 1.55; }
+.i18n-diff-box {
+  margin: 4px 0 16px; padding: 10px 12px; border-radius: 8px;
+  background: color-mix(in srgb, var(--card-bg, #1e1e1e) 62%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-color, #333) 60%, transparent);
+  max-height: 240px; overflow: auto; font-size: 12.5px; line-height: 1.6;
+}
+.i18n-diff-line + .i18n-diff-line { margin-top: 6px; padding-top: 6px; border-top: 1px dashed color-mix(in srgb, var(--border-color, #333) 40%, transparent); }
+.i18n-diff-tag { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11.5px; margin-right: 4px; }
+.i18n-diff-tag--new { background: color-mix(in srgb, var(--accent-color, #1db954) 32%, transparent); color: var(--accent-color, #1db954); }
+.i18n-diff-tag--chg { background: color-mix(in srgb, #ffb020 32%, transparent); color: #ffb020; }
+#i18n-update-modal .modal-buttons { justify-content: flex-end; gap: 8px; display: flex; }
+#i18n-update-modal .btn {
+  padding: 7px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 13.5px;
+  background: transparent; color: inherit;
+  border: 1px solid color-mix(in srgb, var(--border-color, #333) 80%, transparent);
+}
+#i18n-update-modal .btn-primary {
+  background: var(--accent-color, #1db954); color: #fff; border-color: transparent;
+}
+#i18n-update-modal .btn:hover { filter: brightness(1.08); }
+`;
+        if (!document.getElementById(style.id)) document.head.appendChild(style);
+
+        const backdrop = document.createElement('div');
+        backdrop.id = id;
+        backdrop.className = 'modal-backdrop';
+        const titleText = _t('i18n.updateTitle', 'Translation Updates Available');
+        const descText = _t('i18n.updateDesc', 'Built-in translations include new entries or corrections. Sync them to your local file?');
+        const mergeText = _t('i18n.merge', 'Sync Now');
+        const skipText = _t('i18n.skip', 'Later');
+        const brief = _buildDiffBrief(report);
+        backdrop.innerHTML = `
+<div class="modal" role="dialog" aria-modal="true" aria-labelledby="i18n-modal-title">
+  <h3 id="i18n-modal-title">${titleText}</h3>
+  <p>${descText}</p>
+  <div class="i18n-diff-box">${brief || '<em style="opacity:.7">—</em>'}</div>
+  <div class="modal-buttons">
+    <button class="btn" id="i18n-btn-skip">${skipText}</button>
+    <button class="btn btn-primary" id="i18n-btn-merge">${mergeText}</button>
+  </div>
+</div>`;
+        document.body.appendChild(backdrop);
+
+        // 应用翻译到按钮/标题（如果之后 reload 也会重写）
+        applyTranslations();
+
+        const cleanup = (ok) => {
+            backdrop.classList.add('closing');
+            setTimeout(() => { backdrop.remove(); }, 200);
+            resolve(ok);
+        };
+
+        backdrop.querySelector('#i18n-btn-skip').addEventListener('click', () => cleanup(false));
+        backdrop.querySelector('#i18n-btn-merge').addEventListener('click', () => cleanup(true));
+        backdrop.addEventListener('click', (e) => {
+            if (e.target === backdrop) cleanup(false);
+        });
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => backdrop.classList.add('active'));
+        });
+    });
+}
+
+/**
+ * 启动时调用：检查内嵌 vs 用户本地 i18n 是否有新键/值变更。
+ * 若无差异 → 直接返回；
+ * 若有差异 → 弹确认框；用户点"同步更新"后执行合并 + 重新拉取翻译 + 刷新 UI。
+ */
+async function checkAndPromptI18nUpdate() {
+    // 单会话内只检查一次（避免多窗口/反复进入设置页反复弹）
+    const FLAG_KEY = 'musicLite.i18nCheckedOnce';
+    try {
+        if (sessionStorage.getItem(FLAG_KEY) === '1') return;
+    } catch (_) {}
+
+    let report;
+    try {
+        report = await CheckI18nNewKeys();
+    } catch (e) {
+        // CheckI18nNewKeys 是我们新加的后端方法，老构建上可能不存在，忽略即可。
+        console.warn('[i18n] CheckI18nNewKeys unavailable, skipping:', e && e.message ? e.message : e);
+        return;
+    }
+
+    try { sessionStorage.setItem(FLAG_KEY, '1'); } catch (_) {}
+
+    if (!report || !report.has_new) return;
+
+    const ok = await _openI18nUpdateModal(report);
+    if (!ok) return;
+
+    // keepCustom=true：只补齐缺失语言/键，保留用户已自定义值
+    const result = await ConfirmI18nMerge(true);
+    if (!result || !result.ok) {
+        const msg = (result && result.message) ? result.message : '';
+        _i18nToast(_t('i18n.mergedFail', `Failed to write translation file: ${msg || '(unknown)'}`, { msg: msg || '' }));
+        return;
+    }
+
+    // 合并成功 → 从后端重新拉取 i18n 数据并刷新翻译
+    try {
+        await reloadI18n();
+        applyTranslations();
+    } catch (e) {
+        console.warn('[i18n] 合并后刷新翻译失败：', e);
+    }
+    _i18nToast(_t('i18n.mergedOk', 'Translations have been synced. The UI will refresh automatically.'));
 }
 
 // DOMContentLoaded 后应用 WinUI3 页面布局
