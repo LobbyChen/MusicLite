@@ -113,7 +113,7 @@
                 <div class="setting-item">
                     <label for="radius-slider" data-i18n="designer.radius">界面圆角</label>
                     <div class="slider-row">
-                        <input type="range" id="radius-slider" min="0" max="28" value="10" step="0.5"
+                        <input type="range" id="radius-slider" min="0.5" max="50" value="10" step="0.25"
                             class="setting-slider" />
                         <span id="radius-value" class="slider-value">10px</span>
                     </div>
@@ -163,6 +163,127 @@
                         <span id="text-glow-value" class="slider-value">0%</span>
                     </div>
                     <span class="toggle-desc" data-i18n="designer.textGlowDesc">标题文字的主题色晕影</span>
+                </div>
+            </section>
+
+            <!-- 背景与透明 -->
+            <section class="settings-section" data-section-id="background">
+                <h2 data-i18n="designer.bgSection">背景与透明</h2>
+
+                <!-- 桌面背景类型 -->
+                <div class="setting-item">
+                    <label data-i18n="designer.bgType">桌面背景</label>
+                    <div class="anim-level-row" style="margin-top: 8px;">
+                        <button type="button" class="anim-level-btn" data-bg-type="none" data-i18n="designer.bgTypeNone">无</button>
+                        <button type="button" class="anim-level-btn" data-bg-type="image" data-i18n="designer.bgTypeImage">图片</button>
+                        <button type="button" class="anim-level-btn" data-bg-type="video" data-i18n="designer.bgTypeVideo">视频</button>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.bgTypeDesc">选择图片或视频作为所有界面的背景</span>
+                </div>
+
+                <!-- 选择文件 -->
+                <div class="setting-item" id="bg-file-item" style="display:none;">
+                    <label data-i18n="designer.bgFile">选择文件</label>
+                    <div class="color-picker-row" style="flex-wrap: wrap; gap: 8px;">
+                        <button type="button" class="btn btn-secondary" id="bg-pick-image" style="display:none;" data-i18n="designer.bgPickImage">选择图片…</button>
+                        <button type="button" class="btn btn-secondary" id="bg-pick-video" style="display:none;" data-i18n="designer.bgPickVideo">选择视频…</button>
+                        <button type="button" class="btn btn-secondary" id="bg-clear-file" style="display:none;" data-i18n="designer.bgClearFile">清除</button>
+                        <input type="file" id="bg-file-input-image" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" style="display:none;" />
+                        <input type="file" id="bg-file-input-video" accept="video/*" style="display:none;" />
+                        <span id="bg-file-name" class="slider-value" style="width:100%;color:var(--text-secondary);font-size:0.8rem;"></span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.bgFileDesc">图片保存到设置文件；视频请保留源文件不要删除</span>
+                </div>
+
+                <!-- 适配方式 -->
+                <div class="setting-item" id="bg-fit-item" style="display:none;">
+                    <label data-i18n="designer.bgFit">适配方式</label>
+                    <div class="anim-level-row" style="margin-top: 8px; flex-wrap: wrap; gap: 6px;">
+                        <button type="button" class="anim-level-btn" data-bg-fit="cover" data-i18n="designer.bgFitCover">铺满全屏</button>
+                        <button type="button" class="anim-level-btn" data-bg-fit="contain" data-i18n="designer.bgFitContain">完整显示</button>
+                        <button type="button" class="anim-level-btn" data-bg-fit="fill" data-i18n="designer.bgFitFill">拉伸填满</button>
+                        <button type="button" class="anim-level-btn" data-bg-fit="none" data-i18n="designer.bgFitNone">原尺寸居中</button>
+                        <button type="button" class="anim-level-btn" data-bg-fit="scaledown" data-i18n="designer.bgFitScaleDown">智能缩放</button>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.bgFitDesc">决定背景超出窗口时的裁切/缩放行为</span>
+                </div>
+
+                <!-- 背景透明度 -->
+                <div class="setting-item" id="bg-opacity-item" style="display:none;">
+                    <label for="bg-opacity" data-i18n="designer.bgOpacity">背景透明度</label>
+                    <div class="slider-row">
+                        <input type="range" id="bg-opacity" min="0" max="100" value="90" step="1" class="setting-slider" />
+                        <span id="bg-opacity-value" class="slider-value">90%</span>
+                    </div>
+                </div>
+
+                <!-- 前景遮罩 -->
+                <div class="setting-item" id="bg-overlay-item" style="display:none;">
+                    <label for="bg-overlay" data-i18n="designer.bgOverlay">前景遮罩</label>
+                    <div class="slider-row">
+                        <input type="range" id="bg-overlay" min="0" max="100" value="20" step="1" class="setting-slider" />
+                        <span id="bg-overlay-value" class="slider-value">20%</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.bgOverlayDesc">在背景上方叠一层半透明的主题色，保证文字可读</span>
+                </div>
+
+                <!-- 背景虚化 -->
+                <div class="setting-item" id="bg-blur-item" style="display:none;">
+                    <label for="bg-blur" data-i18n="designer.bgBlur">背景虚化</label>
+                    <div class="slider-row">
+                        <input type="range" id="bg-blur" min="0" max="30" value="0" step="1" class="setting-slider" />
+                        <span id="bg-blur-value" class="slider-value">0 px</span>
+                    </div>
+                </div>
+
+                <!-- 视频选项 -->
+                <div class="setting-item" id="bg-video-options" style="display:none;">
+                    <label data-i18n="designer.bgVideoOptions">视频选项</label>
+                    <div class="anim-level-row" style="margin-top: 8px;">
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <div class="anim-level-row" style="gap:0;">
+                                <span class="slider-value" style="padding-right:12px;min-width:80px;" data-i18n="designer.bgLoop">循环播放</span>
+                                <button type="button" class="anim-level-btn" data-bg-loop="on" data-i18n="designer.bgLoopOn">开启</button>
+                                <button type="button" class="anim-level-btn" data-bg-loop="off" data-i18n="designer.bgLoopOff">关闭</button>
+                            </div>
+                            <div class="anim-level-row" style="gap:0;">
+                                <span class="slider-value" style="padding-right:12px;min-width:80px;" data-i18n="designer.bgMuted">自动静音</span>
+                                <button type="button" class="anim-level-btn" data-bg-muted="on" data-i18n="designer.bgMutedOn">开启（推荐）</button>
+                                <button type="button" class="anim-level-btn" data-bg-muted="off" data-i18n="designer.bgMutedOff">关闭</button>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.bgVideoDesc">浏览器要求视频必须静音才能自动播放；关闭后需用户点击后才会有声音</span>
+                </div>
+
+                <!-- 容器毛玻璃开关 -->
+                <div class="setting-item" id="bg-glass-item" style="display:none;">
+                    <label data-i18n="designer.bgglassDisableToggle">容器毛玻璃效果</label>
+                    <div class="anim-level-row" style="margin-top: 8px;">
+                        <button type="button" class="anim-level-btn" data-bg-glass="off" data-i18n="designer.bgglassOn">开启</button>
+                        <button type="button" class="anim-level-btn" data-bg-glass="on" data-i18n="designer.bgglassOff">关闭</button>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.bgglassDesc">关闭后可避免卡片边缘的毛玻璃阴影 / 光晕边界，也能解决新UI下部分纯色块造成的撕裂感</span>
+                </div>
+
+                <!-- 整窗透明度 -->
+                <div class="setting-item" id="window-alpha-item">
+                    <label for="window-alpha" data-i18n="designer.windowAlpha">窗口透明度</label>
+                    <div class="slider-row">
+                        <input type="range" id="window-alpha" min="1" max="100" value="100" step="1" class="setting-slider" />
+                        <span id="window-alpha-value" class="slider-value">100%</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.windowAlphaDesc">对整个窗口启用半透明</span>
+                </div>
+
+                <!-- 透明模式模糊程度 -->
+                <div class="setting-item" id="aero-blur-item">
+                    <label for="aero-blur-slider" data-i18n="designer.aeroBlur">透明模式模糊</label>
+                    <div class="slider-row">
+                        <input type="range" id="aero-blur-slider" min="0" max="400" value="0" step="1" class="setting-slider" />
+                        <span id="aero-blur-value" class="slider-value">0px</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.aeroBlurDesc">透明模式下背景的毛玻璃模糊量；默认关闭，开启后会极大增强GPU占用!</span>
                 </div>
             </section>
 

@@ -74,8 +74,13 @@ func main() {
 		Height:         580,
 		Frameless:      true, // 无原生边框：前端自绘标题栏
 		EnableFileDrop: true, // 启用文件拖放
+		// BackgroundTypeTransparent：Wails v3 官方透明背景开关
+		//   - 仅 BackgroundColour.Alpha=0 在 Solid 模式下无效（默认 BackgroundType=Solid）
+		//   - 必须显式设为 BackgroundTypeTransparent，Windows 才会走分层窗口 + WebView2 透明合成
+		//   - 配合 BackgroundColour={R:0,G:0,B:0,A:0} 让窗口底色完全透明，真实视觉由 CSS 提供
+		BackgroundType: application.BackgroundTypeTransparent,
 		BackgroundColour: application.RGBA{
-			Red: 18, Green: 18, Blue: 18, Alpha: 255,
+			Red: 0, Green: 0, Blue: 0, Alpha: 0,
 		},
 		Windows: application.WindowsWindow{
 			// 开启 WebView2 原生 NonClientRegion 支持，让 CSS 的 app-region: drag 生效

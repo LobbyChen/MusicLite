@@ -11,7 +11,7 @@
 
 ## 核心特性
 
-- **🎨 高度可定制 UI**：内置设计器，实时调整圆角、模糊、阴影、辉光、动画级别等视觉令牌
+- **🎨 高度可定制 UI**：内置设计器，实时调整圆角、模糊、阴影、辉光、动画级别等视觉令牌，支持透明模式和自定义背景图片/视频
 - **📝 歌词系统**：支持 LRC 格式，提供卡片/全屏双模式，多种切换动画
 - **🗂️ 播放队列管理**：拖拽排序、洗牌、从媒体库批量添加，支持队列内直接拖放
 - **⌨️ 全局快捷键**：可自定义播放/暂停、上一曲、下一曲的全局热键
@@ -35,9 +35,7 @@
 
 <img src=".\example\designer_old.png" alt="中文主界面">
 
-### 传统UI设置界面调色演示
-
-<img src=".\example\sett_old_color.png" alt="中文主界面">
+### 
 
 ## 快速开始
 
@@ -47,9 +45,9 @@
 - Node.js 18+
 - Wails v3 CLI (`go install github.com/wailsapp/wails/v3/cmd/wails3@latest`)
 - CGO 依赖：
-  - **Windows**: MinGW-w64, `libfftw3-3.dll`（已随仓库提供）
-  - **macOS**: `brew install fftw`
-  - **Linux**: `sudo apt install libfftw3-dev libgtk-3-dev libwebkit2gtk-4.1-dev`
+  - **Windows**: MinGW-w64, `libfftw3-3.dll`, `ffmpeg`
+  - **macOS**: `brew install fftw ffmpeg`
+  - **Linux**: `sudo apt install libfftw3-dev libgtk-3-dev libwebkit2gtk-4.1-dev ffmpeg`
 
 ### 开发模式
 
@@ -76,19 +74,32 @@ wails3 build
 
 ## 支持的音频格式
 
-| 格式 | 状态 |
-|------|------|
-| MP3  | ✅ 完整支持 |
-| WAV  | ✅ 完整支持 |
-| FLAC | ✅ 完整支持 |
+
+| 格式 | <= Cuckoo Beta0.6.4 支持 | > Cuckoo Beta0.6.4 支持 |
+| :--- | :--- | :--- |
+| MP3 | ✅ 完整支持 | ✅ 完整支持 |
+| WAV | ✅ 完整支持 | ✅ 完整支持 |
+| FLAC | ✅ 完整支持 | ✅ 完整支持|
+| AAC | ❌ 不支持 | ✅ 完整支持|
+| OGG (Vorbis) | ❌ 不支持 | ✅ 完整支持|
+| OPUS | ❌ 不支持 | ✅ 完整支持 |
+| WMA | ❌ 不支持 | ✅ 部分支持|
+| AIFF | ❌ 不支持 | ✅ 完整支持|
+| AMR | ❌ 不支持 | ✅ 完整支持|
+| AC3 / E-AC3 | ❌ 不支持 | ✅ 完整支持|
+| DTS | ❌ 不支持 | ✅ 完整支持|
+| ALAC | ❌ 不支持 | ✅ 完整支持|
+| APE | ❌ 不支持 | ✅ 仅解码支持|
+| TTA | ❌ 不支持 | ✅ 仅解码支持|
+
 
 ## 许可证
 
-本项目基于 [GNU GPL V3](./license/LICENCE.txt) 开源。
+本项目基于 [GNU GPL V3](./LICENCE.txt) 开源。
 
 ## 致谢
 
 - [Wails](https://wails.io/) - 优秀的 Go 桌面框架
-- [beep](https://github.com/gopxl/beep) - Go 音频处理库
+- [FFmpeg](https://ffmpeg.org/) - 开源的跨平台音视频处理框架
 - [FFTW](http://www.fftw.org/) - 快速傅里叶变换库
 - [dhowden/tag](https://github.com/dhowden/tag) - 音频标签解析

@@ -639,7 +639,8 @@ body[data-page="designer"] .btn:active {
 .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.6);
+    /* 用变量替代硬编码：默认深色遮罩；浅色主题下Aero模式会覆盖 */
+    background: color-mix(in srgb, #000 60%, transparent);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -647,6 +648,9 @@ body[data-page="designer"] .btn:active {
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s var(--ease-smooth), visibility 0.2s;
+}
+[data-theme="light"] .modal-backdrop {
+    background: color-mix(in srgb, #000 45%, transparent);
 }
 
 .modal-backdrop.active {
@@ -1881,11 +1885,15 @@ body[data-page="libraries"][data-new-ui="true"] .mini-player {
     left: 256px;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    background: rgba(20, 20, 20, 0.85);
+    /* 改用主题变量派生，而非硬编码 rgba —— 让 Aero 覆盖与深浅色主题都自然生效 */
+    background: color-mix(in srgb, var(--card-bg, #1e1e1e) 90%, rgba(255,255,255,0.02));
     border-top: 1px solid var(--w3-stroke);
 }
 body[data-page="libraries"][data-new-ui="true"][data-theme="light"] .mini-player {
-    background: rgba(250, 250, 250, 0.85);
+    background: color-mix(in srgb, var(--card-bg, #ffffff) 90%, rgba(0,0,0,0.02));
+}
+body[data-page="libraries"][data-new-ui="true"][data-theme="accent"] .mini-player {
+    background: color-mix(in srgb, var(--card-bg, #142814) 88%, rgba(255,255,255,0.03));
 }
 
 /* 队列侧栏 WinUI3 风格 */
@@ -2794,6 +2802,21 @@ body[data-page="designer"][data-new-ui="true"] .save-bar {
     border: none;
 }
 
+/* 迷你播放器 WinUI3 风格（Designer 页面）—— 与 save-bar 对齐，避免被侧边栏遮挡 */
+body[data-page="designer"][data-new-ui="true"] .mini-player {
+    left: 256px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: color-mix(in srgb, var(--card-bg, #1e1e1e) 90%, rgba(255,255,255,0.02));
+    border-top: 1px solid var(--w3-stroke);
+}
+body[data-page="designer"][data-new-ui="true"][data-theme="light"] .mini-player {
+    background: color-mix(in srgb, var(--card-bg, #ffffff) 90%, rgba(0,0,0,0.02));
+}
+body[data-page="designer"][data-new-ui="true"][data-theme="accent"] .mini-player {
+    background: color-mix(in srgb, var(--card-bg, #142814) 88%, rgba(255,255,255,0.03));
+}
+
 /* 响应式 */
 @media (max-width: 900px) {
     body[data-page="designer"][data-new-ui="true"] .winui3-page-nav {
@@ -2809,6 +2832,9 @@ body[data-page="designer"][data-new-ui="true"] .save-bar {
         padding: 10px 8px;
     }
     body[data-page="designer"][data-new-ui="true"] .save-bar {
+        left: 48px;
+    }
+    body[data-page="designer"][data-new-ui="true"] .mini-player {
         left: 48px;
     }
     body[data-page="designer"][data-new-ui="true"] .designer-main {

@@ -30,11 +30,19 @@ export class MscData {
         }
         if (!("artist" in $$source)) {
             /**
-             * 作曲家
+             * 艺术家/作曲家
              * @member
              * @type {string}
              */
             this["artist"] = "";
+        }
+        if (!("album" in $$source)) {
+            /**
+             * 专辑
+             * @member
+             * @type {string}
+             */
+            this["album"] = "";
         }
         if (!("format" in $$source)) {
             /**

@@ -207,6 +207,7 @@ func (s *MusicService) GetFileInArgs() format.MscData {
 	rec := storage.TrackRecord{
 		Title:      meta.Title,
 		Artist:     meta.Artist,
+		Album:      meta.Album,
 		FilePath:   filePath,
 		CoverData:  meta.CoverData,
 		CoverMIME:  meta.CoverMIME,
@@ -229,6 +230,7 @@ func (s *MusicService) GetFileInArgs() format.MscData {
 		ID:         r.ID,
 		Name:       r.Title,
 		Author:     r.Artist,
+		Album:      r.Album,
 		Format:     format.NormalMscFormat(r.Format),
 		AudioURI:   base + "/audio/" + strconv.FormatInt(r.ID, 10),
 		Lyrics:     r.Lyrics,
@@ -315,6 +317,7 @@ func (s *MusicService) importFromPaths(paths []string) (int, error) {
 		rec := storage.TrackRecord{
 			Title:      meta.Title,
 			Artist:     meta.Artist,
+			Album:      meta.Album,
 			FilePath:   filePath,
 			CoverData:  meta.CoverData,
 			CoverMIME:  meta.CoverMIME,
@@ -365,6 +368,7 @@ func (s *MusicService) GetAllTracks() ([]format.MscData, error) {
 			ID:         r.ID,
 			Name:       r.Title,
 			Author:     r.Artist,
+			Album:      r.Album,
 			Format:     format.NormalMscFormat(r.Format),
 			AudioURI:   base + "/audio/" + strconv.FormatInt(r.ID, 10),
 			Lyrics:     r.Lyrics,
@@ -415,6 +419,7 @@ func (s *MusicService) GetTrack(id int64) (format.MscData, error) {
 		ID:         rec.ID,
 		Name:       rec.Title,
 		Author:     rec.Artist,
+		Album:      rec.Album,
 		Format:     format.NormalMscFormat(rec.Format),
 		AudioURI:   base + "/audio/" + strconv.FormatInt(rec.ID, 10),
 		Lyrics:     rec.Lyrics,
@@ -431,9 +436,9 @@ func (s *MusicService) GetDatabase() *storage.Database {
 	return s.database
 }
 
-// UpdateTrack 更新曲目基本信息（标题、艺术家、歌词）
-func (s *MusicService) UpdateTrack(id int64, title string, artist string, lyrics string) error {
-	return s.database.UpdateTrack(id, title, artist, lyrics)
+// UpdateTrack 更新曲目基本信息（标题、艺术家、专辑、歌词）
+func (s *MusicService) UpdateTrack(id int64, title string, artist string, album string, lyrics string) error {
+	return s.database.UpdateTrack(id, title, artist, album, lyrics)
 }
 
 // UpdateTrackCover 更新曲目封面

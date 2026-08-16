@@ -26,6 +26,18 @@ type Settings struct {
 	VolumeMode     string  `json:"volume_mode"`     // 音量模式："synth"（合成器，默认）| "master"（系统主音量）
 	MaxLyricLines  int     `json:"max_lyric_lines"` // 同一时间戳最多允许同时显示歌词行数（1-10，默认1）
 	SortMode       string  `json:"sort_mode"`       // 音乐库排序方式："recent"（默认）| "title" | "artist"
+	// 背景（全页面生效：图片或视频）
+	BgType    string  `json:"bg_type"`    // "none" | "image" | "video"
+	BgURL     string  `json:"bg_url"`     // 图片为 dataURL；视频为本地绝对文件路径（file:// 或纯路径）
+	BgFit     string  `json:"bg_fit"`     // "cover" 铺满全屏 | "contain" 完整显示 | "fill" 拉伸填满 | "none" 原尺寸居中 | "scaledown" 智能缩放
+	BgOpacity float64 `json:"bg_opacity"` // 背景不透明度 0-1，默认 0.9
+	BgOverlay float64 `json:"bg_overlay"` // 前景遮罩（暗/浅色）强度 0-1，默认 0.2（提高文字对比度）
+	BgBlur    int     `json:"bg_blur"`    // 背景模糊程度 0-30（像素），默认 0
+	BgLoop    bool    `json:"bg_loop"`    // 视频是否循环（默认 true）
+	BgMuted   bool    `json:"bg_muted"`   // 视频是否静音（默认 true，推荐开启避免干扰）
+	BgGlassDisabled bool    `json:"bg_glass_disabled"` // 有背景时关闭所有容器毛玻璃（backdrop-filter）效果，避免边界与撕裂
+	WindowAlpha     float64 `json:"window_alpha"`      // 整窗透明度 0.01-1.0，默认 1；对桌面透出实现 Aero 效果
+	AeroBlur        int     `json:"aero_blur"`         // Aero 透明模式下的背景模糊量（px，0-40，默认 0）；0=关闭模糊
 	// 设计令牌（设计器实时调整，持久化到 settings.json）
 	DesignRadius    float64 `json:"design_radius"`     // 圆角（px，0-28，默认 10）
 	DesignBlur      int     `json:"design_blur"`       // 毛玻璃模糊量（px，0-40，默认 16）
@@ -64,6 +76,17 @@ func DefaultSettings() Settings {
 		VolumeMode:     "synth",
 		MaxLyricLines:  1,
 		SortMode:       "recent",
+		BgType:         "none",
+		BgURL:          "",
+		BgFit:          "cover",
+		BgOpacity:      0.9,
+		BgOverlay:      0.2,
+		BgBlur:         0,
+		BgLoop:         true,
+		BgMuted:        true,
+		BgGlassDisabled: false,
+		WindowAlpha:     1.0,
+		AeroBlur:        0,
 		DesignRadius:   10,
 		DesignBlur:     16,
 		DesignAnimMult: 1.0,
@@ -265,6 +288,63 @@ func (a *MusicService) LoadSettings() Settings {
 		} else if s.DesignTextGlow < 0 || s.DesignTextGlow > 1 {
 			s.DesignTextGlow = def.DesignTextGlow
 		}
+	}
+	// 背景字段兼容旧版设置文件（缺失时用默认值补齐，越界时钳制到合法范围）
+	{
+		var raw5 map[string]json.RawMessage
+		_ = json.Unmarshal(data, &raw5)
+		has5 := func(key string) bool { _, ok := raw5[key]; return ok }
+		if !has5("bg_type") {
+			s.BgType = def.BgType
+		} else if s.BgType != "none" && s.BgType != "image" && s.BgType != "video" {
+			s.BgType = def.BgType
+		}
+		if !has5("bg_url") {
+			s.BgURL = def.BgURL
+		}
+		if !has5("bg_fit") {
+			s.BgFit = def.BgFit
+		} else if s.BgFit != "cover" && s.BgFit != "contain" && s.BgFit != "fill" && s.BgFit != "none" && s.BgFit != "scaledown" {
+			s.BgFit = def.BgFit
+		}
+		if !has5("bg_opacity") {
+			s.BgOpacity = def.BgOpacity
+		} else if s.BgOpacity < 0 || s.BgOpacity > 1 {
+			s.BgOpacity = def.BgOpacity
+		}
+		if !has5("bg_overlay") {
+			s.BgOverlay = def.BgOverlay
+		} else if s.BgOverlay < 0 || s.BgOverlay > 1 {
+			s.BgOverlay = def.BgOverlay
+		}
+		if !has5("bg_blur") {
+			s.BgBlur = def.BgBlur
+		} else if s.BgBlur < 0 || s.BgBlur > 30 {
+			s.BgBlur = def.BgBlur
+		}
+		if !has5("bg_loop") {
+			s.BgLoop = def.BgLoop
+		}
+		if !has5("bg_muted") {
+			s.BgMuted = def.BgMuted
+		}
+		if !has5("bg_glass_disabled") {
+			s.BgGlassDisabled = def.BgGlassDisabled
+		}
+		if !has5("window_alpha") {
+			s.WindowAlpha = def.WindowAlpha
+		} else if s.WindowAlpha < 0.01 || s.WindowAlpha > 1.0 {
+			s.WindowAlpha = def.WindowAlpha
+		}
+		if !has5("aero_blur") {
+			s.AeroBlur = def.AeroBlur
+		} else if s.AeroBlur < 0 || s.AeroBlur > 40 {
+			s.AeroBlur = def.AeroBlur
+		}
+	}
+	// SortMode 兼容旧版设置文件（缺失或非法时用默认值 "recent"，补充 album 模式）
+	if s.SortMode != "recent" && s.SortMode != "title" && s.SortMode != "artist" && s.SortMode != "album" {
+		s.SortMode = def.SortMode
 	}
 
 	return s

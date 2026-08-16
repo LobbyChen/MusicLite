@@ -47,7 +47,9 @@ func (s *MusicService) initTray() {
 			Frameless:       true,
 			AlwaysOnTop:     true,
 			DisableResize:   true,
-			BackgroundColour: application.RGBA{Red: 30, Green: 31, Blue: 34, Alpha: 0},
+			// BackgroundTypeTransparent：必须显式指定，否则 BackgroundColour 的 Alpha=0 不生效
+			BackgroundType:   application.BackgroundTypeTransparent,
+			BackgroundColour: application.RGBA{Red: 0, Green: 0, Blue: 0, Alpha: 0},
 			Windows: application.WindowsWindow{
 				HiddenOnTaskbar:      true,
 				NonClientRegionSupport: false,
@@ -257,7 +259,9 @@ func (s *MusicService) ensureSettingsWindow() application.Window {
 			Frameless:        true,
 			Hidden:           true,
 			AlwaysOnTop:      false,
-			BackgroundColour: application.RGBA{Red: 18, Green: 18, Blue: 18, Alpha: 255},
+			// BackgroundTypeTransparent：必须显式指定，否则 BackgroundColour 的 Alpha=0 不生效
+			BackgroundType:   application.BackgroundTypeTransparent,
+			BackgroundColour: application.RGBA{Red: 0, Green: 0, Blue: 0, Alpha: 0},
 			Windows: application.WindowsWindow{
 				HiddenOnTaskbar:     false,
 				NonClientRegionSupport: true,

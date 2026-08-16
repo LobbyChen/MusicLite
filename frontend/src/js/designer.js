@@ -3,7 +3,7 @@
 // 等几乎所有 CSS 变量的实时控件。修改实时生效，保存后持久化到 settings.json。
 import { LoadSettings, SaveSettings, ResetSettings } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, t, applyTranslations } from './i18n.js';
-import { Window } from '@wailsio/runtime';
+import { Window, Dialog } from '@wailsio/runtime';
 import { resumeTutorialIfAny } from './tutorial.js';
 
 // ============ 长歌名滚动显示（与 settings.js 一致） ============
@@ -85,6 +85,36 @@ const previewBtn = document.getElementById('previewBtn');
 
 let currentSettings = null;
 let confirmCallback = null;
+
+// ============ 背景设置 DOM 元素 ============
+const bgTypeBtns = document.querySelectorAll('.anim-level-btn[data-bg-type]');
+const bgFitBtns = document.querySelectorAll('.anim-level-btn[data-bg-fit]');
+const bgLoopBtns = document.querySelectorAll('.anim-level-btn[data-bg-loop]');
+const bgMutedBtns = document.querySelectorAll('.anim-level-btn[data-bg-muted]');
+const bgGlassBtns = document.querySelectorAll('.anim-level-btn[data-bg-glass]');
+const bgPickImageBtn = document.getElementById('bg-pick-image');
+const bgPickVideoBtn = document.getElementById('bg-pick-video');
+const bgClearFileBtn = document.getElementById('bg-clear-file');
+const bgFileInputImage = document.getElementById('bg-file-input-image');
+const bgFileInputVideo = document.getElementById('bg-file-input-video');
+const bgFileNameEl = document.getElementById('bg-file-name');
+const bgFileItem = document.getElementById('bg-file-item');
+const bgFitItem = document.getElementById('bg-fit-item');
+const bgOpacitySlider = document.getElementById('bg-opacity');
+const bgOpacityValue = document.getElementById('bg-opacity-value');
+const bgOpacityItem = document.getElementById('bg-opacity-item');
+const bgOverlaySlider = document.getElementById('bg-overlay');
+const bgOverlayValue = document.getElementById('bg-overlay-value');
+const bgOverlayItem = document.getElementById('bg-overlay-item');
+const bgBlurSlider = document.getElementById('bg-blur');
+const bgBlurValue = document.getElementById('bg-blur-value');
+const bgBlurItem = document.getElementById('bg-blur-item');
+const bgVideoOptions = document.getElementById('bg-video-options');
+const bgGlassItem = document.getElementById('bg-glass-item');
+const windowAlphaSlider = document.getElementById('window-alpha');
+const windowAlphaValue = document.getElementById('window-alpha-value');
+const aeroBlurSlider = document.getElementById('aero-blur-slider');
+const aeroBlurValue = document.getElementById('aero-blur-value');
 
 // ============ Toast / Confirm（与 settings.js 一致） ============
 function showToast(message, type = 'info', duration = 2500) {
@@ -191,6 +221,47 @@ function applyAnimationLevelLive() {
     }
 }
 
+// ============ 背景设置：根据 bg_type 切换子项可见性 ============
+function setBgUIForType(type) {
+    const showSubOptions = type === 'image' || type === 'video';
+    if (bgFileItem) bgFileItem.style.display = showSubOptions ? '' : 'none';
+    if (bgPickImageBtn) bgPickImageBtn.style.display = type === 'image' ? '' : 'none';
+    if (bgPickVideoBtn) bgPickVideoBtn.style.display = type === 'video' ? '' : 'none';
+    if (bgFitItem) bgFitItem.style.display = showSubOptions ? '' : 'none';
+    if (bgOpacityItem) bgOpacityItem.style.display = showSubOptions ? '' : 'none';
+    if (bgOverlayItem) bgOverlayItem.style.display = showSubOptions ? '' : 'none';
+    if (bgBlurItem) bgBlurItem.style.display = showSubOptions ? '' : 'none';
+    if (bgGlassItem) bgGlassItem.style.display = showSubOptions ? '' : 'none';
+    if (bgVideoOptions) bgVideoOptions.style.display = type === 'video' ? '' : 'none';
+    if (bgClearFileBtn) bgClearFileBtn.style.display = (currentSettings && currentSettings.bg_url) ? '' : 'none';
+}
+
+// ============ 背景实时预览 ============
+function previewBackgroundNow() {
+    if (!window.MusicLiteSettings || !currentSettings) return;
+    window.MusicLiteSettings.applyBackground({
+        bg_type:    currentSettings.bg_type,
+        bg_url:     currentSettings.bg_url,
+        bg_fit:     currentSettings.bg_fit,
+        bg_opacity: currentSettings.bg_opacity,
+        bg_overlay: currentSettings.bg_overlay,
+        bg_blur:    currentSettings.bg_blur,
+        bg_loop:    currentSettings.bg_loop,
+        bg_muted:   currentSettings.bg_muted,
+        bg_glass_disabled: currentSettings.bg_glass_disabled,
+        theme:      currentSettings.theme || 'dark',
+    });
+}
+
+function previewWindowAlphaNow() {
+    if (!window.MusicLiteSettings || !currentSettings) return;
+    window.MusicLiteSettings.applyWindowAlpha(currentSettings.window_alpha);
+    // 同步应用 aero_blur
+    if (window.MusicLiteSettings.applyAeroBlur) {
+        window.MusicLiteSettings.applyAeroBlur(currentSettings.aero_blur);
+    }
+}
+
 // ============ 把后端设置同步到 UI 控件 ============
 function applySettingsToUI(s) {
     currentSettings = s;
@@ -221,6 +292,53 @@ function applySettingsToUI(s) {
     // 设置界面布局模式
     const layoutMode = s.settings_layout || 'scroll';
     layoutModeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.layoutMode === layoutMode));
+
+    // ============ 背景设置 ============
+    const bgType = (s.bg_type === 'image' || s.bg_type === 'video') ? s.bg_type : 'none';
+    bgTypeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.bgType === bgType));
+    const bgFit = (['cover','contain','fill','none','scaledown'].includes(s.bg_fit)) ? s.bg_fit : 'cover';
+    bgFitBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.bgFit === bgFit));
+    const bgLoop = !(s.bg_loop === false);
+    bgLoopBtns.forEach(btn => btn.classList.toggle('active', (btn.dataset.bgLoop === 'on') === bgLoop));
+    const bgMuted = !(s.bg_muted === false);
+    bgMutedBtns.forEach(btn => btn.classList.toggle('active', (btn.dataset.bgMuted === 'on') === bgMuted));
+    const bgGlassOff = Boolean(s.bg_glass_disabled);
+    bgGlassBtns.forEach(btn => btn.classList.toggle('active', (btn.dataset.bgGlass === 'on') === bgGlassOff));
+
+    const bgOp = typeof s.bg_opacity === 'number' ? Math.max(0, Math.min(1, s.bg_opacity)) : 0.9;
+    if (bgOpacitySlider) { bgOpacitySlider.value = Math.round(bgOp * 100); }
+    if (bgOpacityValue)  { bgOpacityValue.textContent = Math.round(bgOp * 100) + '%'; }
+
+    const bgOv = typeof s.bg_overlay === 'number' ? Math.max(0, Math.min(1, s.bg_overlay)) : 0.2;
+    if (bgOverlaySlider) { bgOverlaySlider.value = Math.round(bgOv * 100); }
+    if (bgOverlayValue)  { bgOverlayValue.textContent = Math.round(bgOv * 100) + '%'; }
+
+    const bgBl = typeof s.bg_blur === 'number' ? Math.max(0, Math.min(30, s.bg_blur)) : 0;
+    if (bgBlurSlider) { bgBlurSlider.value = bgBl; }
+    if (bgBlurValue)  { bgBlurValue.textContent = bgBl + ' px'; }
+
+    const wa = typeof s.window_alpha === 'number' ? Math.max(0.2, Math.min(1, s.window_alpha)) : 1;
+    if (windowAlphaSlider) { windowAlphaSlider.value = Math.round(wa * 100); }
+    if (windowAlphaValue)  { windowAlphaValue.textContent = Math.round(wa * 100) + '%'; }
+
+    const ab = typeof s.aero_blur === 'number' ? Math.max(0, Math.min(40, s.aero_blur)) : 16;
+    if (aeroBlurSlider) { aeroBlurSlider.value = ab; }
+    if (aeroBlurValue)  { aeroBlurValue.textContent = ab + 'px'; }
+
+    if (bgFileNameEl) {
+        if (s.bg_url) {
+            let name = s.bg_url;
+            if (name.startsWith('data:')) {
+                name = '已加载图片（已保存）';
+            } else {
+                try { name = name.split(/[\\/]/).pop() || name; } catch (e) {}
+            }
+            bgFileNameEl.textContent = name;
+        } else {
+            bgFileNameEl.textContent = '';
+        }
+    }
+    setBgUIForType(bgType);
 }
 
 // ============ 加载设置 ============
@@ -231,6 +349,8 @@ async function loadSettings() {
         applyAccentToUI();
         applyDesignTokensLive();
         applyAnimationLevelLive();
+        previewBackgroundNow();
+        previewWindowAlphaNow();
     } catch (e) {
         console.warn('LoadSettings failed:', e);
     }
@@ -262,6 +382,9 @@ async function saveSettings() {
         await SaveSettings(currentSettings);
         // 同步全局缓存，避免其他页面读到旧值
         if (window.MusicLiteSettings) window.MusicLiteSettings.cached = currentSettings;
+        // 通知其他页面（libraries、player）应用新设置
+        localStorage.setItem('settingsUpdated', Date.now().toString());
+        localStorage.setItem('cachedSettings', JSON.stringify(currentSettings));
         hideSaveBar();
         showToast(t('designer.saved'), 'success');
     } catch (e) {
@@ -283,6 +406,8 @@ async function resetToDefaults() {
         applyAccentToUI();
         applyDesignTokensLive();
         applyAnimationLevelLive();
+        previewBackgroundNow();
+        previewWindowAlphaNow();
         await SaveSettings(defaults);
         if (window.MusicLiteSettings) window.MusicLiteSettings.cached = defaults;
         hideSaveBar();
@@ -406,6 +531,181 @@ function setupEventListeners() {
             markChanged();
         });
     });
+
+    // ============ 背景设置事件 ============
+    // 背景类型
+    bgTypeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            bgTypeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSettings.bg_type = btn.dataset.bgType;
+            setBgUIForType(currentSettings.bg_type);
+            previewBackgroundNow();
+            markChanged();
+        });
+    });
+
+    // 适配方式
+    bgFitBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            bgFitBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSettings.bg_fit = btn.dataset.bgFit;
+            previewBackgroundNow();
+            markChanged();
+        });
+    });
+
+    // 循环播放
+    bgLoopBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            bgLoopBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSettings.bg_loop = (btn.dataset.bgLoop === 'on');
+            previewBackgroundNow();
+            markChanged();
+        });
+    });
+
+    // 静音
+    bgMutedBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            bgMutedBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSettings.bg_muted = (btn.dataset.bgMuted === 'on');
+            previewBackgroundNow();
+            markChanged();
+        });
+    });
+
+    // 毛玻璃开关
+    bgGlassBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            bgGlassBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSettings.bg_glass_disabled = (btn.dataset.bgGlass === 'on');
+            previewBackgroundNow();
+            markChanged();
+        });
+    });
+
+    // 选择图片按钮
+    if (bgPickImageBtn) {
+        bgPickImageBtn.addEventListener('click', () => {
+            bgFileInputImage.click();
+        });
+    }
+
+    // 选择视频按钮
+    if (bgPickVideoBtn) {
+        bgPickVideoBtn.addEventListener('click', () => {
+            bgFileInputVideo.click();
+        });
+    }
+
+    // 清除按钮
+    if (bgClearFileBtn) {
+        bgClearFileBtn.addEventListener('click', () => {
+            currentSettings.bg_url = '';
+            if (bgFileNameEl) bgFileNameEl.textContent = '';
+            bgClearFileBtn.style.display = 'none';
+            previewBackgroundNow();
+            markChanged();
+        });
+    }
+
+    // 图片文件选择
+    if (bgFileInputImage) {
+        bgFileInputImage.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                currentSettings.bg_url = reader.result;
+                if (bgFileNameEl) bgFileNameEl.textContent = '已加载图片（已保存）';
+                if (bgClearFileBtn) bgClearFileBtn.style.display = '';
+                previewBackgroundNow();
+                markChanged();
+            };
+            reader.readAsDataURL(file);
+            bgFileInputImage.value = '';
+        });
+    }
+
+    // 视频文件选择
+    if (bgFileInputVideo) {
+        bgFileInputVideo.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            // 在 Wails 中获取绝对路径
+            try {
+                const path = await file.path || file.name;
+                currentSettings.bg_url = path;
+                if (bgFileNameEl) bgFileNameEl.textContent = path.split(/[\\/]/).pop() || path;
+                if (bgClearFileBtn) bgClearFileBtn.style.display = '';
+                previewBackgroundNow();
+                markChanged();
+            } catch (err) {
+                console.error('Video file select error:', err);
+            }
+            bgFileInputVideo.value = '';
+        });
+    }
+
+    // 背景透明度
+    if (bgOpacitySlider) {
+        bgOpacitySlider.addEventListener('input', () => {
+            const v = parseInt(bgOpacitySlider.value, 10) || 0;
+            currentSettings.bg_opacity = v / 100;
+            if (bgOpacityValue) bgOpacityValue.textContent = v + '%';
+            previewBackgroundNow();
+            markChanged();
+        });
+    }
+
+    // 前景遮罩
+    if (bgOverlaySlider) {
+        bgOverlaySlider.addEventListener('input', () => {
+            const v = parseInt(bgOverlaySlider.value, 10) || 0;
+            currentSettings.bg_overlay = v / 100;
+            if (bgOverlayValue) bgOverlayValue.textContent = v + '%';
+            previewBackgroundNow();
+            markChanged();
+        });
+    }
+
+    // 背景虚化
+    if (bgBlurSlider) {
+        bgBlurSlider.addEventListener('input', () => {
+            const v = parseInt(bgBlurSlider.value, 10) || 0;
+            currentSettings.bg_blur = v;
+            if (bgBlurValue) bgBlurValue.textContent = v + ' px';
+            previewBackgroundNow();
+            markChanged();
+        });
+    }
+
+    // 窗口透明度（滑块 1-100% → 实际 0.01-1.0）
+    if (windowAlphaSlider) {
+        windowAlphaSlider.addEventListener('input', () => {
+            const v = Math.max(1, parseInt(windowAlphaSlider.value, 10) || 100);
+            currentSettings.window_alpha = v / 100;
+            if (windowAlphaValue) windowAlphaValue.textContent = v + '%';
+            previewWindowAlphaNow();
+            markChanged();
+        });
+    }
+
+    // Aero 模糊
+    if (aeroBlurSlider) {
+        aeroBlurSlider.addEventListener('input', () => {
+            const v = parseInt(aeroBlurSlider.value, 10) || 0;
+            currentSettings.aero_blur = v;
+            if (aeroBlurValue) aeroBlurValue.textContent = v + 'px';
+            previewWindowAlphaNow();
+            markChanged();
+        });
+    }
 
     // 保存 / 重置
     saveBtn.addEventListener('click', saveSettings);

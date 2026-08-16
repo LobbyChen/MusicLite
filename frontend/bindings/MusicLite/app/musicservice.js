@@ -61,7 +61,6 @@ export function GetAllTracks() {
 }
 
 /**
- * GetApplicationVolume 获取应用音量（synth 模式：读取 Windows 音量合成器中本进程的音量）
  * @returns {$CancellablePromise<number>}
  */
 export function GetApplicationVolume() {
@@ -373,8 +372,7 @@ export function PickLyricsFile() {
 }
 
 /**
- * EqBandCount 常量前端不可见，前端通过 PlayerGetEqBandCount 获取
- * PlayerGetEqBandCount 返回频段数量
+ * 均衡器方法 (Stub 实现，保持签名)
  * @returns {$CancellablePromise<number>}
  */
 export function PlayerGetEqBandCount() {
@@ -382,7 +380,6 @@ export function PlayerGetEqBandCount() {
 }
 
 /**
- * PlayerGetEqEnabled 返回均衡器启用状态
  * @returns {$CancellablePromise<boolean>}
  */
 export function PlayerGetEqEnabled() {
@@ -390,7 +387,6 @@ export function PlayerGetEqEnabled() {
 }
 
 /**
- * PlayerGetEqFreqs 返回各频段中心频率（Hz）
  * @returns {$CancellablePromise<number[]>}
  */
 export function PlayerGetEqFreqs() {
@@ -400,7 +396,6 @@ export function PlayerGetEqFreqs() {
 }
 
 /**
- * PlayerGetEqGains 返回当前各频段增益（dB）
  * @returns {$CancellablePromise<number[]>}
  */
 export function PlayerGetEqGains() {
@@ -410,7 +405,6 @@ export function PlayerGetEqGains() {
 }
 
 /**
- * PlayerGetPlayMode 返回当前播放模式
  * @returns {$CancellablePromise<string>}
  */
 export function PlayerGetPlayMode() {
@@ -418,7 +412,6 @@ export function PlayerGetPlayMode() {
 }
 
 /**
- * PlayerGetSmartEQEnabled 返回智能均衡器启用状态
  * @returns {$CancellablePromise<boolean>}
  */
 export function PlayerGetSmartEQEnabled() {
@@ -426,7 +419,6 @@ export function PlayerGetSmartEQEnabled() {
 }
 
 /**
- * PlayerGetSmartEQIntensity 返回智能均衡器补偿强度
  * @returns {$CancellablePromise<number>}
  */
 export function PlayerGetSmartEQIntensity() {
@@ -434,7 +426,6 @@ export function PlayerGetSmartEQIntensity() {
 }
 
 /**
- * PlayerGetState 返回当前播放器状态快照
  * @returns {$CancellablePromise<$models.PlayerState>}
  */
 export function PlayerGetState() {
@@ -444,7 +435,6 @@ export function PlayerGetState() {
 }
 
 /**
- * PlayerLoad 加载并准备播放一首曲目（加载后处于暂停态，需调用 PlayerPlay 开始）
  * @param {format$0.MscData} track
  * @returns {$CancellablePromise<void>}
  */
@@ -453,7 +443,6 @@ export function PlayerLoad(track) {
 }
 
 /**
- * PlayerPause 暂停播放
  * @returns {$CancellablePromise<void>}
  */
 export function PlayerPause() {
@@ -461,7 +450,6 @@ export function PlayerPause() {
 }
 
 /**
- * PlayerPlay 恢复播放
  * @returns {$CancellablePromise<void>}
  */
 export function PlayerPlay() {
@@ -469,7 +457,6 @@ export function PlayerPlay() {
 }
 
 /**
- * PlayerResetEq 重置全部频段为 0 dB（不平路状态，仍保持启用/旁路）
  * @returns {$CancellablePromise<void>}
  */
 export function PlayerResetEq() {
@@ -477,7 +464,6 @@ export function PlayerResetEq() {
 }
 
 /**
- * PlayerRestart 从头重新播放当前曲目（前端在 loopOne 之外需要时可用）
  * @returns {$CancellablePromise<void>}
  */
 export function PlayerRestart() {
@@ -485,7 +471,6 @@ export function PlayerRestart() {
 }
 
 /**
- * PlayerSeek 跳转到指定秒数
  * @param {number} seconds
  * @returns {$CancellablePromise<void>}
  */
@@ -494,7 +479,6 @@ export function PlayerSeek(seconds) {
 }
 
 /**
- * PlayerSetEqBand 设置某频段增益（dB，-12~+12）
  * @param {number} index
  * @param {number} gainDB
  * @returns {$CancellablePromise<void>}
@@ -504,7 +488,6 @@ export function PlayerSetEqBand(index, gainDB) {
 }
 
 /**
- * PlayerSetEqEnabled 启用/旁路均衡器
  * @param {boolean} on
  * @returns {$CancellablePromise<void>}
  */
@@ -513,7 +496,6 @@ export function PlayerSetEqEnabled(on) {
 }
 
 /**
- * PlayerSetEqGains 一次性设置全部频段增益（长度须等于频段数）
  * @param {number[]} gains
  * @returns {$CancellablePromise<void>}
  */
@@ -522,7 +504,6 @@ export function PlayerSetEqGains(gains) {
 }
 
 /**
- * PlayerSetSmartEQEnabled 启用/旁路智能均衡器
  * @param {boolean} on
  * @returns {$CancellablePromise<void>}
  */
@@ -531,7 +512,6 @@ export function PlayerSetSmartEQEnabled(on) {
 }
 
 /**
- * PlayerSetSmartEQIntensity 设置智能均衡器补偿强度（0-1）
  * @param {number} v
  * @returns {$CancellablePromise<void>}
  */
@@ -540,7 +520,6 @@ export function PlayerSetSmartEQIntensity(v) {
 }
 
 /**
- * PlayerStop 停止并清空当前曲目
  * @returns {$CancellablePromise<void>}
  */
 export function PlayerStop() {
@@ -548,7 +527,6 @@ export function PlayerStop() {
 }
 
 /**
- * PlayerToggle 切换播放/暂停
  * @returns {$CancellablePromise<void>}
  */
 export function PlayerToggle() {
@@ -556,7 +534,6 @@ export function PlayerToggle() {
 }
 
 /**
- * PlayerTogglePlayMode 切换播放模式并返回新模式
  * @returns {$CancellablePromise<string>}
  */
 export function PlayerTogglePlayMode() {
@@ -564,7 +541,6 @@ export function PlayerTogglePlayMode() {
 }
 
 /**
- * QueueAddAll 批量加入队列
  * @param {number[]} ids
  * @returns {$CancellablePromise<number>}
  */
@@ -573,7 +549,6 @@ export function QueueAddAll(ids) {
 }
 
 /**
- * QueueAddAllFromLibrary 把整个音乐库加入队列（"播放全部"用）
  * @returns {$CancellablePromise<number>}
  */
 export function QueueAddAllFromLibrary() {
@@ -581,7 +556,7 @@ export function QueueAddAllFromLibrary() {
 }
 
 /**
- * QueueAddTrack 按曲目 ID 加入队列尾部，返回加入的项（失败返回空项）
+ * 队列与音量方法 (保持原样)
  * @param {number} id
  * @returns {$CancellablePromise<$models.QueueItem>}
  */
@@ -592,7 +567,6 @@ export function QueueAddTrack(id) {
 }
 
 /**
- * QueueClear 清空队列
  * @returns {$CancellablePromise<void>}
  */
 export function QueueClear() {
@@ -600,7 +574,6 @@ export function QueueClear() {
 }
 
 /**
- * QueueGetNext 取下一项（不前进指针），用于前端手动"下一首"决策；无则返回空项
  * @returns {$CancellablePromise<$models.QueueItem>}
  */
 export function QueueGetNext() {
@@ -610,7 +583,6 @@ export function QueueGetNext() {
 }
 
 /**
- * QueueGetPrev 取上一项；无则返回空项
  * @returns {$CancellablePromise<$models.QueueItem>}
  */
 export function QueueGetPrev() {
@@ -620,7 +592,6 @@ export function QueueGetPrev() {
 }
 
 /**
- * QueueGetStatus 返回队列快照
  * @returns {$CancellablePromise<$models.QueueStatus>}
  */
 export function QueueGetStatus() {
@@ -630,7 +601,6 @@ export function QueueGetStatus() {
 }
 
 /**
- * QueueJumpTo 跳转到指定下标并播放该项
  * @param {number} index
  * @returns {$CancellablePromise<void>}
  */
@@ -639,7 +609,6 @@ export function QueueJumpTo(index) {
 }
 
 /**
- * QueueMove 拖拽排序：from → to
  * @param {number} $from
  * @param {number} to
  * @returns {$CancellablePromise<boolean>}
@@ -649,7 +618,6 @@ export function QueueMove($from, to) {
 }
 
 /**
- * QueueRemoveAt 删除指定下标的队列项
  * @param {number} index
  * @returns {$CancellablePromise<boolean>}
  */
@@ -658,7 +626,6 @@ export function QueueRemoveAt(index) {
 }
 
 /**
- * QueueShuffle 洗牌（保留当前播放项位置）
  * @returns {$CancellablePromise<void>}
  */
 export function QueueShuffle() {
@@ -722,10 +689,6 @@ export function SaveSettings(s) {
 }
 
 /**
- * SetApplicationVolume 设置应用音量（synth 模式：控制 Windows 音量合成器中本进程的音量）
- * 播放迁移到 Go 后端后，音频由 Go 进程直接输出，音量合成器里的会话 PID 就是本进程自身，
- * 因此用 os.Getpid() 匹配音频会话即可命中。同时同步更新后端 Player 的 beep 增益，
- * 让两者保持一致（合成器滑块是主控，beep 增益作为应用内二次校准）。
  * @param {number} vol
  * @returns {$CancellablePromise<void>}
  */
@@ -779,15 +742,16 @@ export function UnmuteSystemMasterVolume() {
 }
 
 /**
- * UpdateTrack 更新曲目基本信息（标题、艺术家、歌词）
+ * UpdateTrack 更新曲目基本信息（标题、艺术家、专辑、歌词）
  * @param {number} id
  * @param {string} title
  * @param {string} artist
+ * @param {string} album
  * @param {string} lyrics
  * @returns {$CancellablePromise<void>}
  */
-export function UpdateTrack(id, title, artist, lyrics) {
-    return $Call.ByID(2216425542, id, title, artist, lyrics);
+export function UpdateTrack(id, title, artist, album, lyrics) {
+    return $Call.ByID(2216425542, id, title, artist, album, lyrics);
 }
 
 /**

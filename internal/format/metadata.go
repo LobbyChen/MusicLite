@@ -14,6 +14,7 @@ import (
 type RawMetadata struct {
 	Title     string
 	Artist    string
+	Album     string
 	Lyrics    string
 	CoverData []byte
 	CoverMIME string
@@ -54,6 +55,7 @@ func ExtractMetadata(filePath string) (RawMetadata, error) {
 	meta := RawMetadata{
 		Title:  m.Title(),
 		Artist: m.Artist(),
+		Album:  m.Album(),
 		Lyrics: m.Lyrics(),
 		Format: FormatFromExt(filePath),
 	}

@@ -181,6 +181,946 @@ function applyNewUI(enabled) {
     try { localStorage.setItem('musicLite.newUIEnabled', enabled ? '1' : '0'); } catch (e) {}
 }
 
+// BgFit 内部映射：友好标识 → object-fit 实际属性（UI 不暴露属性名）
+const BG_FIT_TO_OBJECT_FIT = {
+    cover: 'cover',
+    contain: 'contain',
+    fill: 'fill',
+    none: 'none',
+    scaledown: 'scale-down',
+};
+
+// 注入背景相关公共 CSS（只注入一次）
+let _bgCssInjected = false;
+function injectBgCSSOnce() {
+    if (_bgCssInjected) return;
+    _bgCssInjected = true;
+    const css = `
+/* ===== MusicLite 全局背景层（img/video）基础样式 ===== */
+#ml-bg-layer, #ml-bg-overlay {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    overflow: hidden;
+}
+#ml-bg-layer {
+    z-index: -2;
+    transform-origin: center center;
+    will-change: transform, opacity, filter;
+}
+#ml-bg-overlay {
+    z-index: -1;
+}
+html, body {
+    isolation: isolate;
+}
+/* ============ 整窗 Aero 透明（核心重构）============
+   原方案：html { opacity: x } 让所有元素一起透明 → 文字发虚不可读
+   新方案：html[data-aero="true"] 标记后，仅让 body 和各容器的背景色变为半透明，
+          透出 WebView2 窗口下的桌面；同时给主要容器加 backdrop-filter 毛玻璃，
+          实现真正的 Windows Aero 效果：背景朦胧通透，前景文字清晰锐利。
+   --aero-*-alpha 控制各层背景色透明度（0=完全透出桌面, 1=完全不透明），
+   由 applyWindowAlpha() 根据 window_alpha 值动态计算。 */
+html[data-aero="true"] body {
+    background-color: color-mix(in srgb, var(--bg-color, #121212) calc(var(--aero-bg-alpha, 1) * 100%), transparent) !important;
+}
+
+/* ========== Aero 增强：玻璃质感内发光边框 ==========
+   用 box-shadow inset 模拟玻璃边缘的高光/暗角，让半透明容器不只是"透"，而是"玻璃"。
+   深色主题 → 顶边 10% 白高光 + 底边 10% 黑暗角
+   浅色主题 → 顶边 35% 白高光 + 底边 15% 黑暗角（浅色更需要边框高光区分边界）*/
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .media-card,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .media-list-item,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .settings-section,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .designer-sidebar,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .designer-toolbar,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .search-box,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .sort-control,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .view-toggle,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .tab-panel,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .save-bar,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .modal,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .context-menu,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .toast,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .lib-queue-sidebar,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .eq-panel,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .queue-panel {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, calc(var(--aero-border-alpha, 0.5) * 0.18)),
+        inset 0 -1px 0 rgba(0, 0, 0, calc(var(--aero-border-alpha, 0.5) * 0.22)),
+        0 4px 24px rgba(0, 0, 0, calc(var(--aero-border-alpha, 0.5) * 0.22)) !important;
+}
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .media-card,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .media-list-item,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .settings-section,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .designer-sidebar,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .designer-toolbar,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .search-box,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .sort-control,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .view-toggle,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .tab-panel,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .save-bar,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .modal,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .context-menu,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .toast,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .lib-queue-sidebar,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .eq-panel,
+html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .queue-panel {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, calc(var(--aero-border-alpha, 0.5) * 0.55)),
+        inset 0 -1px 0 rgba(0, 0, 0, calc(var(--aero-border-alpha, 0.5) * 0.10)),
+        0 4px 20px rgba(0, 0, 0, calc(var(--aero-border-alpha, 0.5) * 0.10)) !important;
+}
+/* 面板级（main / header / winui3-nav）玻璃边框：高光更柔 */
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .winui3-nav,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) main,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .library-sidebar,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) header,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .settings-tabs,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .player-overlay,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .fullscreen-lyrics {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, calc(var(--aero-border-alpha, 0.5) * 0.10)),
+        inset 0 -1px 0 rgba(0, 0, 0, calc(var(--aero-border-alpha, 0.5) * 0.12)) !important;
+}
+/* 标题栏 + 迷你播放器：玻璃质感更强（作为"系统级"条带）*/
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .titlebar,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .mini-player {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, calc(var(--aero-border-alpha, 0.5) * 0.22)),
+        inset 0 -1px 0 rgba(0, 0, 0, calc(var(--aero-border-alpha, 0.5) * 0.28)),
+        0 -2px 18px rgba(0, 0, 0, calc(var(--aero-border-alpha, 0.5) * 0.20)) !important;
+}
+
+/* ========== 修复A：关闭毛玻璃时，全局通杀 * 所有元素的 backdrop-filter，一个不漏 ========== */
+html[data-glass-disabled="true"],
+html[data-glass-disabled="true"] * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+/* ========== 修复B：关闭毛玻璃时，清除多余 box-shadow / border / outline ========== */
+html[data-glass-disabled="true"] .media-card,
+html[data-glass-disabled="true"] .media-list-item,
+html[data-glass-disabled="true"] .settings-section,
+html[data-glass-disabled="true"] .winui3-nav,
+html[data-glass-disabled="true"] main,
+html[data-glass-disabled="true"] .mini-player,
+html[data-glass-disabled="true"] .library-sidebar,
+html[data-glass-disabled="true"] .save-bar,
+html[data-glass-disabled="true"] .search-box,
+html[data-glass-disabled="true"] .tab-panel,
+html[data-glass-disabled="true"] .designer-sidebar,
+html[data-glass-disabled="true"] .designer-toolbar,
+html[data-glass-disabled="true"] .modal,
+html[data-glass-disabled="true"] .toast,
+html[data-glass-disabled="true"] .context-menu {
+    box-shadow: none !important;
+    border: none !important;
+    outline: none !important;
+}
+
+/* ========== 启用毛玻璃：主要容器加 backdrop-filter ==========
+   两种场景生效：「有自定义背景图」或「Aero 窗口透明已开启」
+   —— 性能优化：仅对小面积容器使用 blur，移除 saturate/brightness 减少GPU开销 ——
+   注意：player-overlay / fullscreen-lyrics 不加 backdrop-filter！
+   它们是全屏元素，backdrop-filter 会导致 GPU 每帧对全屏纹理做模糊，占用率飙升到 90%。
+   它们已有 player-bg-layer（模糊封面背景）提供视觉深度，不需要额外 backdrop-filter。 */
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .media-card,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .media-list-item,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .save-bar,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .modal-dialog,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .modal-content,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .context-menu,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .settings-section,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .mini-player,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .toast,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .designer-sidebar,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .designer-toolbar,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .tab-panel,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .search-box,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .sort-control,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .view-toggle,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) main,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) header,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .winui3-nav,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .settings-main,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .library-sidebar,
+html[data-has-bg="true"]:not([data-glass-disabled="true"]) .settings-tabs,
+/* ↓↓↓ Aero 透明模式下也启用毛玻璃，即使没有自定义背景 ↓↓↓ */
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .media-card,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .media-list-item,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .save-bar,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .modal-dialog,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .modal-content,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .context-menu,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .settings-section,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .mini-player,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .toast,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .designer-sidebar,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .designer-toolbar,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .tab-panel,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .search-box,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .sort-control,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .view-toggle,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) main,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) header,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .winui3-nav,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .settings-main,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .library-sidebar,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .settings-tabs,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .titlebar,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .modal,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .lib-queue-sidebar,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .eq-panel,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .queue-panel {
+    backdrop-filter: blur(var(--design-blur, 16px));
+    -webkit-backdrop-filter: blur(var(--design-blur, 16px));
+}
+/* Aero 模式下：使用独立的 --aero-blur 覆盖 --design-blur */
+html[data-aero="true"]:not([data-glass-disabled="true"]) .media-card,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .media-list-item,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .save-bar,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .modal-dialog,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .modal-content,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .context-menu,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .settings-section,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .mini-player,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .toast,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .designer-sidebar,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .designer-toolbar,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .tab-panel,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .search-box,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .sort-control,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .view-toggle,
+html[data-aero="true"]:not([data-glass-disabled="true"]) main,
+html[data-aero="true"]:not([data-glass-disabled="true"]) header,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .winui3-nav,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .settings-main,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .library-sidebar,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .settings-tabs,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .titlebar,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .modal,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .lib-queue-sidebar,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .eq-panel,
+html[data-aero="true"]:not([data-glass-disabled="true"]) .queue-panel {
+    backdrop-filter: blur(var(--aero-blur, var(--design-blur, 16px)));
+    -webkit-backdrop-filter: blur(var(--aero-blur, var(--design-blur, 16px)));
+}
+/* aero_blur=0 时：完全禁用 backdrop-filter，降低 GPU 占用 */
+html[data-aero-blur-disabled="true"] .media-card,
+html[data-aero-blur-disabled="true"] .media-list-item,
+html[data-aero-blur-disabled="true"] .save-bar,
+html[data-aero-blur-disabled="true"] .modal-dialog,
+html[data-aero-blur-disabled="true"] .modal-content,
+html[data-aero-blur-disabled="true"] .context-menu,
+html[data-aero-blur-disabled="true"] .settings-section,
+html[data-aero-blur-disabled="true"] .mini-player,
+html[data-aero-blur-disabled="true"] .toast,
+html[data-aero-blur-disabled="true"] .designer-sidebar,
+html[data-aero-blur-disabled="true"] .designer-toolbar,
+html[data-aero-blur-disabled="true"] .tab-panel,
+html[data-aero-blur-disabled="true"] .search-box,
+html[data-aero-blur-disabled="true"] .sort-control,
+html[data-aero-blur-disabled="true"] .view-toggle,
+html[data-aero-blur-disabled="true"] main,
+html[data-aero-blur-disabled="true"] header,
+html[data-aero-blur-disabled="true"] .winui3-nav,
+html[data-aero-blur-disabled="true"] .settings-main,
+html[data-aero-blur-disabled="true"] .library-sidebar,
+html[data-aero-blur-disabled="true"] .settings-tabs,
+html[data-aero-blur-disabled="true"] .titlebar,
+html[data-aero-blur-disabled="true"] .modal,
+html[data-aero-blur-disabled="true"] .lib-queue-sidebar,
+html[data-aero-blur-disabled="true"] .eq-panel,
+html[data-aero-blur-disabled="true"] .queue-panel {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+/* player-overlay / fullscreen-lyrics：强制禁用 backdrop-filter，防止全屏时 GPU 飙升 */
+html[data-aero="true"]:not([data-has-bg="true"]) .player-overlay,
+html[data-aero="true"]:not([data-has-bg="true"]) .fullscreen-lyrics,
+html[data-has-bg="true"] .player-overlay,
+html[data-has-bg="true"] .fullscreen-lyrics {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* ========== Aero 窗口透明 + 无自定义背景：让所有主要容器底色降为半透明，透出桌面 ==========
+   深色主题（默认） */
+html[data-aero="true"]:not([data-has-bg="true"]) body {
+    background-color: color-mix(in srgb, var(--bg-color, #121212) calc(var(--aero-body-alpha, 0.5) * 100%), transparent) !important;
+}
+html[data-aero="true"]:not([data-has-bg="true"]) .media-card,
+html[data-aero="true"]:not([data-has-bg="true"]) .media-list-item,
+html[data-aero="true"]:not([data-has-bg="true"]) .settings-section,
+html[data-aero="true"]:not([data-has-bg="true"]) .designer-sidebar,
+html[data-aero="true"]:not([data-has-bg="true"]) .designer-toolbar,
+html[data-aero="true"]:not([data-has-bg="true"]) .search-box,
+html[data-aero="true"]:not([data-has-bg="true"]) .sort-control,
+html[data-aero="true"]:not([data-has-bg="true"]) .view-toggle,
+html[data-aero="true"]:not([data-has-bg="true"]) .tab-panel,
+html[data-aero="true"]:not([data-has-bg="true"]) .save-bar,
+html[data-aero="true"]:not([data-has-bg="true"]) .lib-queue-sidebar,
+html[data-aero="true"]:not([data-has-bg="true"]) .eq-panel,
+html[data-aero="true"]:not([data-has-bg="true"]) .queue-panel {
+    background-color: color-mix(in srgb, var(--card-bg, #1e1e1e) calc(var(--aero-card-alpha, 0.65) * 100%), transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--border-color, #333) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(255,255,255,0.08)) !important;
+}
+/* —— 修复 UI 问题 1：modal 弹窗 Aero 半透明 + 毛玻璃（之前遗漏，导致全黑块破坏通透感）—— */
+html[data-aero="true"]:not([data-has-bg="true"]) .modal,
+html[data-aero="true"]:not([data-has-bg="true"]) .context-menu,
+html[data-aero="true"]:not([data-has-bg="true"]) .toast {
+    background-color: color-mix(in srgb, var(--card-bg, #1e1e1e) calc(var(--aero-modal-alpha, 0.7) * 100%), transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--border-color, #333) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(255,255,255,0.12)) !important;
+}
+/* —— 修复 UI 问题 2：modal-backdrop 遮罩在 Aero 下也要半透明，不能全黑 —— */
+html[data-aero="true"]:not([data-has-bg="true"]) .modal-backdrop.active {
+    background-color: color-mix(in srgb, #000000 calc(var(--aero-overlay-alpha, 0.4) * 100%), transparent) !important;
+    backdrop-filter: blur(2px) saturate(110%);
+    -webkit-backdrop-filter: blur(2px) saturate(110%);
+}
+/* 浅色主题 */
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .media-card,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .media-list-item,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .settings-section,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .designer-sidebar,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .designer-toolbar,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .search-box,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .sort-control,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .view-toggle,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .tab-panel,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .save-bar,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .lib-queue-sidebar,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .eq-panel,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .queue-panel {
+    background-color: color-mix(in srgb, var(--card-bg, #ffffff) calc(var(--aero-card-alpha, 0.7) * 100%), transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--border-color, #e0e0e0) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(0,0,0,0.06)) !important;
+}
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .modal,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .context-menu,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .toast {
+    background-color: color-mix(in srgb, var(--card-bg, #ffffff) calc(var(--aero-modal-alpha, 0.8) * 100%), transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--border-color, #e0e0e0) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(0,0,0,0.08)) !important;
+}
+/* 墨绿(accent)主题 */
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .media-card,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .media-list-item,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .settings-section,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .designer-sidebar,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .designer-toolbar,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .search-box,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .sort-control,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .view-toggle,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .tab-panel,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .save-bar,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .lib-queue-sidebar,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .eq-panel,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .queue-panel {
+    background-color: color-mix(in srgb, var(--card-bg, #142814) calc(var(--aero-card-alpha, 0.7) * 100%), transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--border-color, #1a3a1a) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(255,255,255,0.05)) !important;
+}
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .modal,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .context-menu,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .toast {
+    background-color: color-mix(in srgb, var(--card-bg, #142814) calc(var(--aero-modal-alpha, 0.75) * 100%), transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--border-color, #1a3a1a) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(255,255,255,0.08)) !important;
+}
+
+/* WinUI3 侧边栏 / main / library-sidebar —— Aero 透明时半透明化 */
+html[data-aero="true"]:not([data-has-bg="true"]) .winui3-nav,
+html[data-aero="true"]:not([data-has-bg="true"]) main,
+html[data-aero="true"]:not([data-has-bg="true"]) .library-sidebar {
+    background-color: color-mix(in srgb, var(--bg-color, #121212) calc(var(--aero-panel-alpha, 0.45) * 100%), transparent) !important;
+}
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .winui3-nav,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) main,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .library-sidebar {
+    background-color: color-mix(in srgb, var(--bg-color, #fafafa) calc(var(--aero-panel-alpha, 0.5) * 100%), transparent) !important;
+}
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .winui3-nav,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) main,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .library-sidebar {
+    background-color: color-mix(in srgb, var(--bg-color, #0a1f0a) calc(var(--aero-panel-alpha, 0.5) * 100%), transparent) !important;
+}
+
+/* header / settings-tabs —— Aero 透明时半透明化（条带类，用 panel-alpha 即可） */
+html[data-aero="true"]:not([data-has-bg="true"]) header,
+html[data-aero="true"]:not([data-has-bg="true"]) .settings-tabs {
+    background-color: color-mix(in srgb, var(--bg-color, #121212) calc(var(--aero-panel-alpha, 0.45) * 100%), transparent) !important;
+}
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) header,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .settings-tabs {
+    background-color: color-mix(in srgb, var(--bg-color, #fafafa) calc(var(--aero-panel-alpha, 0.5) * 100%), transparent) !important;
+}
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) header,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .settings-tabs {
+    background-color: color-mix(in srgb, var(--bg-color, #0a1f0a) calc(var(--aero-panel-alpha, 0.5) * 100%), transparent) !important;
+}
+
+/* —— 修复：player-overlay / fullscreen-lyrics 使用 modal 级高不透明度 ——
+   它们是全屏覆盖层，之前用 panel-alpha（最低 0.10）导致几乎完全透明，
+   桌面壁纸直接透出，歌词/封面/控件根本看不清。
+   改用 --aero-modal-alpha（0.50-0.90），确保内容可读性的同时保留通透感。 */
+html[data-aero="true"]:not([data-has-bg="true"]) .player-overlay,
+html[data-aero="true"]:not([data-has-bg="true"]) .fullscreen-lyrics {
+    background-color: color-mix(in srgb, var(--bg-color, #121212) calc(var(--aero-modal-alpha, 0.7) * 100%), transparent) !important;
+}
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .player-overlay,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .fullscreen-lyrics {
+    background-color: color-mix(in srgb, var(--bg-color, #fafafa) calc(var(--aero-modal-alpha, 0.75) * 100%), transparent) !important;
+}
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .player-overlay,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .fullscreen-lyrics {
+    background-color: color-mix(in srgb, var(--bg-color, #0a1f0a) calc(var(--aero-modal-alpha, 0.72) * 100%), transparent) !important;
+}
+
+/* player-bg-layer（模糊封面背景层）在 Aero 下保持高不透明度，作为播放器的视觉基底 */
+html[data-aero="true"]:not([data-has-bg="true"]) .player-bg-layer {
+    opacity: 0.85 !important;
+}
+
+/* 迷你播放器 —— Aero 透明时半透明化 */
+html[data-aero="true"]:not([data-has-bg="true"]) .mini-player {
+    background-color: color-mix(in srgb, var(--card-bg, #1e1e1e) calc(var(--aero-mini-alpha, 0.75) * 100%), transparent) !important;
+    border-top: 1px solid color-mix(in srgb, var(--border-color, #333) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(255,255,255,0.10)) !important;
+}
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .mini-player {
+    background-color: color-mix(in srgb, var(--card-bg, #ffffff) calc(var(--aero-mini-alpha, 0.8) * 100%), transparent) !important;
+    border-top: 1px solid color-mix(in srgb, var(--border-color, #e0e0e0) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(0,0,0,0.06)) !important;
+}
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .mini-player {
+    background-color: color-mix(in srgb, var(--card-bg, #142814) calc(var(--aero-mini-alpha, 0.8) * 100%), transparent) !important;
+    border-top: 1px solid color-mix(in srgb, var(--border-color, #1a3a1a) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(255,255,255,0.06)) !important;
+}
+
+/* 标题栏 —— Aero 透明时半透明化（保持自绘边框的边界感） */
+html[data-aero="true"]:not([data-has-bg="true"]) .titlebar {
+    background-color: color-mix(in srgb, var(--card-bg, #1e1e1e) calc(var(--aero-titlebar-alpha, 0.6) * 100%), transparent) !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color, #333) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(255,255,255,0.10)) !important;
+}
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .titlebar {
+    background-color: color-mix(in srgb, var(--card-bg, #ffffff) calc(var(--aero-titlebar-alpha, 0.65) * 100%), transparent) !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color, #e0e0e0) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(0,0,0,0.06)) !important;
+}
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .titlebar {
+    background-color: color-mix(in srgb, var(--card-bg, #142814) calc(var(--aero-titlebar-alpha, 0.6) * 100%), transparent) !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color, #1a3a1a) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(255,255,255,0.06)) !important;
+}
+
+/* —— 修复 UI 问题 3：Aero 下文字对比度保障（避免通透导致文字与桌面混色不可读）——
+   当窗口透明度很低（<0.5，即 data-window-alpha 存在但背景很透）时，
+   给正文文字和二级文字加非常淡的轮廓阴影（不是发光，是锐边衬底）。
+   注意：不使用 drop-shadow 影响性能，只用 text-shadow 1px 偏移模拟 1px 描边 */
+html[data-aero="true"]:not([data-has-bg="true"]) .track-name,
+html[data-aero="true"]:not([data-has-bg="true"]) .mini-title,
+html[data-aero="true"]:not([data-has-bg="true"]) .card-title,
+html[data-aero="true"]:not([data-has-bg="true"]) .list-item-title,
+html[data-aero="true"]:not([data-has-bg="true"]) .modal h3,
+html[data-aero="true"]:not([data-has-bg="true"]) .modal p,
+html[data-aero="true"]:not([data-has-bg="true"]) .toast-message,
+html[data-aero="true"]:not([data-has-bg="true"]) h1,
+html[data-aero="true"]:not([data-has-bg="true"]) h2 {
+    text-shadow:
+        0 1px 1px rgba(0, 0, 0, calc((1 - var(--aero-modal-alpha, 0.7)) * 0.35)),
+        0 -1px 0 rgba(255, 255, 255, calc((1 - var(--aero-modal-alpha, 0.7)) * 0.04));
+}
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .track-name,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .mini-title,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .card-title,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .list-item-title,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .modal h3,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .modal p,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .toast-message,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) h1,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) h2 {
+    text-shadow:
+        0 1px 1px rgba(255, 255, 255, calc((1 - var(--aero-modal-alpha, 0.7)) * 0.45)),
+        0 -1px 0 rgba(0, 0, 0, calc((1 - var(--aero-modal-alpha, 0.7)) * 0.04));
+}
+
+/* ========== Aero 增强 4：设计师页面预览面板、设置页区块半透明化 ========== */
+html[data-aero="true"]:not([data-has-bg="true"]) .designer-preview-aside,
+html[data-aero="true"]:not([data-has-bg="true"]) .designer-preview-card,
+html[data-aero="true"]:not([data-has-bg="true"]) .designer-preview-panel,
+html[data-aero="true"]:not([data-has-bg="true"]) .designer-anim-demo,
+html[data-aero="true"]:not([data-has-bg="true"]) .font-preview,
+html[data-aero="true"]:not([data-has-bg="true"]) .hotkey-item {
+    background-color: color-mix(in srgb, var(--card-bg, #1e1e1e) calc(var(--aero-card-alpha, 0.7) * 100%), transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--border-color, #333) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(255,255,255,0.08)) !important;
+}
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .designer-preview-aside,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .designer-preview-card,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .designer-preview-panel,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .designer-anim-demo,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .font-preview,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .hotkey-item {
+    background-color: color-mix(in srgb, var(--card-bg, #ffffff) calc(var(--aero-card-alpha, 0.75) * 100%), transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--border-color, #e0e0e0) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(0,0,0,0.06)) !important;
+}
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .designer-preview-aside,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .designer-preview-card,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .designer-preview-panel,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .designer-anim-demo,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .font-preview,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .hotkey-item {
+    background-color: color-mix(in srgb, var(--card-bg, #142814) calc(var(--aero-card-alpha, 0.72) * 100%), transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--border-color, #1a3a1a) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(255,255,255,0.05)) !important;
+}
+
+/* ========== Aero 增强 5：表单输入控件（滑块底色、输入框背景）半透明化 ========== */
+html[data-aero="true"]:not([data-has-bg="true"]) .form-input,
+html[data-aero="true"]:not([data-has-bg="true"]) .form-textarea,
+html[data-aero="true"]:not([data-has-bg="true"]) .text-input,
+html[data-aero="true"]:not([data-has-bg="true"]) .font-select,
+html[data-aero="true"]:not([data-has-bg="true"]) .color-text {
+    background-color: color-mix(in srgb, var(--bg-color, #121212) calc(var(--aero-panel-alpha, 0.5) * 100%), transparent) !important;
+    border-color: color-mix(in srgb, var(--border-color, #333) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(255,255,255,0.10)) !important;
+}
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .form-input,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .form-textarea,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .text-input,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .font-select,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .color-text {
+    background-color: color-mix(in srgb, var(--bg-color, #fafafa) calc(var(--aero-panel-alpha, 0.55) * 100%), transparent) !important;
+    border-color: color-mix(in srgb, var(--border-color, #e0e0e0) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(0,0,0,0.06)) !important;
+}
+
+/* 滑块轨道底色在 Aero 下也半透明（拇指本身保持实色，确保可交互） */
+html[data-aero="true"]:not([data-has-bg="true"]) .setting-slider {
+    background-color: color-mix(in srgb, var(--border-color, #333) calc(var(--aero-border-alpha, 0.5) * 100%), transparent) !important;
+}
+
+/* ========== Aero 增强 6：保存栏（save-bar）保持高对比度，但边框透出玻璃感 ========== */
+html[data-aero="true"]:not([data-has-bg="true"]) .save-bar {
+    /* save-bar 用主题色实色底色（强调"需要保存"的状态），仅通过边框柔化玻璃感 */
+    border-top: 1px solid color-mix(in srgb, var(--accent-color) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(255,255,255,0.3)) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, calc(var(--aero-border-alpha, 0.5) * 0.25)),
+        0 -4px 16px rgba(0, 0, 0, calc(var(--aero-border-alpha, 0.5) * 0.25)) !important;
+}
+
+/* ========== Aero 增强 7：WinUI3 导航栏（tabs 栏）在 Aero 下毛玻璃 + 半透明 ========== */
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .settings-tabs,
+html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .winui3-page-nav {
+    backdrop-filter: blur(var(--design-blur, 16px)) saturate(145%) brightness(1.05);
+    -webkit-backdrop-filter: blur(var(--design-blur, 16px)) saturate(145%) brightness(1.05);
+}
+
+/* ========== Aero 增强 8：次要文字与标签也加上淡轮廓，防止通透时消失 ========== */
+html[data-aero="true"]:not([data-has-bg="true"]) .text-secondary,
+html[data-aero="true"]:not([data-has-bg="true"]) .card-meta,
+html[data-aero="true"]:not([data-has-bg="true"]) .card-album,
+html[data-aero="true"]:not([data-has-bg="true"]) .mini-artist,
+html[data-aero="true"]:not([data-has-bg="true"]) .list-item-artist,
+html[data-aero="true"]:not([data-has-bg="true"]) .list-item-album,
+html[data-aero="true"]:not([data-has-bg="true"]) .artist-name,
+html[data-aero="true"]:not([data-has-bg="true"]) .text-muted,
+html[data-aero="true"]:not([data-has-bg="true"]) .setting-item label,
+html[data-aero="true"]:not([data-has-bg="true"]) .toggle-desc,
+html[data-aero="true"]:not([data-has-bg="true"]) .slider-value,
+html[data-aero="true"]:not([data-has-bg="true"]) .settings-section h2,
+html[data-aero="true"]:not([data-has-bg="true"]) .titlebar-title {
+    text-shadow:
+        0 1px 1px rgba(0, 0, 0, calc((1 - var(--aero-modal-alpha, 0.7)) * 0.22));
+}
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .text-secondary,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .card-meta,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .card-album,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .mini-artist,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .list-item-artist,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .list-item-album,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .artist-name,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .text-muted,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .setting-item label,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .toggle-desc,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .slider-value,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .settings-section h2,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .titlebar-title {
+    text-shadow:
+        0 1px 1px rgba(255, 255, 255, calc((1 - var(--aero-modal-alpha, 0.7)) * 0.30));
+}
+
+/* ========== Aero 增强 9：修复硬编码的暗色占位背景 ==========
+   libraries.css 中 card-cover / card-icon / mini-cover / list-item-cover 等
+   默认使用 #282828 硬编码暗色占位背景，在浅色主题 & Aero 下显得突兀。
+   统一改为用 color-mix + 主题变量，深浅色与透明度都协调。 */
+html[data-aero="true"]:not([data-has-bg="true"]) .card-cover,
+html[data-aero="true"]:not([data-has-bg="true"]) .card-icon,
+html[data-aero="true"]:not([data-has-bg="true"]) .mini-cover,
+html[data-aero="true"]:not([data-has-bg="true"]) .list-item-cover,
+html[data-aero="true"]:not([data-has-bg="true"]) .album-art-wrapper {
+    background-color: color-mix(in srgb, var(--card-bg, #1e1e1e) calc(var(--aero-card-alpha, 0.7) * 90%), rgba(255,255,255,0.04)) !important;
+}
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .card-cover,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .card-icon,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .mini-cover,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .list-item-cover,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .album-art-wrapper {
+    background-color: color-mix(in srgb, var(--card-bg, #ffffff) calc(var(--aero-card-alpha, 0.75) * 92%), rgba(0,0,0,0.03)) !important;
+}
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .card-cover,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .card-icon,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .mini-cover,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .list-item-cover,
+html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .album-art-wrapper {
+    background-color: color-mix(in srgb, var(--card-bg, #142814) calc(var(--aero-card-alpha, 0.72) * 90%), rgba(255,255,255,0.04)) !important;
+}
+
+/* 正在播放指示器的半透明黑底：也换成主题色半透明，Aero 下不再是死黑方块 */
+html[data-aero="true"]:not([data-has-bg="true"]) .media-card .np-bars {
+    background-color: color-mix(in srgb, #000000 calc(var(--aero-modal-alpha, 0.7) * 70%), transparent) !important;
+}
+
+/* ========== Aero 增强 10：theme-selector / anim-level-btn / toggle-switch 等控件背景半透明 ========== */
+html[data-aero="true"]:not([data-has-bg="true"]) .theme-btn,
+html[data-aero="true"]:not([data-has-bg="true"]) .anim-level-btn,
+html[data-aero="true"]:not([data-has-bg="true"]) .toggle-switch,
+html[data-aero="true"]:not([data-has-bg="true"]) .view-toggle,
+html[data-aero="true"]:not([data-has-bg="true"]) .sort-control {
+    background-color: color-mix(in srgb, var(--card-bg, #1e1e1e) calc(var(--aero-card-alpha, 0.7) * 100%), transparent) !important;
+    border-color: color-mix(in srgb, var(--border-color, #333) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(255,255,255,0.08)) !important;
+}
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .theme-btn,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .anim-level-btn,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .toggle-switch,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .view-toggle,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .sort-control {
+    background-color: color-mix(in srgb, var(--card-bg, #ffffff) calc(var(--aero-card-alpha, 0.75) * 100%), transparent) !important;
+    border-color: color-mix(in srgb, var(--border-color, #e0e0e0) calc(var(--aero-border-alpha, 0.5) * 100%), rgba(0,0,0,0.06)) !important;
+}
+
+/* 非 Aero 模式下也修复浅色主题占位图：#282828 硬编码 → 变量驱动 */
+html[data-theme="light"]:not([data-aero="true"]) .card-cover,
+html[data-theme="light"]:not([data-aero="true"]) .card-icon,
+html[data-theme="light"]:not([data-aero="true"]) .mini-cover,
+html[data-theme="light"]:not([data-aero="true"]) .list-item-cover,
+html[data-theme="light"]:not([data-aero="true"]) .album-art-wrapper {
+    background-color: color-mix(in srgb, var(--card-bg) 92%, #000 8%) !important;
+}
+html[data-theme="accent"]:not([data-aero="true"]) .card-cover,
+html[data-theme="accent"]:not([data-aero="true"]) .card-icon,
+html[data-theme="accent"]:not([data-aero="true"]) .mini-cover,
+html[data-theme="accent"]:not([data-aero="true"]) .list-item-cover,
+html[data-theme="accent"]:not([data-aero="true"]) .album-art-wrapper {
+    background-color: color-mix(in srgb, var(--card-bg) 85%, #000 15%) !important;
+}
+
+/* 有背景时：body 主背景透明，露出下方背景层 */
+html[data-has-bg="true"] body {
+    background-color: transparent !important;
+}
+
+/* ========== 有自定义背景图：保持原有半透明底色规则（兼容旧逻辑）========== */
+html[data-has-bg="true"] .media-card,
+html[data-has-bg="true"] .media-list-item,
+html[data-has-bg="true"] .settings-section,
+html[data-has-bg="true"] .designer-sidebar,
+html[data-has-bg="true"] .designer-toolbar,
+html[data-has-bg="true"] .search-box,
+html[data-has-bg="true"] .sort-control,
+html[data-has-bg="true"] .view-toggle,
+html[data-has-bg="true"] .tab-panel,
+html[data-has-bg="true"] .save-bar {
+    background-color: rgba(30, 30, 30, 0.45) !important;
+}
+html[data-has-bg="true"][data-theme="light"] .media-card,
+html[data-has-bg="true"][data-theme="light"] .media-list-item,
+html[data-has-bg="true"][data-theme="light"] .settings-section,
+html[data-has-bg="true"][data-theme="light"] .designer-sidebar,
+html[data-has-bg="true"][data-theme="light"] .designer-toolbar,
+html[data-has-bg="true"][data-theme="light"] .search-box,
+html[data-has-bg="true"][data-theme="light"] .sort-control,
+html[data-has-bg="true"][data-theme="light"] .view-toggle,
+html[data-has-bg="true"][data-theme="light"] .tab-panel,
+html[data-has-bg="true"][data-theme="light"] .save-bar {
+    background-color: rgba(255, 255, 255, 0.45) !important;
+}
+html[data-has-bg="true"][data-theme="accent"] .media-card,
+html[data-has-bg="true"][data-theme="accent"] .media-list-item,
+html[data-has-bg="true"][data-theme="accent"] .settings-section,
+html[data-has-bg="true"][data-theme="accent"] .designer-sidebar,
+html[data-has-bg="true"][data-theme="accent"] .designer-toolbar,
+html[data-has-bg="true"][data-theme="accent"] .search-box,
+html[data-has-bg="true"][data-theme="accent"] .sort-control,
+html[data-has-bg="true"][data-theme="accent"] .view-toggle,
+html[data-has-bg="true"][data-theme="accent"] .tab-panel,
+html[data-has-bg="true"][data-theme="accent"] .save-bar {
+    background-color: rgba(20, 40, 20, 0.55) !important;
+}
+/* —— 有自定义背景图时也补上 modal/context-menu/toast 的半透明，避免之前的遗漏 —— */
+html[data-has-bg="true"] .modal,
+html[data-has-bg="true"] .context-menu,
+html[data-has-bg="true"] .toast {
+    background-color: rgba(30, 30, 30, 0.62) !important;
+}
+html[data-has-bg="true"][data-theme="light"] .modal,
+html[data-has-bg="true"][data-theme="light"] .context-menu,
+html[data-has-bg="true"][data-theme="light"] .toast {
+    background-color: rgba(255, 255, 255, 0.70) !important;
+}
+html[data-has-bg="true"][data-theme="accent"] .modal,
+html[data-has-bg="true"][data-theme="accent"] .context-menu,
+html[data-has-bg="true"][data-theme="accent"] .toast {
+    background-color: rgba(20, 40, 20, 0.68) !important;
+}
+html[data-has-bg="true"] .modal-backdrop.active {
+    background-color: rgba(0, 0, 0, 0.45) !important;
+}
+/* 新 UI 与 新 UI WinUI3：侧边栏与主面板彻底半透明化 */
+html[data-has-bg="true"] .winui3-nav,
+html[data-has-bg="true"] main,
+html[data-has-bg="true"] .library-sidebar {
+    background-color: rgba(18, 18, 18, 0.35) !important;
+}
+html[data-has-bg="true"][data-theme="light"] .winui3-nav,
+html[data-has-bg="true"][data-theme="light"] main,
+html[data-has-bg="true"][data-theme="light"] .library-sidebar {
+    background-color: rgba(250, 250, 250, 0.35) !important;
+}
+html[data-has-bg="true"][data-theme="accent"] .winui3-nav,
+html[data-has-bg="true"][data-theme="accent"] main,
+html[data-has-bg="true"][data-theme="accent"] .library-sidebar {
+    background-color: rgba(10, 31, 10, 0.35) !important;
+}
+/* header / tabs 半透明化（条带类，低不透明度即可） */
+html[data-has-bg="true"] header,
+html[data-has-bg="true"] .settings-tabs {
+    background-color: rgba(18, 18, 18, 0.35) !important;
+}
+html[data-has-bg="true"][data-theme="light"] header,
+html[data-has-bg="true"][data-theme="light"] .settings-tabs {
+    background-color: rgba(250, 250, 250, 0.35) !important;
+}
+html[data-has-bg="true"][data-theme="accent"] header,
+html[data-has-bg="true"][data-theme="accent"] .settings-tabs {
+    background-color: rgba(10, 31, 10, 0.4) !important;
+}
+/* player-overlay 在有背景图时也需要较高不透明度，否则背景图透出导致看不清内容 */
+html[data-has-bg="true"] .player-overlay,
+html[data-has-bg="true"] .fullscreen-lyrics {
+    background-color: rgba(18, 18, 18, 0.75) !important;
+}
+html[data-has-bg="true"][data-theme="light"] .player-overlay,
+html[data-has-bg="true"][data-theme="light"] .fullscreen-lyrics {
+    background-color: rgba(250, 250, 250, 0.78) !important;
+}
+html[data-has-bg="true"][data-theme="accent"] .player-overlay,
+html[data-has-bg="true"][data-theme="accent"] .fullscreen-lyrics {
+    background-color: rgba(10, 31, 10, 0.78) !important;
+}
+/* 迷你播放器：半透明化 */
+html[data-has-bg="true"] body[data-page="libraries"][data-new-ui="true"] .mini-player {
+    background-color: rgba(20, 20, 20, 0.55) !important;
+}
+html[data-has-bg="true"][data-theme="light"] body[data-page="libraries"][data-new-ui="true"] .mini-player {
+    background-color: rgba(250, 250, 250, 0.6) !important;
+}
+html[data-has-bg="true"][data-theme="accent"] body[data-page="libraries"][data-new-ui="true"] .mini-player {
+    background-color: rgba(10, 31, 10, 0.6) !important;
+}
+/* 标题栏保持半透明，配合背景 */
+html[data-has-bg="true"] .titlebar {
+    background-color: rgba(18, 18, 18, 0.35) !important;
+}
+html[data-has-bg="true"][data-theme="light"] .titlebar {
+    background-color: rgba(250, 250, 250, 0.35) !important;
+}
+html[data-has-bg="true"][data-theme="accent"] .titlebar {
+    background-color: rgba(10, 31, 10, 0.35) !important;
+}
+`;
+    const style = document.createElement('style');
+    style.id = 'ml-bg-css';
+    style.setAttribute('type', 'text/css');
+    style.textContent = css;
+    (document.head || document.documentElement).appendChild(style);
+}
+
+// 应用整窗透明度（Aero）：范围 0.01 - 1.0
+// 核心重构：不再使用 html { opacity }，而是通过 rgba 背景色透明度 + backdrop-filter 实现 Aero
+// 参数含义：val=1 完全不透明；val 越小越能透出桌面（但前景文字保持清晰）
+function applyWindowAlpha(val) {
+    const root = document.documentElement;
+    const v = isFinite(val) ? Math.max(0.01, Math.min(1, val)) : 1;
+    if (v >= 0.999) {
+        // 关闭 Aero：清除所有标记与变量
+        root.removeAttribute('data-aero');
+        root.removeAttribute('data-window-alpha');
+        root.style.removeProperty('--window-alpha');
+        root.style.removeProperty('--aero-bg-alpha');
+        root.style.removeProperty('--aero-body-alpha');
+        root.style.removeProperty('--aero-card-alpha');
+        root.style.removeProperty('--aero-panel-alpha');
+        root.style.removeProperty('--aero-titlebar-alpha');
+        root.style.removeProperty('--aero-mini-alpha');
+        root.style.removeProperty('--aero-overlay-alpha');
+        root.style.removeProperty('--aero-modal-alpha');
+        root.style.removeProperty('--aero-border-alpha');
+        try { localStorage.removeItem('musicLite.windowAlpha'); } catch (e) {}
+    } else {
+        // 开启 Aero：设置 data-aero 标记 + 分层透明度变量
+        // 映射曲线：window_alpha 越低 → 各层 alpha 也越低（越通透），但保持层与层之间的视觉层次
+        // window_alpha=0.01（滑块最左=1%）时：body 几乎完全透桌面，卡片/面板保持最低可读性不透明度
+        // 层与层之间保持：mini-player > titlebar > card > panel > body
+        const t = (v - 0.01) / 0.99; // 归一化 0..1（0=最通透 1=完全不透明）
+        // 各层不透明度（0=完全透明, 1=完全不透明）
+        // 起始值降低至接近 0，使 1% 时几乎完全透出桌面
+        const bodyA     = 0.00 + 0.40 * t;    // body 背景：0.00 → 0.40
+        const panelA    = 0.02 + 0.48 * t;    // main/header 等大面板：0.02 → 0.50
+        const cardA     = 0.04 + 0.66 * t;    // 卡片/容器：0.04 → 0.70
+        const titleA    = 0.08 + 0.64 * t;    // 标题栏：0.08 → 0.72
+        const miniA     = 0.14 + 0.72 * t;    // 迷你播放器：0.14 → 0.86（需要更明显，因为含控件）
+        const overlayA  = 0.05 + 0.55 * t;    // 遮罩层(modal-backdrop等)：0.05 → 0.60
+        const modalA    = 0.25 + 0.65 * t;    // 浮层弹窗/Toast：0.25 → 0.90（高对比度保证可读性）
+        const borderA   = 0.12 + 0.68 * t;    // 边框不透明度：0.12 → 0.80
+
+        root.setAttribute('data-aero', 'true');
+        // 兼容旧属性（部分代码可能还引用 data-window-alpha）
+        root.setAttribute('data-window-alpha', 'true');
+        root.style.setProperty('--window-alpha', String(v));
+        // 新分层透明度变量
+        root.style.setProperty('--aero-bg-alpha',      bodyA.toFixed(3));
+        root.style.setProperty('--aero-body-alpha',    bodyA.toFixed(3));
+        root.style.setProperty('--aero-card-alpha',    cardA.toFixed(3));
+        root.style.setProperty('--aero-panel-alpha',   panelA.toFixed(3));
+        root.style.setProperty('--aero-titlebar-alpha',titleA.toFixed(3));
+        root.style.setProperty('--aero-mini-alpha',    miniA.toFixed(3));
+        root.style.setProperty('--aero-overlay-alpha', overlayA.toFixed(3));
+        root.style.setProperty('--aero-modal-alpha',   modalA.toFixed(3));
+        root.style.setProperty('--aero-border-alpha',  borderA.toFixed(3));
+        try { localStorage.setItem('musicLite.windowAlpha', String(v)); } catch (e) {}
+    }
+}
+
+// 应用 Aero 透明模式模糊量（独立于 design_blur，仅影响 Aero 模式下的 backdrop-filter）
+// 参数：blurPx (0-40)，0=完全关闭模糊（降低 GPU 占用）
+function applyAeroBlur(blurPx) {
+    const root = document.documentElement;
+    const v = isFinite(blurPx) ? Math.max(0, Math.min(40, blurPx)) : 16;
+    root.style.setProperty('--aero-blur', v + 'px');
+    // 当 aero_blur=0 时，标记关闭 Aero 模糊（CSS 中据此禁用 backdrop-filter）
+    if (v === 0) {
+        root.setAttribute('data-aero-blur-disabled', 'true');
+    } else {
+        root.removeAttribute('data-aero-blur-disabled');
+    }
+}
+
+// 应用全页面背景（图片或视频）
+// 思路：独立全屏层 <img>/<video> + 遮罩层；仅切换 html 根节点 data-attribute 让 CSS 统一生效，避免 inline 残留
+function applyBackground(opts) {
+    // 首次调用注入公共 CSS
+    injectBgCSSOnce();
+
+    const root = document.documentElement;
+    const body = document.body;
+    const bgType = (opts && opts.bg_type) || 'none';
+    const bgUrl = (opts && opts.bg_url) || '';
+    const bgFit = (opts && opts.bg_fit) || 'cover';
+    const bgOpacity = Number(opts && opts.bg_opacity);
+    const bgOverlay = Number(opts && opts.bg_overlay);
+    const bgBlur = Number(opts && opts.bg_blur);
+    const bgLoop = !(opts && opts.bg_loop === false);
+    const bgMuted = !(opts && opts.bg_muted === false);
+    const theme = (opts && opts.theme) || 'dark';
+    const glassDisabled = Boolean(opts && opts.bg_glass_disabled);
+
+    const hasBg = bgType !== 'none' && bgUrl && bgUrl.length > 0;
+    root.setAttribute('data-has-bg', hasBg ? 'true' : 'false');
+    root.setAttribute('data-bg-type', hasBg ? bgType : 'none');
+    root.setAttribute('data-bg-fit', hasBg ? bgFit : 'cover');
+    // 毛玻璃关闭开关：与 hasBg 独立（避免「没加载背景时切换开关完全无效」）
+    root.setAttribute('data-glass-disabled', glassDisabled ? 'true' : 'false');
+    try {
+        localStorage.setItem('musicLite.bgType', hasBg ? bgType : 'none');
+        localStorage.setItem('musicLite.bgFit', hasBg ? bgFit : 'cover');
+        localStorage.setItem('musicLite.bgGlassDisabled', glassDisabled ? '1' : '0');
+    } catch (e) {}
+
+    // 清理旧层
+    const oldLayer = document.getElementById('ml-bg-layer');
+    const oldOverlay = document.getElementById('ml-bg-overlay');
+    if (oldLayer) oldLayer.remove();
+    if (oldOverlay) oldOverlay.remove();
+
+    if (!hasBg || !body) return;
+
+    // === 背景层（img/video）===
+    const layer = document.createElement('div');
+    layer.id = 'ml-bg-layer';
+    layer.setAttribute('aria-hidden', 'true');
+
+    const objectFit = BG_FIT_TO_OBJECT_FIT[bgFit] || 'cover';
+    const opacity = isFinite(bgOpacity) ? Math.max(0, Math.min(1, bgOpacity)) : 0.9;
+    const blurPx = isFinite(bgBlur) ? Math.max(0, Math.min(30, bgBlur)) : 0;
+    layer.style.opacity = String(opacity);
+    if (blurPx > 0) {
+        layer.style.filter = `blur(${blurPx}px)`;
+        // 模糊时放大一点，避免边缘露白
+        layer.style.transform = 'scale(1.05)';
+    }
+
+    let mediaEl;
+    if (bgType === 'image') {
+        mediaEl = document.createElement('img');
+        mediaEl.alt = '';
+        mediaEl.draggable = false;
+        mediaEl.src = bgUrl;
+        mediaEl.style.objectFit = objectFit;
+        mediaEl.onerror = () => {
+            console.warn('[bg] 背景图片加载失败:', bgUrl.slice(0, 64));
+            layer.remove();
+            root.setAttribute('data-has-bg', 'false');
+        };
+    } else if (bgType === 'video') {
+        mediaEl = document.createElement('video');
+        mediaEl.src = bgUrl;
+        mediaEl.autoplay = true;
+        mediaEl.muted = bgMuted;
+        mediaEl.loop = bgLoop;
+        mediaEl.playsInline = true;
+        mediaEl.setAttribute('playsinline', '');
+        mediaEl.setAttribute('webkit-playsinline', '');
+        mediaEl.preload = 'auto';
+        mediaEl.style.objectFit = objectFit;
+        mediaEl.onerror = () => {
+            console.warn('[bg] 背景视频加载失败:', bgUrl.slice(0, 64));
+            layer.remove();
+            root.setAttribute('data-has-bg', 'false');
+        };
+        // 视频需要静音才能自动播放；若用户取消静音但自动播放失败，手动 try play
+        if (bgMuted === false) {
+            const tryPlay = () => {
+                try { const p = mediaEl.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+            };
+            document.addEventListener('click', tryPlay, { once: true, passive: true });
+            document.addEventListener('keydown', tryPlay, { once: true, passive: true });
+        }
+    }
+    if (mediaEl) {
+        mediaEl.style.width = '100%';
+        mediaEl.style.height = '100%';
+        layer.appendChild(mediaEl);
+    }
+
+    // === 遮罩层（根据主题加深色/浅色叠层，保持文字可读性）===
+    const overlay = document.createElement('div');
+    overlay.id = 'ml-bg-overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    const overlayOpacity = isFinite(bgOverlay) ? Math.max(0, Math.min(1, bgOverlay)) : 0.2;
+    // 深色主题用黑色遮罩；浅色主题用白色遮罩；墨绿(accent) 用深绿
+    let overlayRGB = '0, 0, 0';
+    if (theme === 'light') overlayRGB = '255, 255, 255';
+    else if (theme === 'accent') overlayRGB = '0, 30, 10';
+    overlay.style.backgroundColor = `rgba(${overlayRGB}, ${overlayOpacity})`;
+
+    // 插入到 body 的最前面（z-index 最低）
+    body.prepend(overlay);
+    body.prepend(layer);
+}
+
 // 根据主题色 + 主题模式，算出全套配套 CSS 变量
 function computePalette(accentHex, theme) {
     const [h, s, l] = hexToHsl(accentHex);
@@ -506,8 +1446,9 @@ const SettingsManager = {
         const lang = s.language || 'zh-CN';
         setLanguage(lang);
 
-        // 主题
+        // 主题（html 根也同步写 data-theme：让背景注入的 CSS 选择器能正确命中主题差异化半透明规则）
         document.body.setAttribute('data-theme', s.theme || 'dark');
+        document.documentElement.setAttribute('data-theme', s.theme || 'dark');
 
         // 自定义主题色 + 全套配套色
         applyAccentColor(s.accent_color || s.AccentColor || DEFAULT_ACCENT, s.theme || 'dark');
@@ -567,6 +1508,25 @@ const SettingsManager = {
             document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = titlebarText; });
         }
 
+        // 背景（图片或视频）
+        applyBackground({
+            bg_type:    s.bg_type,
+            bg_url:     s.bg_url,
+            bg_fit:     s.bg_fit,
+            bg_opacity: s.bg_opacity,
+            bg_overlay: s.bg_overlay,
+            bg_blur:    s.bg_blur,
+            bg_loop:    s.bg_loop,
+            bg_muted:   s.bg_muted,
+            bg_glass_disabled: s.bg_glass_disabled,
+            theme:      s.theme || 'dark',
+        });
+
+        // 整窗 Aero 透明度（无论有没有背景都生效，范围 0.2-1）
+        applyWindowAlpha(s.window_alpha);
+        // Aero 模糊量（独立于 design_blur）
+        applyAeroBlur(s.aero_blur);
+
         return s;
     },
 
@@ -574,6 +1534,7 @@ const SettingsManager = {
     reapply() {
         if (this.cached) {
             document.body.setAttribute('data-theme', this.cached.theme || 'dark');
+            document.documentElement.setAttribute('data-theme', this.cached.theme || 'dark');
             applyAccentColor(this.cached.accent_color || this.cached.AccentColor || DEFAULT_ACCENT, this.cached.theme || 'dark');
             const pf = this.cached.player_font || 'system-ui';
             document.documentElement.style.setProperty('--player-font', pf);
@@ -620,6 +1581,25 @@ const SettingsManager = {
                 const titlebarText = this.cached.titlebar_text.trim();
                 document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = titlebarText; });
             }
+
+            // 背景（图片或视频）
+            applyBackground({
+                bg_type:    this.cached.bg_type,
+                bg_url:     this.cached.bg_url,
+                bg_fit:     this.cached.bg_fit,
+                bg_opacity: this.cached.bg_opacity,
+                bg_overlay: this.cached.bg_overlay,
+                bg_blur:    this.cached.bg_blur,
+                bg_loop:    this.cached.bg_loop,
+                bg_muted:   this.cached.bg_muted,
+                bg_glass_disabled: this.cached.bg_glass_disabled,
+                theme:      this.cached.theme || 'dark',
+            });
+
+            // 整窗 Aero 透明度
+            applyWindowAlpha(this.cached.window_alpha);
+            // Aero 模糊量
+            applyAeroBlur(this.cached.aero_blur);
         }
     },
 
@@ -646,6 +1626,22 @@ const SettingsManager = {
     // 暴露给设计器实时预览：新风格 UI 开关
     applyNewUI(enabled) {
         applyNewUI(enabled);
+    },
+
+    // 暴露给设置页实时预览：背景（图片或视频）
+    applyBackground(opts) {
+        applyBackground(opts);
+    },
+
+    // 暴露给设置页实时预览：整窗 Aero 透明度
+    applyWindowAlpha(val) {
+        applyWindowAlpha(val);
+    },
+
+    // 暴露给设计器实时预览：Aero 模糊量
+    applyAeroBlur(blurPx) {
+        injectBgCSSOnce();
+        applyAeroBlur(blurPx);
     }
 };
 
@@ -737,6 +1733,29 @@ if (document.readyState === 'loading') {
     try {
         const v = localStorage.getItem('musicLite.newUIEnabled');
         if (v !== null) applyNewUI(v === '1');
+    } catch (e) {}
+})();
+
+// 同步应用毛玻璃开关（在 DOMContentLoaded 之前应用，避免卡片首屏出现一次毛玻璃边界后再消失）
+(function syncApplyGlassDisabled() {
+    try {
+        const v = localStorage.getItem('musicLite.bgGlassDisabled');
+        if (v === null) return;
+        const disabled = v === '1';
+        injectBgCSSOnce(); // 确保注入了「通杀 backdrop-filter」的规则
+        document.documentElement.setAttribute('data-glass-disabled', disabled ? 'true' : 'false');
+    } catch (e) {}
+})();
+
+// 同步应用整窗 Aero 透明度（在 DOMContentLoaded 之前应用，避免首屏先 100% 然后半透明的闪烁）
+(function syncApplyWindowAlpha() {
+    try {
+        const raw = localStorage.getItem('musicLite.windowAlpha');
+        if (raw === null) return;
+        const v = parseFloat(raw);
+        if (!isFinite(v)) return;
+        injectBgCSSOnce();
+        applyWindowAlpha(v);
     } catch (e) {}
 })();
 

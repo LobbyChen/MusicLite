@@ -137,6 +137,8 @@
                         data-i18n="libraries.sortTitle">标题</button>
                     <button class="sort-btn" data-sort="artist" title="艺术家" data-i18n-title="libraries.sortArtist"
                         data-i18n="libraries.sortArtist">艺术家</button>
+                    <button class="sort-btn" data-sort="album" title="专辑" data-i18n-title="libraries.sortAlbum"
+                        data-i18n="libraries.sortAlbum">专辑</button>
                 </div>
                 <div class="view-toggle" id="view-toggle" role="switch" tabindex="0" aria-label="切换卡片/列表模式"
                     data-i18n-title="settings.listMode">
@@ -278,7 +280,7 @@
                             data-i18n="libraries.clearCover">清除</button>
                     </div>
                 </div>
-                <!-- 右侧：标题/艺术家/歌词 -->
+                <!-- 右侧：标题/艺术家/专辑/歌词 -->
                 <div class="edit-fields-section">
                     <div class="form-group">
                         <label data-i18n="libraries.titleLabel">标题</label>
@@ -287,6 +289,10 @@
                     <div class="form-group">
                         <label data-i18n="libraries.artistLabel">艺术家</label>
                         <input type="text" id="edit-artist" class="form-input" placeholder="艺术家" />
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="libraries.albumLabel">专辑</label>
+                        <input type="text" id="edit-album" class="form-input" placeholder="专辑名称" />
                     </div>
                     <div class="form-group">
                         <label data-i18n="libraries.lyricsFormat">歌词 (LRC 格式)</label>

@@ -299,7 +299,7 @@ async function getSortMode() {
         const cached = localStorage.getItem('cachedSettings');
         if (cached) {
             const s = JSON.parse(cached);
-            if (s.sort_mode === 'recent' || s.sort_mode === 'title' || s.sort_mode === 'artist') {
+            if (s.sort_mode === 'recent' || s.sort_mode === 'title' || s.sort_mode === 'artist' || s.sort_mode === 'album') {
                 return s.sort_mode;
             }
         }
@@ -307,7 +307,7 @@ async function getSortMode() {
     try {
         const { LoadSettings } = await import('@bindings/MusicLite/app/musicservice.js');
         const s = await LoadSettings();
-        return (s.sort_mode === 'recent' || s.sort_mode === 'title' || s.sort_mode === 'artist') ? s.sort_mode : 'recent';
+        return (s.sort_mode === 'recent' || s.sort_mode === 'title' || s.sort_mode === 'artist' || s.sort_mode === 'album') ? s.sort_mode : 'recent';
     } catch (e) {
         return 'recent';
     }
@@ -363,7 +363,7 @@ async function setListMode(mode) {
 
 // 切换并持久化排序方式
 async function setSortMode(mode) {
-    if (mode !== 'recent' && mode !== 'title' && mode !== 'artist') return;
+    if (mode !== 'recent' && mode !== 'title' && mode !== 'artist' && mode !== 'album') return;
     applySortMode(mode);
     try {
         const cached = localStorage.getItem('cachedSettings');
@@ -402,7 +402,8 @@ function applyFilterAndSort(tracks) {
         list = list.filter(tr => {
             const name = (tr.name || '').toLowerCase();
             const artist = (tr.artist || '').toLowerCase();
-            return name.includes(q) || artist.includes(q);
+            const album = (tr.album || '').toLowerCase();
+            return name.includes(q) || artist.includes(q) || album.includes(q);
         });
     }
     const sorted = list.slice();
@@ -415,6 +416,14 @@ function applyFilterAndSort(tracks) {
             sorted.sort((a, b) => {
                 const c = (a.artist || '').localeCompare(b.artist || '', undefined, opts);
                 return c !== 0 ? c : (a.name || '').localeCompare(b.name || '', undefined, opts);
+            });
+            break;
+        case 'album':
+            sorted.sort((a, b) => {
+                const c = (a.album || '').localeCompare(b.album || '', undefined, opts);
+                if (c !== 0) return c;
+                const d = (a.artist || '').localeCompare(b.artist || '', undefined, opts);
+                return d !== 0 ? d : (a.name || '').localeCompare(b.name || '', undefined, opts);
             });
             break;
         case 'recent':
@@ -518,6 +527,7 @@ function renderTracksList(tracks, mode) {
     const EDIT_TITLE = t('libraries.editInfo');
     const DELETE_TITLE = t('common.delete');
     const UNKNOWN_ARTIST = t('common.unknownArtist');
+    const ALBUM_LABEL = t('libraries.albumLabel');
 
     if (mode === 'list') {
         // ===== 列表模式 =====
@@ -532,11 +542,14 @@ function renderTracksList(tracks, mode) {
                 ? `<div class="list-item-cover"><img src="${bustCoverUrl(track.cover)}" alt="${track.name}" /></div>`
                 : `<div class="list-item-cover">${MUSIC_ICON_SVG}</div>`;
 
+            const albumLine = track.album ? `<div class="list-item-album">${ALBUM_LABEL}: ${escapeHtml(track.album)}</div>` : '';
+
             item.innerHTML = `
                 ${coverHTML}
                 <div class="list-item-info">
                     <div class="list-item-title">${NP_BARS_HTML}${escapeHtml(track.name)}</div>
                     <div class="list-item-artist">${escapeHtml(track.artist || UNKNOWN_ARTIST)}</div>
+                    ${albumLine}
                 </div>
                 <div class="list-item-actions">
                     <button class="card-btn add-queue-btn" title="${QUEUE_TITLE}">${QUEUE_BTN_SVG}</button>
@@ -561,11 +574,14 @@ function renderTracksList(tracks, mode) {
                 ? `<img src="${bustCoverUrl(track.cover)}" class="card-cover" alt="${track.name}" />`
                 : `<div class="card-icon">${MUSIC_ICON_SVG}</div>`;
 
+            const albumLine = track.album ? `<div class="card-album">${ALBUM_LABEL}: ${escapeHtml(track.album)}</div>` : '';
+
             card.innerHTML = `
                 ${NP_BARS_HTML}
                 ${coverHTML}
                 <div class="card-title">${escapeHtml(track.name)}</div>
                 <div class="card-meta">${escapeHtml(track.artist || UNKNOWN_ARTIST)}</div>
+                ${albumLine}
                 <div class="card-actions">
                     <button class="card-btn add-queue-btn" title="${QUEUE_TITLE}">${QUEUE_BTN_SVG}</button>
                     <button class="card-btn edit-btn" title="${EDIT_TITLE}">${EDIT_BTN_SVG}</button>
@@ -1179,6 +1195,7 @@ function openEditModal(track) {
 
     document.getElementById("edit-title").value = track.name || '';
     document.getElementById("edit-artist").value = track.artist || '';
+    document.getElementById("edit-album").value = track.album || '';
     document.getElementById("edit-lyrics").value = track.lyrics || '';
 
     // 封面预览
@@ -1277,6 +1294,7 @@ async function saveEditModal() {
     if (!currentEditTrack) return;
     const title = document.getElementById("edit-title").value.trim();
     const artist = document.getElementById("edit-artist").value.trim();
+    const album = document.getElementById("edit-album").value.trim();
     const lyrics = document.getElementById("edit-lyrics").value;
 
     if (!title) {
@@ -1285,8 +1303,8 @@ async function saveEditModal() {
     }
 
     try {
-        // 1. 先保存标题/艺术家/歌词
-        await UpdateTrack(currentEditTrack.id, title, artist, lyrics);
+        // 1. 先保存标题/艺术家/专辑/歌词
+        await UpdateTrack(currentEditTrack.id, title, artist, album, lyrics);
 
         // 保存前记录当前编辑的曲目 ID（closeEditModal 会清空 currentEditTrack）
         const editedId = currentEditTrack.id;
@@ -1312,6 +1330,7 @@ async function saveEditModal() {
         if (playingTrack && playingTrack.id === editedId) {
             playingTrack.name = title;
             playingTrack.artist = artist;
+            playingTrack.album = album;
             playingTrack.lyrics = lyrics;
             if (wasCoverCleared) {
                 playingTrack.cover = '';

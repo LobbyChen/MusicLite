@@ -68,6 +68,7 @@ func (q *PlayQueue) trackFromRecord(r *storage.TrackRecord) format.MscData {
 		ID:         r.ID,
 		Name:       r.Title,
 		Author:     r.Artist,
+		Album:      r.Album,
 		Format:     format.NormalMscFormat(r.Format),
 		AudioURI:   base + "/audio/" + idStr,
 		Lyrics:     r.Lyrics,

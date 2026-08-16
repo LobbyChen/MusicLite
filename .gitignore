@@ -30,6 +30,8 @@ Thumbs.db
 # ===== Dependencies =====
 node_modules/
 vendor/
+libs/
+
 
 # ===== Runtime / User Data =====
 *.db
@@ -37,6 +39,7 @@ vendor/
 *.log
 listen_stats.json
 settings.json
+compile_local.cmd
 
 # ===== IDE / OS =====
 .task

@@ -22,7 +22,8 @@ type base64img string
 type MscData struct {
 	ID         int64           `json:"id"`         // 曲目ID
 	Name       string          `json:"name"`       // 曲名
-	Author     string          `json:"artist"`     // 作曲家
+	Author     string          `json:"artist"`     // 艺术家/作曲家
+	Album      string          `json:"album"`      // 专辑
 	Format     NormalMscFormat `json:"format"`     // 格式
 	AudioURI   string          `json:"src"`        // 音频URI (/audio/<id>)
 	CoverURI   string          `json:"cover"`      // 封面URI (/cover/<id>)

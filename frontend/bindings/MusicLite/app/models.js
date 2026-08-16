@@ -140,9 +140,6 @@ export class PickedFile {
     }
 }
 
-/**
- * PlayerState 暴露给前端的播放器快照
- */
 export class PlayerState {
     /**
      * Creates a new PlayerState instance.
@@ -151,7 +148,6 @@ export class PlayerState {
     constructor($$source = {}) {
         if (!("track" in $$source)) {
             /**
-             * 当前曲目（nil 表示无曲目）
              * @member
              * @type {format$0.MscData | null}
              */
@@ -159,7 +155,6 @@ export class PlayerState {
         }
         if (!("isPlaying" in $$source)) {
             /**
-             * 是否正在播放
              * @member
              * @type {boolean}
              */
@@ -167,7 +162,6 @@ export class PlayerState {
         }
         if (!("position" in $$source)) {
             /**
-             * 当前位置（秒）
              * @member
              * @type {number}
              */
@@ -175,7 +169,6 @@ export class PlayerState {
         }
         if (!("duration" in $$source)) {
             /**
-             * 总时长（秒）
              * @member
              * @type {number}
              */
@@ -183,7 +176,6 @@ export class PlayerState {
         }
         if (!("volume" in $$source)) {
             /**
-             * 音量 0-100
              * @member
              * @type {number}
              */
@@ -191,7 +183,6 @@ export class PlayerState {
         }
         if (!("playMode" in $$source)) {
             /**
-             * 播放模式 none | loopOne | random
              * @member
              * @type {string}
              */
@@ -446,6 +437,95 @@ export class Settings {
              */
             this["sort_mode"] = "";
         }
+        if (!("bg_type" in $$source)) {
+            /**
+             * 背景（全页面生效：图片或视频）
+             * "none" | "image" | "video"
+             * @member
+             * @type {string}
+             */
+            this["bg_type"] = "";
+        }
+        if (!("bg_url" in $$source)) {
+            /**
+             * 图片为 dataURL；视频为本地绝对文件路径（file:// 或纯路径）
+             * @member
+             * @type {string}
+             */
+            this["bg_url"] = "";
+        }
+        if (!("bg_fit" in $$source)) {
+            /**
+             * "cover" 铺满全屏 | "contain" 完整显示 | "fill" 拉伸填满 | "none" 原尺寸居中 | "scaledown" 智能缩放
+             * @member
+             * @type {string}
+             */
+            this["bg_fit"] = "";
+        }
+        if (!("bg_opacity" in $$source)) {
+            /**
+             * 背景不透明度 0-1，默认 0.9
+             * @member
+             * @type {number}
+             */
+            this["bg_opacity"] = 0;
+        }
+        if (!("bg_overlay" in $$source)) {
+            /**
+             * 前景遮罩（暗/浅色）强度 0-1，默认 0.2（提高文字对比度）
+             * @member
+             * @type {number}
+             */
+            this["bg_overlay"] = 0;
+        }
+        if (!("bg_blur" in $$source)) {
+            /**
+             * 背景模糊程度 0-30（像素），默认 0
+             * @member
+             * @type {number}
+             */
+            this["bg_blur"] = 0;
+        }
+        if (!("bg_loop" in $$source)) {
+            /**
+             * 视频是否循环（默认 true）
+             * @member
+             * @type {boolean}
+             */
+            this["bg_loop"] = false;
+        }
+        if (!("bg_muted" in $$source)) {
+            /**
+             * 视频是否静音（默认 true，推荐开启避免干扰）
+             * @member
+             * @type {boolean}
+             */
+            this["bg_muted"] = false;
+        }
+        if (!("bg_glass_disabled" in $$source)) {
+            /**
+             * 有背景时关闭所有容器毛玻璃（backdrop-filter）效果，避免边界与撕裂
+             * @member
+             * @type {boolean}
+             */
+            this["bg_glass_disabled"] = false;
+        }
+        if (!("window_alpha" in $$source)) {
+            /**
+             * 整窗透明度 0.01-1.0，默认 1；对桌面透出实现 Aero 效果
+             * @member
+             * @type {number}
+             */
+            this["window_alpha"] = 0;
+        }
+        if (!("aero_blur" in $$source)) {
+            /**
+             * Aero 透明模式下的背景模糊量（px，0-40，默认 0）；0=关闭模糊
+             * @member
+             * @type {number}
+             */
+            this["aero_blur"] = 0;
+        }
         if (!("design_radius" in $$source)) {
             /**
              * 设计令牌（设计器实时调整，持久化到 settings.json）
@@ -571,18 +651,18 @@ export class Settings {
      * @returns {Settings}
      */
     static createFrom($$source = {}) {
-        const $$createField27_0 = $$createType6;
-        const $$createField28_0 = $$createType6;
-        const $$createField29_0 = $$createType6;
+        const $$createField38_0 = $$createType6;
+        const $$createField39_0 = $$createType6;
+        const $$createField40_0 = $$createType6;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("hotkey_playpause" in $$parsedSource) {
-            $$parsedSource["hotkey_playpause"] = $$createField27_0($$parsedSource["hotkey_playpause"]);
+            $$parsedSource["hotkey_playpause"] = $$createField38_0($$parsedSource["hotkey_playpause"]);
         }
         if ("hotkey_next" in $$parsedSource) {
-            $$parsedSource["hotkey_next"] = $$createField28_0($$parsedSource["hotkey_next"]);
+            $$parsedSource["hotkey_next"] = $$createField39_0($$parsedSource["hotkey_next"]);
         }
         if ("hotkey_prev" in $$parsedSource) {
-            $$parsedSource["hotkey_prev"] = $$createField29_0($$parsedSource["hotkey_prev"]);
+            $$parsedSource["hotkey_prev"] = $$createField40_0($$parsedSource["hotkey_prev"]);
         }
         return new Settings(/** @type {Partial<Settings>} */($$parsedSource));
     }

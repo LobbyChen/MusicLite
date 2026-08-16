@@ -392,6 +392,7 @@ type TrackRecord struct {
 	ID         int64
 	Title      string
 	Artist     string
+	Album      string
 	FilePath   string
 	CoverData  []byte
 	CoverMIME  string
@@ -400,12 +401,13 @@ type TrackRecord struct {
 	ImportedAt int64
 }
 
-// EnsureTracksTable 创建 tracks 表（如果不存在）
+// EnsureTracksTable 创建 tracks 表（如果不存在）；对旧表自动补充 album 列
 func (self Database) EnsureTracksTable() error {
 	sqlCommand := `CREATE TABLE IF NOT EXISTS "tracks" (
 		"id"         INTEGER PRIMARY KEY AUTOINCREMENT,
 		"title"      TEXT NOT NULL,
 		"artist"     TEXT,
+		"album"      TEXT,
 		"file_path"  TEXT NOT NULL,
 		"cover_data" BLOB,
 		"cover_mime" TEXT,
@@ -413,16 +415,47 @@ func (self Database) EnsureTracksTable() error {
 		"format"     TEXT,
 		"imported_at" INTEGER
 	);`
-	_, err := self.database.Exec(sqlCommand)
-	return err
+	if _, err := self.database.Exec(sqlCommand); err != nil {
+		return err
+	}
+	// 迁移：旧版本库可能没有 album 列，用 ADD COLUMN 补上（SQLite 3.35.0+ 支持 IF NOT EXISTS，这里用探测式迁移更兼容）
+	columns, err := self.database.Query(`PRAGMA table_info("tracks")`)
+	if err != nil {
+		return fmt.Errorf("pragma table_info failed: %w", err)
+	}
+	defer columns.Close()
+	hasAlbum := false
+	for columns.Next() {
+		var (
+			cid        int
+			name       string
+			colType    string
+			notnull    int
+			dfltValue  *string
+			pk         int
+		)
+		if err := columns.Scan(&cid, &name, &colType, &notnull, &dfltValue, &pk); err != nil {
+			continue
+		}
+		if name == "album" {
+			hasAlbum = true
+			break
+		}
+	}
+	if !hasAlbum {
+		if _, err := self.database.Exec(`ALTER TABLE "tracks" ADD COLUMN "album" TEXT`); err != nil {
+			return fmt.Errorf("migrate add album column failed: %w", err)
+		}
+	}
+	return nil
 }
 
 // InsertTrack 插入一条曲目记录，返回新记录 ID
 func (self Database) InsertTrack(rec TrackRecord) (int64, error) {
 	result, err := self.database.Exec(
-		`INSERT INTO tracks (title, artist, file_path, cover_data, cover_mime, lyrics, format, imported_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		rec.Title, rec.Artist, rec.FilePath, rec.CoverData, rec.CoverMIME,
+		`INSERT INTO tracks (title, artist, album, file_path, cover_data, cover_mime, lyrics, format, imported_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		rec.Title, rec.Artist, rec.Album, rec.FilePath, rec.CoverData, rec.CoverMIME,
 		rec.Lyrics, rec.Format, rec.ImportedAt,
 	)
 	if err != nil {
@@ -434,7 +467,7 @@ func (self Database) InsertTrack(rec TrackRecord) (int64, error) {
 // GetAllTrackRecords 返回所有曲目（含 lyrics，列表展示和歌词编辑回显用）
 func (self Database) GetAllTrackRecords() ([]TrackRecord, error) {
 	rows, err := self.database.Query(
-		`SELECT id, title, artist, file_path, cover_mime, lyrics, format, imported_at FROM tracks ORDER BY imported_at DESC`,
+		`SELECT id, title, artist, album, file_path, cover_mime, lyrics, format, imported_at FROM tracks ORDER BY imported_at DESC`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("query tracks failed: %w", err)
@@ -444,10 +477,12 @@ func (self Database) GetAllTrackRecords() ([]TrackRecord, error) {
 	var results []TrackRecord
 	for rows.Next() {
 		var r TrackRecord
-		var coverMIME, lyrics, format sql.NullString
-		if err := rows.Scan(&r.ID, &r.Title, &r.Artist, &r.FilePath, &coverMIME, &lyrics, &format, &r.ImportedAt); err != nil {
+		var artist, album, coverMIME, lyrics, format sql.NullString
+		if err := rows.Scan(&r.ID, &r.Title, &artist, &album, &r.FilePath, &coverMIME, &lyrics, &format, &r.ImportedAt); err != nil {
 			return nil, fmt.Errorf("scan track failed: %w", err)
 		}
+		r.Artist = artist.String
+		r.Album = album.String
 		r.CoverMIME = coverMIME.String
 		r.Lyrics = lyrics.String
 		r.Format = format.String
@@ -459,15 +494,16 @@ func (self Database) GetAllTrackRecords() ([]TrackRecord, error) {
 // GetTrackByID 返回单首曲目的完整记录（含歌词，播放器页用）
 func (self Database) GetTrackByID(id int64) (*TrackRecord, error) {
 	var r TrackRecord
-	var artist, coverMIME, lyrics, format sql.NullString
+	var artist, album, coverMIME, lyrics, format sql.NullString
 	err := self.database.QueryRow(
-		`SELECT id, title, artist, file_path, cover_mime, lyrics, format, imported_at
+		`SELECT id, title, artist, album, file_path, cover_mime, lyrics, format, imported_at
 		 FROM tracks WHERE id = ?`, id,
-	).Scan(&r.ID, &r.Title, &artist, &r.FilePath, &coverMIME, &lyrics, &format, &r.ImportedAt)
+	).Scan(&r.ID, &r.Title, &artist, &album, &r.FilePath, &coverMIME, &lyrics, &format, &r.ImportedAt)
 	if err != nil {
 		return nil, fmt.Errorf("query track %d failed: %w", id, err)
 	}
 	r.Artist = artist.String
+	r.Album = album.String
 	r.CoverMIME = coverMIME.String
 	r.Lyrics = lyrics.String
 	r.Format = format.String
@@ -505,11 +541,11 @@ func (self Database) HasCover(id int64) (bool, error) {
 	return len(data) > 0, nil
 }
 
-// UpdateTrack 更新曲目基本信息（标题、艺术家、歌词）
-func (self Database) UpdateTrack(id int64, title, artist, lyrics string) error {
+// UpdateTrack 更新曲目基本信息（标题、艺术家、专辑、歌词）
+func (self Database) UpdateTrack(id int64, title, artist, album, lyrics string) error {
 	_, err := self.database.Exec(
-		`UPDATE tracks SET title = ?, artist = ?, lyrics = ? WHERE id = ?`,
-		title, artist, lyrics, id,
+		`UPDATE tracks SET title = ?, artist = ?, album = ?, lyrics = ? WHERE id = ?`,
+		title, artist, album, lyrics, id,
 	)
 	if err != nil {
 		return fmt.Errorf("update track %d failed: %w", id, err)

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/robotn/gohook"
+	hook "github.com/robotn/gohook"
 )
 
 // HotkeyConfig 单个快捷键配置
@@ -181,10 +181,8 @@ func (hm *HotkeyManager) triggerAction(action string) {
 	switch action {
 	case "playpause":
 		// 播放/暂停切换：未在播放 → resume；正在播放 → pause
-		p.mu.Lock()
-		playing := !p.paused && p.decoded != nil
-		p.mu.Unlock()
-		if playing {
+		// 优化：IsPaused() 和 HasTrack() 内部是原子操作，无需加 p.mu 锁
+		if !p.IsPaused() && p.HasTrack() {
 			p.pause()
 		} else {
 			p.resume()
@@ -325,8 +323,8 @@ func (a *MusicService) HotkeyGetConfig() map[string]HotkeyConfig {
 func (a *MusicService) HotkeyGetActionList() []map[string]string {
 	return []map[string]string{
 		{"action": "playpause", "label_zh": "播放 / 暂停", "label_en": "Play / Pause"},
-		{"action": "next",      "label_zh": "下一曲",     "label_en": "Next Track"},
-		{"action": "prev",      "label_zh": "上一曲",     "label_en": "Previous Track"},
+		{"action": "next", "label_zh": "下一曲", "label_en": "Next Track"},
+		{"action": "prev", "label_zh": "上一曲", "label_en": "Previous Track"},
 	}
 }
 

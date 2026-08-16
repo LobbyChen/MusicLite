@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8
+	github.com/ebitengine/oto/v3 v3.1.0
 	github.com/gopxl/beep v1.4.1
 	github.com/itchyny/volume-go v0.2.3
 	github.com/mattn/go-sqlite3 v1.14.44
@@ -15,18 +16,12 @@ require (
 require (
 	github.com/adrg/xdg v0.5.3 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
-	github.com/ebitengine/oto/v3 v3.1.0 // indirect
 	github.com/ebitengine/purego v0.7.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
-	github.com/hajimehoshi/go-mp3 v0.3.4 // indirect
-	github.com/icza/bitio v1.1.0 // indirect
 	github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mewkiz/flac v1.0.8 // indirect
-	github.com/mewkiz/pkg v0.0.0-20230226050401-4010bf0fec14 // indirect
 	github.com/moutend/go-wca v0.3.0 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/vcaesar/keycode v0.10.1 // indirect
 )
