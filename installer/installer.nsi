@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "MusicLite Cuckoo"
-!define PRODUCT_VERSION "0.7.0"
+!define PRODUCT_VERSION "0.7.1"
 !define PRODUCT_PUBLISHER "LobbyChen"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\MusicLite.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
@@ -47,7 +47,7 @@ var ICONS_GROUP
 ; MUI end ------
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "..\build\bin\MusicLiteCuckoo_B0.7.0_Setup_amd64.exe"
+OutFile "..\build\bin\MusicLiteCuckoo_B0.7.1_Setup_amd64.exe"
 InstallDir "$LOCALAPPDATA\Programs\MusicLiteCuckoo"
 InstallDirRegKey HKLM "${PRODUCT_DIR_REGKEY}" ""
 ShowInstDetails show
@@ -107,8 +107,14 @@ Section Uninstall
   Delete "$INSTDIR\uninst.exe"
   Delete "$INSTDIR\libfftw3-3.dll"
   Delete "$INSTDIR\MusicLite.exe"
+  Delete "$INSTDIR\musiclite.exe"
   Delete "$INSTDIR\LICENCE.txt"
-
+  Delete "$INSTDIR\avcodec-63.dll"
+  Delete "$INSTDIR\avdevice-63.dll"
+  Delete "$INSTDIR\avformat-63.dll"
+  Delete "$INSTDIR\avutil-61.dll"
+  Delete "$INSTDIR\swresample-7.dll"
+  Delete "$INSTDIR\swscale-10.dll"
   Delete "$SMPROGRAMS\$ICONS_GROUP\Uninstall.lnk"
   Delete "$DESKTOP\MusicLiteCuckoo.lnk"
   Delete "$SMPROGRAMS\$ICONS_GROUP\MusicLiteCuckoo.lnk"
