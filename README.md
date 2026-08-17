@@ -1,6 +1,11 @@
-# MusicLite Cuckoo
-
-> 轻量级、跨平台的离线音乐播放器
+# <div align="center"> MusicLite Cuckoo </div>
+<br>
+<div align="center">
+  <img src=".\appicon.png" alt="icon" height="100px" width="100px">
+</div>
+<br>
+<div align="center"> 轻量级、跨平台的离线音乐播放器 </div>
+<br>
 <div align="center">
 
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](./LICENSE.txt)  [![Wails](https://img.shields.io/badge/wails-v3-ff5722.svg)](https://wails.io/) [![Platforms](https://img.shields.io/badge/Platforms-Windows|Linux|MacOS-brightgreen)](#)   [![Go](https://img.shields.io/badge/go-1.21+-00ADD8.svg?logo=go)](https://go.dev/)
