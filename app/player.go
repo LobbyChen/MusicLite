@@ -145,8 +145,17 @@ const bytesPerFrame = 8 // 4 bytes (Float32) * 2 channels (Stereo)
 
 // seek 后用于冲刷 Oto / 驱动旧缓冲的静音长度。
 // 160KB 约 0.36s。
-// 如果你发现极快速拖动仍有一瞬间旧声残留，可以调大到 256 * 1024。
+// 如果快速拖动仍有一瞬间旧声残留，可以调大到 256 * 1024。
 const seekFlushBytes = 160 * 1024
+
+// pcmSnapshot 是不可变快照。
+// 一旦发布到 Player.pcm，就不允许再修改。
+// Read 音频线程只需要原子 Load 它即可。
+type pcmSnapshot struct {
+	data       []byte
+	totalBytes int64
+	cPtr       unsafe.Pointer
+}
 
 type PlayerState struct {
 	Track     *format.MscData `json:"track"`
@@ -159,19 +168,18 @@ type PlayerState struct {
 
 type Player struct {
 	mu       sync.Mutex
-	pcmMu    sync.RWMutex
 	db       *storage.Database
 	app      *MusicService
 	ready    bool
 	closed   chan struct{}
 	stopOnce sync.Once
 
-	track   *format.MscData
-	pcmData []byte
-	cPtr    unsafe.Pointer
+	track *format.MscData
 
-	hasPCM     atomic.Bool
-	totalBytes atomic.Int64
+	// 无锁 PCM 访问核心：
+	// 音频线程只 Load，不持锁。
+	pcm    atomic.Pointer[pcmSnapshot]
+	freeCh chan unsafe.Pointer
 
 	readOffset atomic.Int64
 	seekSeq    atomic.Uint64
@@ -190,7 +198,8 @@ type Player struct {
 	endCh chan struct{}
 }
 
-// PCMReader 实现 io.Reader，供 oto 回调读取 RAM 中的数据
+// PCMReader 实现 io.Reader，供 oto 回调读取 RAM 中的数据。
+// 这里必须尽可能无锁，否则会卡顿。
 type PCMReader struct {
 	p *Player
 }
@@ -208,7 +217,8 @@ func (r *PCMReader) Read(buf []byte) (int, error) {
 		return len(buf), nil
 	}
 
-	// seek 后的静音冲刷阶段
+	// seek 后的静音冲刷阶段：
+	// 只输出静音，不推进 readOffset，用来推掉 Oto / 驱动里的旧缓冲。
 	if r.p.muteBytes.Load() > 0 {
 		for i := range buf {
 			buf[i] = 0
@@ -217,39 +227,57 @@ func (r *PCMReader) Read(buf []byte) (int, error) {
 		return len(buf), nil
 	}
 
-	r.p.pcmMu.RLock()
-	pcm := r.p.pcmData
-	total := r.p.totalBytes.Load()
-	offset := r.p.readOffset.Load()
-	r.p.pcmMu.RUnlock() // ← 立即释放，不阻塞音频线程
-
-	// 播放结束检测（锁外判断，pcm 指针仍有效）
-	if pcm == nil || offset >= total {
+	// 无锁读取当前 PCM 快照
+	snap := r.p.pcm.Load()
+	if snap == nil {
 		for i := range buf {
 			buf[i] = 0
 		}
+
 		if r.p.isPlaying.CompareAndSwap(true, false) {
 			select {
 			case r.p.endCh <- struct{}{}:
 			default:
 			}
 		}
+
 		return len(buf), nil
 	}
 
-	n := copy(buf, pcm[offset:])
+	offset := r.p.readOffset.Load()
 
-	// readOffset 是原子变量，无需锁
+	// 播放结束检测
+	if offset >= snap.totalBytes {
+		for i := range buf {
+			buf[i] = 0
+		}
+
+		if r.p.isPlaying.CompareAndSwap(true, false) {
+			select {
+			case r.p.endCh <- struct{}{}:
+			default:
+			}
+		}
+
+		return len(buf), nil
+	}
+
+	// 从 RAM 拷贝数据。
+	// snap.data 指向的 C 内存在 freeLoop 延迟释放前不会被 free，
+	// 因此这里无锁 copy 是安全的。
+	n := copy(buf, snap.data[offset:])
+
+	// 推进播放偏移量
 	r.p.readOffset.Add(int64(n))
 
-	// 尾部补静音
+	// 如果不足一整块，尾部补静音
 	if n < len(buf) {
 		for i := n; i < len(buf); i++ {
 			buf[i] = 0
 		}
 	}
 
-	// 应用音量
+	// 应用内音量控制
 	gain := volumeToGain(int(r.p.volume.Load()))
 	if gain < 0.99 && n >= 4 {
 		f32Buf := unsafe.Slice((*float32)(unsafe.Pointer(&buf[0])), n/4)
@@ -260,6 +288,7 @@ func (r *PCMReader) Read(buf []byte) (int, error) {
 
 	return n, nil
 }
+
 func NewPlayer(db *storage.Database, app *MusicService) *Player {
 	p := &Player{
 		db:       db,
@@ -267,6 +296,7 @@ func NewPlayer(db *storage.Database, app *MusicService) *Player {
 		playMode: "none",
 		closed:   make(chan struct{}),
 		endCh:    make(chan struct{}, 1),
+		freeCh:   make(chan unsafe.Pointer, 16),
 	}
 	p.queue = NewPlayQueue(db, app)
 	p.volume.Store(70)
@@ -282,7 +312,10 @@ func (p *Player) Start() {
 	op.SampleRate = playerSampleRate
 	op.ChannelCount = 2
 	op.Format = oto.FormatFloat32LE
-	op.BufferSize = 20 * time.Millisecond
+
+	// 50ms 比 20ms 更稳。
+	// 20ms 在部分 Windows WASAPI / CoreAudio 设备上容易造成 underrun / 卡顿。
+	op.BufferSize = 50 * time.Millisecond
 
 	ctx, ready, err := oto.NewContext(op)
 	if err != nil {
@@ -299,18 +332,19 @@ func (p *Player) Start() {
 
 	go p.timeUpdateLoop()
 	go p.eventLoop()
+	go p.freeLoop()
 }
 
 func (p *Player) Stop() {
 	p.stopOnce.Do(func() {
-		close(p.closed)
-
 		p.isPlaying.Store(false)
 		p.isPaused.Store(true)
 		p.muteBytes.Store(0)
 
 		p.closeOtoPlayer()
 		p.freePCM()
+
+		close(p.closed)
 	})
 }
 
@@ -323,17 +357,51 @@ func (p *Player) closeOtoPlayer() {
 		p.otoPlayer = nil
 	}
 }
+
+// freePCM 无锁释放当前 PCM。
+// 它不会立刻 C.free，而是把旧指针丢到 freeCh，
+// 由 freeLoop 延迟释放，避免音频线程还在 copy 旧数据。
 func (p *Player) freePCM() {
-	p.pcmMu.Lock()
-	ptr := p.cPtr
-	p.cPtr = nil
-	p.pcmData = nil
-	p.totalBytes.Store(0)
-	p.hasPCM.Store(false)
-	p.pcmMu.Unlock() // ← 先释放锁
-	if ptr != nil {
-		C.free(ptr)
-		runtime.GC()
+	snap := p.pcm.Swap(nil)
+	if snap == nil || snap.cPtr == nil {
+		return
+	}
+
+	select {
+	case p.freeCh <- snap.cPtr:
+	default:
+		// 通道满时直接释放。
+		// 正常情况下不会发生，因为解码切歌频率远低于 freeLoop 消费速度。
+		C.free(snap.cPtr)
+	}
+}
+
+// freeLoop 负责延迟释放旧 C 内存。
+// 这里 sleep 10ms 是安全窗口：
+// Read 单次 copy 通常小于 1ms，10ms 足够让所有 in-flight Read 完成。
+func (p *Player) freeLoop() {
+	for {
+		select {
+		case <-p.closed:
+			// 退出前排空残留指针
+			for {
+				select {
+				case ptr := <-p.freeCh:
+					if ptr != nil {
+						C.free(ptr)
+					}
+				default:
+					runtime.GC()
+					return
+				}
+			}
+
+		case ptr := <-p.freeCh:
+			if ptr != nil {
+				time.Sleep(10 * time.Millisecond)
+				C.free(ptr)
+			}
+		}
 	}
 }
 
@@ -456,6 +524,7 @@ func (p *Player) loadTrack(track format.MscData) error {
 	cPath := C.CString(filePath)
 	defer C.free(unsafe.Pointer(cPath))
 
+	// 核心：CGO 调用 FFmpeg 将整个文件解码到 RAM
 	ret := C.ffmpeg_decode_to_ram(cPath, &cBuf, &cSize)
 	if ret != 0 || cBuf == nil || cSize <= 0 {
 		if cBuf != nil {
@@ -464,7 +533,7 @@ func (p *Player) loadTrack(track format.MscData) error {
 		return fmt.Errorf("FFmpeg 解码失败或音频为空")
 	}
 
-	// 内存上限保护
+	// 内存上限保护：单首歌 PCM 超过 1GB 时拒绝加载
 	const maxAllowedBytes = int64(1 << 30)
 	if int64(cSize) > maxAllowedBytes {
 		C.free(cBuf)
@@ -472,13 +541,13 @@ func (p *Player) loadTrack(track format.MscData) error {
 		return fmt.Errorf("曲目过大，解码后大小 %.1f MB 超过上限 1024 MB", float64(cSize)/(1024*1024))
 	}
 
-	// 写入新 PCM
-	p.pcmMu.Lock()
-	p.cPtr = cBuf
-	p.pcmData = unsafe.Slice((*byte)(cBuf), int(cSize))
-	p.totalBytes.Store(int64(cSize))
-	p.hasPCM.Store(true)
-	p.pcmMu.Unlock()
+	// 发布新的不可变 PCM 快照
+	snap := &pcmSnapshot{
+		data:       unsafe.Slice((*byte)(cBuf), int(cSize)),
+		totalBytes: int64(cSize),
+		cPtr:       cBuf,
+	}
+	p.pcm.Store(snap)
 
 	p.readOffset.Store(0)
 	p.seekSeq.Store(0)
@@ -488,6 +557,9 @@ func (p *Player) loadTrack(track format.MscData) error {
 
 	p.mu.Lock()
 	p.track = &track
+
+	// 重建 otoPlayer，清空上一首歌的 Oto 内部缓冲。
+	// 切歌频率低，重建是安全的。
 	if p.otoCtx != nil {
 		if p.otoPlayer != nil {
 			p.otoPlayer.Close()
@@ -513,7 +585,7 @@ func (p *Player) loadTrack(track format.MscData) error {
 }
 
 func (p *Player) resume() {
-	if !p.ready || !p.hasPCM.Load() {
+	if !p.ready || p.pcm.Load() == nil {
 		return
 	}
 
@@ -559,13 +631,16 @@ func (p *Player) toggle() {
 	}
 }
 
-// seek：不再重建 oto.Player，只更新 offset，并用静音冲刷旧缓冲
+// seek：
+// 不重建 oto.Player，只更新 offset，并用静音冲刷旧缓冲。
+// 这样连续拖动进度条更稳定。
 func (p *Player) seek(seconds float64) error {
-	if !p.hasPCM.Load() {
+	snap := p.pcm.Load()
+	if snap == nil {
 		return fmt.Errorf("无曲目")
 	}
 
-	total := p.totalBytes.Load()
+	total := snap.totalBytes
 
 	targetByte := int64(seconds * float64(playerSampleRate) * float64(bytesPerFrame))
 	if targetByte < 0 {
@@ -578,10 +653,8 @@ func (p *Player) seek(seconds float64) error {
 	// 对齐到完整采样帧，避免 Float32 stereo 帧边界错位
 	targetByte -= targetByte % bytesPerFrame
 
-	p.pcmMu.Lock()
 	p.readOffset.Store(targetByte)
 	p.seekSeq.Add(1)
-	p.pcmMu.Unlock()
 
 	// seek 后进入短暂静音冲刷阶段
 	p.muteBytes.Store(seekFlushBytes)
@@ -624,15 +697,12 @@ func (p *Player) stop() {
 }
 
 func (p *Player) restart() error {
-	if !p.hasPCM.Load() {
+	if p.pcm.Load() == nil {
 		return fmt.Errorf("无曲目")
 	}
 
-	p.pcmMu.Lock()
 	p.readOffset.Store(0)
 	p.seekSeq.Add(1)
-	p.pcmMu.Unlock()
-
 	p.muteBytes.Store(seekFlushBytes)
 
 	p.isPlaying.Store(true)
@@ -675,12 +745,13 @@ func (p *Player) togglePlayMode() string {
 }
 
 func (p *Player) handleEnded() {
-	if !p.hasPCM.Load() {
+	snap := p.pcm.Load()
+	if snap == nil {
 		return
 	}
 
 	// 如果用户已经 seek / restart 回到中间位置，则不处理结束
-	if p.readOffset.Load() < p.totalBytes.Load() {
+	if p.readOffset.Load() < snap.totalBytes {
 		return
 	}
 
@@ -752,7 +823,7 @@ func (p *Player) snapshot() PlayerState {
 		PlayMode:  mode,
 	}
 
-	if p.hasPCM.Load() {
+	if p.pcm.Load() != nil {
 		state.Position = p.safePosition()
 		state.Duration = p.safeDuration()
 	}
@@ -760,18 +831,18 @@ func (p *Player) snapshot() PlayerState {
 }
 
 func (p *Player) safePosition() float64 {
-	if !p.hasPCM.Load() {
+	if p.pcm.Load() == nil {
 		return 0
 	}
 	return float64(p.readOffset.Load()) / float64(playerSampleRate*bytesPerFrame)
 }
 
 func (p *Player) safeDuration() float64 {
-	total := p.totalBytes.Load()
-	if total == 0 {
+	snap := p.pcm.Load()
+	if snap == nil || snap.totalBytes == 0 {
 		return 0
 	}
-	return float64(total) / float64(playerSampleRate*bytesPerFrame)
+	return float64(snap.totalBytes) / float64(playerSampleRate*bytesPerFrame)
 }
 
 func (p *Player) emitTrackLoaded() {
@@ -805,7 +876,7 @@ func (p *Player) emitState() {
 }
 
 func (p *Player) emitTimeUpdate() {
-	if p.app == nil || !p.hasPCM.Load() {
+	if p.app == nil || p.pcm.Load() == nil {
 		return
 	}
 	p.app.EmitEvent("player:timeupdate", map[string]float64{
@@ -862,7 +933,7 @@ func volumeToGain(vol int) float64 {
 
 // HasTrack 返回当前是否加载了曲目
 func (p *Player) HasTrack() bool {
-	return p.hasPCM.Load()
+	return p.pcm.Load() != nil
 }
 
 // IsPaused 返回是否处于暂停态
@@ -872,5 +943,5 @@ func (p *Player) IsPaused() bool {
 
 // IsIdle 返回播放器是否空闲
 func (p *Player) IsIdle() bool {
-	return !p.hasPCM.Load() || p.isPaused.Load()
+	return p.pcm.Load() == nil || p.isPaused.Load()
 }
