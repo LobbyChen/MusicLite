@@ -109,7 +109,7 @@ wails3 build
 
 ## 许可证
 
-本项目基于 [GNU GPL V3](./LICENCE.txt) 开源。
+本项目基于 [GNU GPL V3](./LICENSE.txt) 开源。
 
 ## 致谢
 
