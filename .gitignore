@@ -7,6 +7,7 @@ build/bin/
 *.rpm
 *.msi
 .task/
+
 # Build outputs
 /bin/
 *.exe
@@ -16,6 +17,7 @@ build/bin/
 
 # Wails generated
 frontend/bindings/
+.task/checksum/
 
 # Task cache
 .task/

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"runtime"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -108,12 +109,14 @@ int ffmpeg_decode_to_ram(const char* path, void** out_buf, int* out_size) {
         av_packet_unref(pkt);
     }
 
-    // Flush
+    // Flush decoder
     avcodec_send_packet(dec_ctx, NULL);
     while (avcodec_receive_frame(dec_ctx, frame) >= 0) {
         int converted = swr_convert(swr_ctx, &out_buffer, max_out_samples, (const uint8_t **)frame->extended_data, frame->nb_samples);
         if (converted > 0) append_pcm(&pcm, out_buffer, converted * 2 * sizeof(float));
     }
+
+    // Flush resampler
     while(1) {
         int converted = swr_convert(swr_ctx, &out_buffer, max_out_samples, NULL, 0);
         if (converted <= 0) break;
@@ -140,6 +143,11 @@ const playerSampleRate = 44100
 const playerTimeUpdateInterval = 250 * time.Millisecond
 const bytesPerFrame = 8 // 4 bytes (Float32) * 2 channels (Stereo)
 
+// seek 后用于冲刷 Oto / 驱动旧缓冲的静音长度。
+// 160KB 约 0.36s。
+// 如果你发现极快速拖动仍有一瞬间旧声残留，可以调大到 256 * 1024。
+const seekFlushBytes = 160 * 1024
+
 type PlayerState struct {
 	Track     *format.MscData `json:"track"`
 	IsPlaying bool            `json:"isPlaying"`
@@ -150,29 +158,36 @@ type PlayerState struct {
 }
 
 type Player struct {
-	mu     sync.Mutex
-	db     *storage.Database
-	app    *MusicService
-	ready  bool
-	closed chan struct{}
+	mu       sync.Mutex
+	pcmMu    sync.RWMutex
+	db       *storage.Database
+	app      *MusicService
+	ready    bool
+	closed   chan struct{}
+	stopOnce sync.Once
 
-	track      *format.MscData
-	pcmData    []byte         // 核心：整个音频解码后的 RAM 缓冲区 (Float32)
-	cPtr       unsafe.Pointer // 用于 C 内存释放
-	totalBytes int64
+	track   *format.MscData
+	pcmData []byte
+	cPtr    unsafe.Pointer
 
-	// 原子变量：解决音频撕裂和暂停延迟的核心
-	readOffset atomic.Int64 // 当前读取的字节偏移量
-	isPlaying  atomic.Bool
-	isPaused   atomic.Bool
-	volume     atomic.Int32 // 0-100
+	hasPCM     atomic.Bool
+	totalBytes atomic.Int64
+
+	readOffset atomic.Int64
+	seekSeq    atomic.Uint64
+	muteBytes  atomic.Int64
+
+	isPlaying atomic.Bool
+	isPaused  atomic.Bool
+	volume    atomic.Int32
 
 	playMode string
 	queue    *PlayQueue
 
-	// Oto 音频输出引擎
 	otoCtx    *oto.Context
 	otoPlayer *oto.Player
+
+	endCh chan struct{}
 }
 
 // PCMReader 实现 io.Reader，供 oto 回调读取 RAM 中的数据
@@ -181,7 +196,11 @@ type PCMReader struct {
 }
 
 func (r *PCMReader) Read(buf []byte) (int, error) {
-	// 1. 灵敏暂停：如果暂停，瞬间填充静音 (0)，不阻塞，不撕裂
+	if len(buf) == 0 {
+		return 0, nil
+	}
+
+	// 暂停：立刻输出静音
 	if r.p.isPaused.Load() {
 		for i := range buf {
 			buf[i] = 0
@@ -189,29 +208,50 @@ func (r *PCMReader) Read(buf []byte) (int, error) {
 		return len(buf), nil
 	}
 
-	offset := r.p.readOffset.Load()
-	pcm := r.p.pcmData
-
-	// 2. 播放结束检测
-	if pcm == nil || offset >= r.p.totalBytes {
+	// seek 后的静音冲刷阶段
+	if r.p.muteBytes.Load() > 0 {
 		for i := range buf {
 			buf[i] = 0
 		}
-		// 异步触发结束逻辑，避免阻塞音频线程
-		if r.p.isPlaying.Load() {
-			r.p.isPlaying.Store(false)
-			go r.p.handleEnded()
+		r.p.muteBytes.Add(-int64(len(buf)))
+		return len(buf), nil
+	}
+
+	r.p.pcmMu.RLock()
+	pcm := r.p.pcmData
+	total := r.p.totalBytes.Load()
+	offset := r.p.readOffset.Load()
+	r.p.pcmMu.RUnlock() // ← 立即释放，不阻塞音频线程
+
+	// 播放结束检测（锁外判断，pcm 指针仍有效）
+	if pcm == nil || offset >= total {
+		for i := range buf {
+			buf[i] = 0
+		}
+		if r.p.isPlaying.CompareAndSwap(true, false) {
+			select {
+			case r.p.endCh <- struct{}{}:
+			default:
+			}
 		}
 		return len(buf), nil
 	}
 
-	// 3. 从 RAM 拷贝数据 (极高效率，解决高 CPU 卡顿)
 	n := copy(buf, pcm[offset:])
+
+	// readOffset 是原子变量，无需锁
 	r.p.readOffset.Add(int64(n))
 
-	// 4. 应用内音量控制 (直接修改 Float32 采样点，零延迟)
+	// 尾部补静音
+	if n < len(buf) {
+		for i := n; i < len(buf); i++ {
+			buf[i] = 0
+		}
+	}
+
+	// 应用音量
 	gain := volumeToGain(int(r.p.volume.Load()))
-	if gain < 0.99 { // 优化：如果接近 100% 则跳过乘法
+	if gain < 0.99 && n >= 4 {
 		f32Buf := unsafe.Slice((*float32)(unsafe.Pointer(&buf[0])), n/4)
 		for i := range f32Buf {
 			f32Buf[i] *= float32(gain)
@@ -220,13 +260,13 @@ func (r *PCMReader) Read(buf []byte) (int, error) {
 
 	return n, nil
 }
-
 func NewPlayer(db *storage.Database, app *MusicService) *Player {
 	p := &Player{
 		db:       db,
 		app:      app,
 		playMode: "none",
 		closed:   make(chan struct{}),
+		endCh:    make(chan struct{}, 1),
 	}
 	p.queue = NewPlayQueue(db, app)
 	p.volume.Store(70)
@@ -234,14 +274,15 @@ func NewPlayer(db *storage.Database, app *MusicService) *Player {
 }
 
 func (p *Player) Queue() *PlayQueue     { return p.queue }
-func (p *Player) Equalizer() *Equalizer { return nil } // 移除 EQ
-func (p *Player) SmartEQ() *SmartEQ     { return nil } // 移除 SmartEQ
+func (p *Player) Equalizer() *Equalizer { return nil }
+func (p *Player) SmartEQ() *SmartEQ     { return nil }
 
 func (p *Player) Start() {
 	op := &oto.NewContextOptions{}
 	op.SampleRate = playerSampleRate
 	op.ChannelCount = 2
-	op.Format = oto.FormatFloat32LE // 匹配 FFmpeg 输出的 AV_SAMPLE_FMT_FLT
+	op.Format = oto.FormatFloat32LE
+	op.BufferSize = 20 * time.Millisecond
 
 	ctx, ready, err := oto.NewContext(op)
 	if err != nil {
@@ -249,40 +290,65 @@ func (p *Player) Start() {
 		return
 	}
 	<-ready
-	p.otoCtx = ctx
 
-	// 创建持久播放器，不随切歌销毁 (解决撕裂的关键)
+	p.mu.Lock()
+	p.otoCtx = ctx
 	p.otoPlayer = ctx.NewPlayer(&PCMReader{p: p})
 	p.ready = true
+	p.mu.Unlock()
+
 	go p.timeUpdateLoop()
+	go p.eventLoop()
 }
 
 func (p *Player) Stop() {
-	close(p.closed)
+	p.stopOnce.Do(func() {
+		close(p.closed)
 
-	p.isPlaying.Store(false)
-	p.isPaused.Store(true)
+		p.isPlaying.Store(false)
+		p.isPaused.Store(true)
+		p.muteBytes.Store(0)
+
+		p.closeOtoPlayer()
+		p.freePCM()
+	})
+}
+
+func (p *Player) closeOtoPlayer() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	if p.otoPlayer != nil {
 		p.otoPlayer.Close()
 		p.otoPlayer = nil
 	}
-
-	p.freePCM()
 }
 func (p *Player) freePCM() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.cPtr != nil {
-		C.free(p.cPtr)
-		p.cPtr = nil
-		p.pcmData = nil
-		p.totalBytes = 0
+	p.pcmMu.Lock()
+	ptr := p.cPtr
+	p.cPtr = nil
+	p.pcmData = nil
+	p.totalBytes.Store(0)
+	p.hasPCM.Store(false)
+	p.pcmMu.Unlock() // ← 先释放锁
+	if ptr != nil {
+		C.free(ptr)
+		runtime.GC()
+	}
+}
+
+func (p *Player) eventLoop() {
+	for {
+		select {
+		case <-p.closed:
+			return
+		case <-p.endCh:
+			p.handleEnded()
+		}
 	}
 }
 
 // ============ 对前端暴露的 App 方法 ============
-// (签名保持完全一致)
 
 func (a *MusicService) PlayerLoad(track format.MscData) error { return a.player.loadTrack(track) }
 func (a *MusicService) PlayerPlay()                           { a.player.resume() }
@@ -299,7 +365,7 @@ func (a *MusicService) PlayerGetPlayMode() string {
 }
 func (a *MusicService) PlayerRestart() error { return a.player.restart() }
 
-// 均衡器方法 (Stub 实现，保持签名)
+// 均衡器方法 Stub
 func (a *MusicService) PlayerGetEqBandCount() int                 { return 0 }
 func (a *MusicService) PlayerGetEqFreqs() []float64               { return []float64{} }
 func (a *MusicService) PlayerSetEqBand(index int, gainDB float64) {}
@@ -313,7 +379,7 @@ func (a *MusicService) PlayerGetSmartEQEnabled() bool             { return false
 func (a *MusicService) PlayerSetSmartEQIntensity(v float64)       {}
 func (a *MusicService) PlayerGetSmartEQIntensity() float64        { return 0 }
 
-// 队列与音量方法 (保持原样)
+// 队列与音量方法
 func (a *MusicService) QueueAddTrack(id int64) QueueItem {
 	item, _ := a.player.queue.AddTrack(id)
 	return item
@@ -330,10 +396,12 @@ func (a *MusicService) QueueJumpTo(index int) error {
 		curTrack := a.player.track
 		isSame := curTrack != nil && curTrack.ID == item.Track.ID
 		a.player.mu.Unlock()
+
 		if isSame {
 			a.player.resume()
 			return nil
 		}
+
 		if err := a.player.loadTrack(item.Track); err != nil {
 			return err
 		}
@@ -342,11 +410,22 @@ func (a *MusicService) QueueJumpTo(index int) error {
 	}
 	return fmt.Errorf("队列下标越界")
 }
-func (a *MusicService) QueueGetStatus() QueueStatus        { return a.player.queue.Status() }
-func (a *MusicService) QueueGetNext() QueueItem            { item, _ := a.player.queue.GetNext(true); return item }
-func (a *MusicService) QueueGetPrev() QueueItem            { item, _ := a.player.queue.GetPrev(true); return item }
-func (a *MusicService) SetApplicationVolume(vol int) error { a.player.SetVolume(vol); return nil }
-func (a *MusicService) GetApplicationVolume() (int, error) { return a.player.GetVolume(), nil }
+func (a *MusicService) QueueGetStatus() QueueStatus { return a.player.queue.Status() }
+func (a *MusicService) QueueGetNext() QueueItem {
+	item, _ := a.player.queue.GetNext(true)
+	return item
+}
+func (a *MusicService) QueueGetPrev() QueueItem {
+	item, _ := a.player.queue.GetPrev(true)
+	return item
+}
+func (a *MusicService) SetApplicationVolume(vol int) error {
+	a.player.SetVolume(vol)
+	return nil
+}
+func (a *MusicService) GetApplicationVolume() (int, error) {
+	return a.player.GetVolume(), nil
+}
 
 // ============ Player 内部实现 ============
 
@@ -360,52 +439,97 @@ func (p *Player) loadTrack(track format.MscData) error {
 		return err
 	}
 
-	p.stopPipeline() // 清理上一首的 RAM
+	// 先停止旧播放并释放旧 PCM
+	p.isPlaying.Store(false)
+	p.isPaused.Store(true)
+	p.muteBytes.Store(0)
+
+	p.closeOtoPlayer()
+	p.freePCM()
+
+	p.mu.Lock()
+	p.track = nil
+	p.mu.Unlock()
 
 	var cBuf unsafe.Pointer
 	var cSize C.int
 	cPath := C.CString(filePath)
 	defer C.free(unsafe.Pointer(cPath))
 
-	// 核心：CGO 调用 FFmpeg 将整个文件解码到 RAM
 	ret := C.ffmpeg_decode_to_ram(cPath, &cBuf, &cSize)
-	if ret != 0 || cBuf == nil {
-		return fmt.Errorf("FFmpeg 解码失败或不支持的格式")
+	if ret != 0 || cBuf == nil || cSize <= 0 {
+		if cBuf != nil {
+			C.free(cBuf)
+		}
+		return fmt.Errorf("FFmpeg 解码失败或音频为空")
 	}
 
-	p.mu.Lock()
+	// 内存上限保护
+	const maxAllowedBytes = int64(1 << 30)
+	if int64(cSize) > maxAllowedBytes {
+		C.free(cBuf)
+		runtime.GC()
+		return fmt.Errorf("曲目过大，解码后大小 %.1f MB 超过上限 1024 MB", float64(cSize)/(1024*1024))
+	}
+
+	// 写入新 PCM
+	p.pcmMu.Lock()
 	p.cPtr = cBuf
 	p.pcmData = unsafe.Slice((*byte)(cBuf), int(cSize))
-	p.totalBytes = int64(cSize)
-	p.track = &track
+	p.totalBytes.Store(int64(cSize))
+	p.hasPCM.Store(true)
+	p.pcmMu.Unlock()
+
 	p.readOffset.Store(0)
+	p.seekSeq.Store(0)
+	p.muteBytes.Store(0)
 	p.isPaused.Store(true)
 	p.isPlaying.Store(false)
+
+	p.mu.Lock()
+	p.track = &track
+	if p.otoCtx != nil {
+		if p.otoPlayer != nil {
+			p.otoPlayer.Close()
+		}
+		p.otoPlayer = p.otoCtx.NewPlayer(&PCMReader{p: p})
+		p.otoPlayer.Play()
+	}
 	p.mu.Unlock()
+
+	log.Printf("[Player] 已加载曲目 %q: 解码后 %.1f MB, 时长 %.1fs",
+		filePath,
+		float64(cSize)/(1024*1024),
+		float64(cSize)/float64(playerSampleRate*bytesPerFrame),
+	)
 
 	if p.queue != nil {
 		p.queue.EnsureCurrent(track.ID)
 	}
 
-	p.otoPlayer.Play() // 开始从 PCMReader 读取数据 (此时 isPaused=true，输出静音)
 	p.emitTrackLoaded()
 	p.emitState()
 	return nil
 }
 
-func (p *Player) stopPipeline() {
-	p.isPlaying.Store(false)
-	p.isPaused.Store(true)
-	p.freePCM()
-}
-
 func (p *Player) resume() {
-	if !p.ready || p.pcmData == nil {
+	if !p.ready || !p.hasPCM.Load() {
 		return
 	}
+
 	wasPaused := p.isPaused.Load()
+
 	p.isPaused.Store(false)
 	p.isPlaying.Store(true)
+
+	p.mu.Lock()
+	if p.otoPlayer == nil && p.otoCtx != nil {
+		p.otoPlayer = p.otoCtx.NewPlayer(&PCMReader{p: p})
+	}
+	if p.otoPlayer != nil {
+		p.otoPlayer.Play()
+	}
+	p.mu.Unlock()
 
 	if wasPaused && p.track != nil && p.app != nil {
 		p.app.RecordPlayStart(p.track.ID)
@@ -417,8 +541,9 @@ func (p *Player) pause() {
 	if !p.ready {
 		return
 	}
+
 	wasPlaying := p.isPlaying.Load() && !p.isPaused.Load()
-	p.isPaused.Store(true) // 灵敏暂停：Read 方法立刻输出 0
+	p.isPaused.Store(true)
 
 	if wasPlaying && p.track != nil && p.app != nil {
 		p.app.RecordPlayPause(p.track.ID)
@@ -434,52 +559,94 @@ func (p *Player) toggle() {
 	}
 }
 
-// 解决撕裂的核心：只修改原子偏移量，不重启音频设备
+// seek：不再重建 oto.Player，只更新 offset，并用静音冲刷旧缓冲
 func (p *Player) seek(seconds float64) error {
-	if p.pcmData == nil {
+	if !p.hasPCM.Load() {
 		return fmt.Errorf("无曲目")
 	}
+
+	total := p.totalBytes.Load()
+
 	targetByte := int64(seconds * float64(playerSampleRate) * float64(bytesPerFrame))
 	if targetByte < 0 {
 		targetByte = 0
 	}
-	if targetByte > p.totalBytes {
-		targetByte = p.totalBytes
+	if targetByte > total {
+		targetByte = total
 	}
 
+	// 对齐到完整采样帧，避免 Float32 stereo 帧边界错位
+	targetByte -= targetByte % bytesPerFrame
+
+	p.pcmMu.Lock()
 	p.readOffset.Store(targetByte)
+	p.seekSeq.Add(1)
+	p.pcmMu.Unlock()
+
+	// seek 后进入短暂静音冲刷阶段
+	p.muteBytes.Store(seekFlushBytes)
+
 	p.emitTimeUpdate()
 	return nil
 }
 
 func (p *Player) stop() {
-	trackID := int64(0)
-	if p.track != nil {
-		trackID = p.track.ID
-	}
-	wasPlaying := p.isPlaying.Load() && !p.isPaused.Load()
+	p.mu.Lock()
+	track := p.track
+	p.track = nil
+	p.mu.Unlock()
 
+	trackID := int64(0)
+	if track != nil {
+		trackID = track.ID
+	}
+
+	wasPlaying := p.isPlaying.Load() && !p.isPaused.Load()
 	if wasPlaying && trackID > 0 && p.app != nil {
 		p.app.RecordPlayPause(trackID)
 	}
 
-	p.stopPipeline()
-	p.mu.Lock()
-	p.track = nil
-	p.mu.Unlock()
+	p.isPlaying.Store(false)
+	p.isPaused.Store(true)
+	p.muteBytes.Store(0)
+
+	p.closeOtoPlayer()
+	p.freePCM()
 
 	if p.app != nil {
-		p.app.EmitEvent("player:state", map[string]any{"isPlaying": false, "position": 0, "duration": 0, "trackId": 0})
+		p.app.EmitEvent("player:state", map[string]any{
+			"isPlaying": false,
+			"position":  0.0,
+			"duration":  0.0,
+			"trackId":   int64(0),
+		})
 	}
 }
 
 func (p *Player) restart() error {
-	if p.pcmData == nil {
+	if !p.hasPCM.Load() {
 		return fmt.Errorf("无曲目")
 	}
+
+	p.pcmMu.Lock()
 	p.readOffset.Store(0)
-	p.isPaused.Store(false)
+	p.seekSeq.Add(1)
+	p.pcmMu.Unlock()
+
+	p.muteBytes.Store(seekFlushBytes)
+
 	p.isPlaying.Store(true)
+	p.isPaused.Store(false)
+
+	p.mu.Lock()
+	if p.otoPlayer == nil && p.otoCtx != nil {
+		p.otoPlayer = p.otoCtx.NewPlayer(&PCMReader{p: p})
+	}
+	if p.otoPlayer != nil {
+		p.otoPlayer.Play()
+	}
+	p.mu.Unlock()
+
 	if p.track != nil && p.app != nil {
 		p.app.RecordPlayStart(p.track.ID)
 	}
@@ -500,6 +667,7 @@ func (p *Player) togglePlayMode() string {
 	p.playMode = modes[(idx+1)%len(modes)]
 	mode := p.playMode
 	p.mu.Unlock()
+
 	if p.app != nil {
 		p.app.EmitEvent("player:modechange", mode)
 	}
@@ -507,44 +675,63 @@ func (p *Player) togglePlayMode() string {
 }
 
 func (p *Player) handleEnded() {
+	if !p.hasPCM.Load() {
+		return
+	}
+
+	// 如果用户已经 seek / restart 回到中间位置，则不处理结束
+	if p.readOffset.Load() < p.totalBytes.Load() {
+		return
+	}
+
 	p.mu.Lock()
 	mode := p.playMode
 	track := p.track
+	queue := p.queue
+	p.mu.Unlock()
+
 	trackID := int64(0)
 	if track != nil {
 		trackID = track.ID
 	}
-	queue := p.queue
-	p.mu.Unlock()
 
+	// 单曲循环
 	if mode == "loopOne" {
-		p.restart()
+		_ = p.restart()
 		return
 	}
+
 	if trackID > 0 && p.app != nil {
 		p.app.RecordPlayPause(trackID)
 	}
 
+	// 队列继续播放
 	if queue != nil && !queue.IsEmpty() {
 		var item QueueItem
 		var ok bool
+
 		if mode == "random" {
 			item, ok = queue.AdvanceRandom(true)
 		} else {
 			item, ok = queue.AdvanceNext(true)
 		}
+
 		if ok {
 			if err := p.loadTrack(item.Track); err == nil {
 				p.resume()
 				if p.app != nil {
 					status := queue.Status()
-					p.app.EmitEvent("player:queuenext", map[string]any{"trackId": item.Track.ID, "queueIndex": status.CurrentIndex})
+					p.app.EmitEvent("player:queuenext", map[string]any{
+						"trackId":    item.Track.ID,
+						"queueIndex": status.CurrentIndex,
+					})
 				}
 			}
 			return
 		}
 	}
 
+	// 真结束
 	if p.app != nil {
 		p.app.EmitEvent("player:ended", trackID)
 		p.emitState()
@@ -558,8 +745,14 @@ func (p *Player) snapshot() PlayerState {
 	mode := p.playMode
 	p.mu.Unlock()
 
-	state := PlayerState{Track: track, IsPlaying: p.isPlaying.Load() && !p.isPaused.Load(), Volume: volume, PlayMode: mode}
-	if p.pcmData != nil {
+	state := PlayerState{
+		Track:     track,
+		IsPlaying: p.isPlaying.Load() && !p.isPaused.Load(),
+		Volume:    volume,
+		PlayMode:  mode,
+	}
+
+	if p.hasPCM.Load() {
 		state.Position = p.safePosition()
 		state.Duration = p.safeDuration()
 	}
@@ -567,34 +760,42 @@ func (p *Player) snapshot() PlayerState {
 }
 
 func (p *Player) safePosition() float64 {
-	if p.pcmData == nil {
+	if !p.hasPCM.Load() {
 		return 0
 	}
 	return float64(p.readOffset.Load()) / float64(playerSampleRate*bytesPerFrame)
 }
 
 func (p *Player) safeDuration() float64 {
-	if p.pcmData == nil {
+	total := p.totalBytes.Load()
+	if total == 0 {
 		return 0
 	}
-	return float64(p.totalBytes) / float64(playerSampleRate*bytesPerFrame)
+	return float64(total) / float64(playerSampleRate*bytesPerFrame)
 }
 
 func (p *Player) emitTrackLoaded() {
 	if p.app == nil || p.track == nil {
 		return
 	}
-	p.app.EmitEvent("player:trackloaded", map[string]any{"track": p.track, "duration": p.safeDuration()})
+	p.app.EmitEvent("player:trackloaded", map[string]any{
+		"track":    p.track,
+		"duration": p.safeDuration(),
+	})
 }
 
 func (p *Player) emitState() {
 	if p.app == nil {
 		return
 	}
+
 	trackID := int64(0)
+	p.mu.Lock()
 	if p.track != nil {
 		trackID = p.track.ID
 	}
+	p.mu.Unlock()
+
 	p.app.EmitEvent("player:state", map[string]any{
 		"isPlaying": p.isPlaying.Load() && !p.isPaused.Load(),
 		"position":  p.safePosition(),
@@ -604,15 +805,19 @@ func (p *Player) emitState() {
 }
 
 func (p *Player) emitTimeUpdate() {
-	if p.app == nil || p.pcmData == nil {
+	if p.app == nil || !p.hasPCM.Load() {
 		return
 	}
-	p.app.EmitEvent("player:timeupdate", map[string]float64{"position": p.safePosition(), "duration": p.safeDuration()})
+	p.app.EmitEvent("player:timeupdate", map[string]float64{
+		"position": p.safePosition(),
+		"duration": p.safeDuration(),
+	})
 }
 
 func (p *Player) timeUpdateLoop() {
 	ticker := time.NewTicker(playerTimeUpdateInterval)
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-p.closed:
@@ -635,8 +840,14 @@ func (p *Player) SetVolume(vol int) {
 	p.volume.Store(int32(vol))
 }
 
-func (p *Player) GetVolume() int                                     { return int(p.volume.Load()) }
-func (p *Player) SetInitialVolume(vol int)                           { p.volume.Store(int32(vol)) }
+func (p *Player) GetVolume() int {
+	return int(p.volume.Load())
+}
+
+func (p *Player) SetInitialVolume(vol int) {
+	p.volume.Store(int32(vol))
+}
+
 func (p *Player) SetSmartEQDefaults(enabled bool, intensity float64) {}
 
 func volumeToGain(vol int) float64 {
@@ -645,21 +856,21 @@ func volumeToGain(vol int) float64 {
 	}
 	if vol >= 100 {
 		return 1.0
-	} // 优化：100% 时直接返回 1.0，避免乘法
-	return math.Pow(float64(vol)/100.0, 2.0) // 使用平方曲线，比 Log2 听感更平滑
+	}
+	return math.Pow(float64(vol)/100.0, 2.0)
 }
 
-// HasTrack 返回当前是否加载了曲目（兼容 hotkey.go 对 p.decoded 的引用）
+// HasTrack 返回当前是否加载了曲目
 func (p *Player) HasTrack() bool {
-	return p.pcmData != nil
+	return p.hasPCM.Load()
 }
 
-// IsPaused 返回是否处于暂停态（兼容 hotkey.go 对 p.paused 的引用）
+// IsPaused 返回是否处于暂停态
 func (p *Player) IsPaused() bool {
 	return p.isPaused.Load()
 }
 
-// IsIdle 返回播放器是否空闲（无曲目 或 已暂停）
+// IsIdle 返回播放器是否空闲
 func (p *Player) IsIdle() bool {
-	return p.pcmData == nil || p.isPaused.Load()
+	return !p.hasPCM.Load() || p.isPaused.Load()
 }

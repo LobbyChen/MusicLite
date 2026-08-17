@@ -399,7 +399,7 @@ export function PickLyricsFile() {
 }
 
 /**
- * 均衡器方法 (Stub 实现，保持签名)
+ * 均衡器方法 Stub
  * @returns {$CancellablePromise<number>}
  */
 export function PlayerGetEqBandCount() {
@@ -583,7 +583,7 @@ export function QueueAddAllFromLibrary() {
 }
 
 /**
- * 队列与音量方法 (保持原样)
+ * 队列与音量方法
  * @param {number} id
  * @returns {$CancellablePromise<$models.QueueItem>}
  */
