@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MusicLite Cuckoo — 轻量级跨平台离线音乐播放器</title>
+    <meta name="description" content="基于 Wails v3 与 Go 构建的桌面音乐应用，专注于本地音乐播放体验。支持多格式、可定制界面、歌词、全局快捷键与系统托盘。" />
+    <style>
+        :root {
+            --bg: #121212;
+            --bg-alt: #161616;
+            --card: #1e1e1e;
+            --card-alt: #232323;
+            --text: #f5f5f5;
+            --text-2: #b3b3b3;
+            --text-3: #7a7a7a;
+            --accent: #1db954;
+            --accent-dim: #1470b0;
+            --border: #2a2a2a;
+            --border-strong: #3a3a3a;
+            --mono: "SFMono-Regular", "Cascadia Code", "Consolas", "Monaco", monospace;
+            --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            font-size: 16px;
+            line-height: 1.65;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+
+        a:hover {
+            color: #2ee06b;
+            text-decoration: underline;
+        }
+
+        img {
+            max-width: 100%;
+            display: block;
+        }
+
+        .wrap {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* ---------- Nav ---------- */
+        .nav {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(18, 18, 18, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 60px;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text);
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .nav-brand:hover {
+            text-decoration: none;
+            color: var(--text);
+        }
+
+        .nav-brand img {
+            width: 26px;
+            height: 26px;
+        }
+
+        .nav-brand .ver {
+            color: var(--text-3);
+            font-weight: 400;
+            font-size: 12px;
+            font-family: var(--mono);
+            margin-left: 4px;
+        }
+
+        .nav-brand .ver[data-loading] {
+            color: var(--text-3);
+            opacity: 0.6;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 28px;
+        }
+
+        .nav-links a {
+            color: var(--text-2);
+            font-size: 14px;
+        }
+
+        .nav-links a:hover {
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .nav-cta {
+            border: 1px solid var(--border-strong);
+            border-radius: 6px;
+            padding: 6px 14px !important;
+            color: var(--text) !important;
+        }
+
+        .nav-cta:hover {
+            border-color: var(--accent);
+            background: rgba(29, 185, 84, 0.08);
+        }
+
+        /* ---------- Hero ---------- */
+        .hero {
+            padding: 88px 0 56px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 56px;
+            align-items: center;
+        }
+
+        .hero-eyebrow {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-3);
+            letter-spacing: 0.06em;
+            margin-bottom: 18px;
+        }
+
+        .hero-eyebrow .dot {
+            color: var(--accent);
+        }
+
+        .hero h1 {
+            font-size: 44px;
+            line-height: 1.15;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+
+        .hero h1 .sub {
+            display: block;
+            font-size: 20px;
+            font-weight: 400;
+            color: var(--text-2);
+            letter-spacing: 0;
+            margin-top: 10px;
+        }
+
+        .hero p.lead {
+            color: var(--text-2);
+            font-size: 16px;
+            margin: 22px 0 30px;
+            max-width: 520px;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 11px 22px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #0a0a0a;
+        }
+
+        .btn-primary:hover {
+            background: #2ee06b;
+            color: #0a0a0a;
+            text-decoration: none;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text);
+            border-color: var(--border-strong);
+        }
+
+        .btn-ghost:hover {
+            border-color: var(--text-3);
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .hero-meta {
+            margin-top: 26px;
+            display: flex;
+            gap: 22px;
+            flex-wrap: wrap;
+            color: var(--text-3);
+            font-size: 13px;
+            font-family: var(--mono);
+        }
+
+        .hero-meta span b {
+            color: var(--text-2);
+            font-weight: 500;
+        }
+
+        .hero-shot {
+            position: relative;
+        }
+
+        .hero-shot img {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .hero-shot .caption {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--text-3);
+            font-family: var(--mono);
+        }
+
+        /* ---------- Section ---------- */
+        .section {
+            padding: 72px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-head {
+            margin-bottom: 36px;
+        }
+
+        .section-head .idx {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--accent);
+            letter-spacing: 0.08em;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .section-head h2 {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .section-head p {
+            color: var(--text-2);
+            margin-top: 8px;
+            max-width: 680px;
+        }
+
+        /* ---------- Release ---------- */
+        .release-meta {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--text-3);
+        }
+
+        .release-meta .tag {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .release-body {
+            background: var(--bg-alt);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 22px 26px;
+            margin-bottom: 22px;
+            color: var(--text-2);
+            font-size: 14px;
+            line-height: 1.75;
+            max-height: 420px;
+            overflow-y: auto;
+        }
+
+        .release-body:empty {
+            display: none;
+        }
+
+        .release-body strong.rh {
+            display: block;
+            color: var(--text);
+            font-size: 14px;
+            margin-top: 16px;
+            margin-bottom: 4px;
+        }
+
+        .release-body strong.rh:first-child {
+            margin-top: 0;
+        }
+
+        .release-body code.rc {
+            font-family: var(--mono);
+            font-size: 12px;
+            background: var(--card-alt);
+            padding: 1px 5px;
+            border-radius: 3px;
+            color: var(--accent);
+        }
+
+        .release-body a {
+            color: var(--accent);
+        }
+
+        .release-body br + br {
+            content: "";
+        }
+
+        /* ---------- Features ---------- */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .feature {
+            background: var(--bg);
+            padding: 26px 28px;
+        }
+
+        .feature .name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+
+        .feature .name .tag {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--text-3);
+            font-weight: 400;
+        }
+
+        .feature p {
+            color: var(--text-2);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* ---------- Showcase ---------- */
+        .showcase {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+        }
+
+        .shot {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .shot img {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 100%;
+        }
+
+        .shot .cap {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-top: 12px;
+            font-size: 13px;
+        }
+
+        .shot .cap .t {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .shot .cap .n {
+            font-family: var(--mono);
+            color: var(--text-3);
+            font-size: 12px;
+        }
+
+        /* ---------- Formats ---------- */
+        .formats-wrap {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .formats {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .formats th,
+        .formats td {
+            text-align: left;
+            padding: 12px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .formats thead th {
+            background: var(--bg-alt);
+            color: var(--text-2);
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .formats tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .formats tbody tr:hover {
+            background: var(--bg-alt);
+        }
+
+        .formats .fmt {
+            font-family: var(--mono);
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-family: var(--mono);
+        }
+
+        .badge-full {
+            background: rgba(29, 185, 84, 0.12);
+            color: var(--accent);
+        }
+
+        .badge-partial {
+            background: rgba(255, 196, 0, 0.1);
+            color: #ffc400;
+        }
+
+        .badge-none {
+            background: rgba(150, 150, 150, 0.1);
+            color: var(--text-3);
+        }
+
+        /* ---------- Tech ---------- */
+        .tech {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px 40px;
+        }
+
+        .tech-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 16px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .tech-item .t-name {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .tech-item .t-name a {
+            color: var(--text);
+        }
+
+        .tech-item .t-name a:hover {
+            color: var(--accent);
+        }
+
+        .tech-item .t-desc {
+            color: var(--text-2);
+            font-size: 13px;
+        }
+
+        /* ---------- Start ---------- */
+        .start-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 36px;
+        }
+
+        .start-block h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            color: var(--text);
+        }
+
+        .start-block .req {
+            color: var(--text-2);
+            font-size: 14px;
+            margin-bottom: 14px;
+        }
+
+        .code {
+            background: var(--bg-alt);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 14px 16px;
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--text);
+            overflow-x: auto;
+            line-height: 1.55;
+        }
+
+        .code .c {
+            color: var(--text-3);
+        }
+
+        .code .p {
+            color: var(--accent);
+        }
+
+        /* ---------- Footer ---------- */
+        .footer {
+            padding: 40px 0 56px;
+            color: var(--text-3);
+            font-size: 13px;
+        }
+
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .footer .lic {
+            font-family: var(--mono);
+        }
+
+        .footer a {
+            color: var(--text-2);
+        }
+
+        .footer-cols {
+            display: flex;
+            gap: 48px;
+        }
+
+        .footer-col h4 {
+            color: var(--text-2);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 10px;
+        }
+
+        .footer-col a {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        /* ---------- Responsive ---------- */
+        @media (max-width: 880px) {
+            .hero-grid {
+                grid-template-columns: 1fr;
+                gap: 36px;
+            }
+
+            .hero {
+                padding: 56px 0 40px;
+            }
+
+            .hero h1 {
+                font-size: 34px;
+            }
+
+            .features,
+            .showcase,
+            .tech,
+            .start-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links a:not(.nav-cta) {
+                display: none;
+            }
+
+            .section {
+                padding: 52px 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="nav">
+        <div class="wrap nav-inner">
+            <a class="nav-brand" href="#top">
+                <img src="./appicon.png" alt="MusicLite" />
+                <span>MusicLite Cuckoo</span>
+                <span class="ver" id="navVer" data-loading>...</span>
+            </a>
+            <div class="nav-links">
+                <a href="#release">最新发布</a>
+                <a href="#features">特性</a>
+                <a href="#ui">界面</a>
+                <a href="#formats">格式</a>
+                <a href="#start">开始使用</a>
+                <a class="nav-cta" id="navDownload" href="https://github.com/LobbyChen/MusicLite/releases/latest" target="_blank" rel="noopener">下载</a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero" id="top">
+        <div class="wrap hero-grid">
+            <div>
+                <div class="hero-eyebrow"><span class="dot">●</span> Wails v3 · Go 1.21+ · GPL v3</div>
+                <h1>
+                    MusicLite Cuckoo
+                    <span class="sub">轻量级、跨平台的离线音乐播放器</span>
+                </h1>
+                <p class="lead">
+                    面向本地音乐的桌面播放器。所有曲目、封面、歌词与统计数据均保存在本地，不依赖网络服务，无需登录账户。Windows、Linux 与 macOS 使用同一套代码构建。
+                </p>
+                <div class="hero-actions">
+                    <a class="btn btn-primary" id="heroDownload" href="https://github.com/LobbyChen/MusicLite/releases/latest" target="_blank" rel="noopener">下载最新版本</a>
+                    <a class="btn btn-ghost" href="https://github.com/LobbyChen/MusicLite" target="_blank" rel="noopener">查看源码</a>
+                </div>
+                <div class="hero-meta">
+                    <span><b id="rlTag">—</b> 最新版本</span>
+                </div>
+            </div>
+            <div class="hero-shot">
+                <img src="./example/main_new_cn.png" alt="MusicLite 新 UI 主界面" />
+                <div class="caption">新风格 UI · 中文主界面</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="release">
+        <div class="wrap">
+            <div class="section-head">
+                <span class="idx">01 / 最新发布</span>
+                <h2 id="rlTitle">正在获取最新发布信息…</h2>
+                <p id="rlDesc">从 GitHub 仓库拉取最新 release 标题与说明。</p>
+            </div>
+            <div class="release-meta">
+                <span>标签 <span class="tag" id="rlTag2">—</span></span>
+                <span>发布 <span id="rlDate2">—</span></span>
+            </div>
+            <a class="btn btn-ghost" id="rlLink" href="https://github.com/LobbyChen/MusicLite/releases/latest" target="_blank" rel="noopener">查看完整发布说明与下载</a>
+        </div>
+    </section>
+
+    <section class="section" id="features">
+        <div class="wrap">
+            <div class="section-head">
+                <span class="idx">02 / 特性</span>
+                <h2>覆盖本地播放的完整链路</h2>
+                <p>从媒体库管理到歌词显示，从全局控制到数据迁移，每一项功能都围绕"本地优先"的使用场景设计。</p>
+            </div>
+            <div class="features">
+                <div class="feature">
+                    <div class="name">界面定制 <span class="tag">designer</span></div>
+                    <p>内置设计器实时调整圆角、模糊、阴影、辉光与动画级别等视觉令牌。支持透明背景与自定义背景图片或视频，无需修改代码即可改变外观。</p>
+                </div>
+                <div class="feature">
+                    <div class="name">歌词系统 <span class="tag">lrc</span></div>
+                    <p>支持 LRC 格式歌词，提供卡片与全屏两种显示模式，可在淡入淡出、滑动、缩放、翻转、旋转等多种行切换动画间切换。</p>
+                </div>
+                <div class="feature">
+                    <div class="name">播放队列 <span class="tag">queue</span></div>
+                    <p>拖拽排序、随机播放、从媒体库批量添加，队列内支持直接拖放。关闭主窗口时最小化至托盘，播放不被打断。</p>
+                </div>
+                <div class="feature">
+                    <div class="name">全局快捷键 <span class="tag">hotkey</span></div>
+                    <p>可自定义播放/暂停、上一曲、下一曲的全局热键，应用处于后台或最小化状态时仍可响应，无需切回窗口。</p>
+                </div>
+                <div class="feature">
+                    <div class="name">多语言 <span class="tag">i18n</span></div>
+                    <p>内置中文与英文界面，翻译数据随应用分发。提供扩展机制，用户可自行添加或修改翻译条目。</p>
+                </div>
+                <div class="feature">
+                    <div class="name">设置迁移 <span class="tag">.msclte.zip</span></div>
+                    <p>一键打包设置与字体为 .msclte.zip 压缩包，在新设备上导入即可还原全部偏好，便于在多机环境间同步配置。</p>
+                </div>
+                <div class="feature">
+                    <div class="name">音量控制 <span class="tag">volume</span></div>
+                    <p>Windows 下支持应用级音量合成器控制，仅调节本程序音量而不影响系统其他进程；也可切换为系统主音量模式。</p>
+                </div>
+                <div class="feature">
+                    <div class="name">系统托盘 <span class="tag">tray</span></div>
+                    <p>自绘托盘菜单，支持后台播放与快速操作。关闭主窗口默认最小化至托盘，退出需通过托盘菜单显式确认。</p>
+                </div>
+                <div class="feature">
+                    <div class="name">标签打包 <span class="tag">id3v2</span></div>
+                    <p>将曲目、封面、歌词嵌入 ID3v2 标签并复制到剪贴板，单文件即可携带完整元数据，便于传输与分享。</p>
+                </div>
+                <div class="feature">
+                    <div class="name">听歌统计 <span class="tag">stats</span></div>
+                    <p>记录每首歌曲的累计播放时长，本地存储，可按曲目查看个人 listening 历史，数据不外传。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="ui">
+        <div class="wrap">
+            <div class="section-head">
+                <span class="idx">03 / 界面</span>
+                <h2>两套 UI 风格，可实时切换</h2>
+                <p>传统 UI 偏向稳定的控件布局，新风格 UI 采用更紧凑的间距与半透明质感。两套风格共享同一套设计令牌，切换不会丢失任何数据。</p>
+            </div>
+            <div class="showcase">
+                <div class="shot">
+                    <img src="./example/main_old_cn.png" alt="传统 UI 中文主界面" />
+                    <div class="cap"><span class="t">传统 UI · 主界面</span><span class="n">01</span></div>
+                </div>
+                <div class="shot">
+                    <img src="./example/main_new_cn.png" alt="新 UI 中文主界面" />
+                    <div class="cap"><span class="t">新风格 UI · 主界面</span><span class="n">02</span></div>
+                </div>
+                <div class="shot">
+                    <img src="./example/designer_old.png" alt="传统 UI 设计器" />
+                    <div class="cap"><span class="t">设计器 · 视觉令牌调节</span><span class="n">03</span></div>
+                </div>
+                <div class="shot">
+                    <img src="./example/main_translucent.png" alt="新 UI 半透明背景" />
+                    <div class="cap"><span class="t">新风格 UI · 半透明背景</span><span class="n">04</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="formats">
+        <div class="wrap">
+            <div class="section-head">
+                <span class="idx">04 / 格式</span>
+                <h2>支持的音频格式</h2>
+                <p>解码能力基于 FFmpeg，早期版本（Cuckoo Beta0.6.4 及以前）仅支持三种基础格式，后续版本扩展至十四种。</p>
+            </div>
+            <div class="formats-wrap">
+                <table class="formats">
+                    <thead>
+                        <tr>
+                            <th>格式</th>
+                            <th>至 Cuckoo Beta0.6.4</th>
+                            <th>Cuckoo Beta0.6.4 之后</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="fmt">MP3</td><td><span class="badge badge-full">完整支持</span></td><td><span class="badge badge-full">完整支持</span></td></tr>
+                        <tr><td class="fmt">WAV</td><td><span class="badge badge-full">完整支持</span></td><td><span class="badge badge-full">完整支持</span></td></tr>
+                        <tr><td class="fmt">FLAC</td><td><span class="badge badge-full">完整支持</span></td><td><span class="badge badge-full">完整支持</span></td></tr>
+                        <tr><td class="fmt">AAC</td><td><span class="badge badge-none">不支持</span></td><td><span class="badge badge-full">完整支持</span></td></tr>
+                        <tr><td class="fmt">OGG (Vorbis)</td><td><span class="badge badge-none">不支持</span></td><td><span class="badge badge-full">完整支持</span></td></tr>
+                        <tr><td class="fmt">OPUS</td><td><span class="badge badge-none">不支持</span></td><td><span class="badge badge-full">完整支持</span></td></tr>
+                        <tr><td class="fmt">WMA</td><td><span class="badge badge-none">不支持</span></td><td><span class="badge badge-partial">部分支持</span></td></tr>
+                        <tr><td class="fmt">AIFF</td><td><span class="badge badge-none">不支持</span></td><td><span class="badge badge-full">完整支持</span></td></tr>
+                        <tr><td class="fmt">AMR</td><td><span class="badge badge-none">不支持</span></td><td><span class="badge badge-full">完整支持</span></td></tr>
+                        <tr><td class="fmt">AC3 / E-AC3</td><td><span class="badge badge-none">不支持</span></td><td><span class="badge badge-full">完整支持</span></td></tr>
+                        <tr><td class="fmt">DTS</td><td><span class="badge badge-none">不支持</span></td><td><span class="badge badge-full">完整支持</span></td></tr>
+                        <tr><td class="fmt">ALAC</td><td><span class="badge badge-none">不支持</span></td><td><span class="badge badge-full">完整支持</span></td></tr>
+                        <tr><td class="fmt">APE</td><td><span class="badge badge-none">不支持</span></td><td><span class="badge badge-partial">仅解码</span></td></tr>
+                        <tr><td class="fmt">TTA</td><td><span class="badge badge-none">不支持</span></td><td><span class="badge badge-partial">仅解码</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="wrap">
+            <div class="section-head">
+                <span class="idx">05 / 技术栈</span>
+                <h2>构建依赖</h2>
+                <p>核心由 Go 与 Wails v3 构成，音频解码依赖 FFmpeg，频谱分析依赖 FFTW。所有依赖均为开源项目。</p>
+            </div>
+            <div class="tech">
+                <div class="tech-item">
+                    <div class="t-name"><a href="https://wails.io/" target="_blank" rel="noopener">Wails v3</a></div>
+                    <div class="t-desc">Go 桌面应用框架，提供窗口、托盘、事件系统与服务绑定。</div>
+                </div>
+                <div class="tech-item">
+                    <div class="t-name"><a href="https://ffmpeg.org/" target="_blank" rel="noopener">FFmpeg</a></div>
+                    <div class="t-desc">音频解码后端，支撑 MP3 之外的所有扩展格式。</div>
+                </div>
+                <div class="tech-item">
+                    <div class="t-name"><a href="http://www.fftw.org/" target="_blank" rel="noopener">FFTW</a></div>
+                    <div class="t-desc">快速傅里叶变换库，用于频谱分析与智能均衡器。</div>
+                </div>
+                <div class="tech-item">
+                    <div class="t-name"><a href="https://github.com/dhowden/tag" target="_blank" rel="noopener">dhowden/tag</a></div>
+                    <div class="t-desc">音频元数据与标签解析库。</div>
+                </div>
+                <div class="tech-item">
+                    <div class="t-name">Go 1.21+</div>
+                    <div class="t-desc">后端语言与运行时。</div>
+                </div>
+                <div class="tech-item">
+                    <div class="t-name">Node.js 18+</div>
+                    <div class="t-desc">前端构建工具链运行环境。</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="start">
+        <div class="wrap">
+            <div class="section-head">
+                <span class="idx">06 / 开始使用</span>
+                <h2>获取与构建</h2>
+                <p>可下载预编译版本直接运行，也可从源码自行构建。源码构建需要先准备 Go、Node.js 与 CGO 依赖。</p>
+            </div>
+            <div class="start-grid">
+                <div class="start-block">
+                    <h3>环境要求</h3>
+                    <p class="req">CGO 依赖因平台而异：</p>
+                    <div class="code">
+                        <span class="c"># Windows</span>
+                        MinGW-w64, libfftw3-3.dll, ffmpeg
+
+                        <span class="c"># macOS</span>
+                        brew install fftw ffmpeg
+
+                        <span class="c"># Linux</span>
+                        sudo apt install libfftw3-dev \
+                            libgtk-3-dev \
+                            libwebkit2gtk-4.1-dev ffmpeg
+                    </div>
+                </div>
+                <div class="start-block">
+                    <h3>从源码构建</h3>
+                    <div class="code">
+                        <span class="c"># 安装前端依赖</span>
+                        <span class="p">cd</span> frontend && npm install && <span class="p">cd</span> ..
+
+                        <span class="c"># 启动开发服务器</span>
+                        wails3 dev
+
+                        <span class="c"># 构建生产版本</span>
+                        wails3 build      <span class="c"># macOS / Linux</span>
+                        compile.cmd       <span class="c"># Windows</span>
+                    </div>
+                    <p class="req" style="margin-top:14px;">构建产物位于 <code style="font-family:var(--mono);color:var(--text)">build/bin/</code> 目录。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="wrap footer-inner">
+            <div>
+                <div style="margin-bottom:8px;">MusicLite Cuckoo · 轻量级跨平台离线音乐播放器</div>
+                <div class="lic">基于 GNU GPL v3 协议开源 · 作者 LobbyChen</div>
+            </div>
+            <div class="footer-cols">
+                <div class="footer-col">
+                    <h4>导航</h4>
+                    <a href="#release">最新发布</a>
+                    <a href="#features">特性</a>
+                    <a href="#ui">界面</a>
+                    <a href="#formats">格式</a>
+                    <a href="#start">开始使用</a>
+                </div>
+                <div class="footer-col">
+                    <h4>项目</h4>
+                    <a href="https://github.com/LobbyChen/MusicLite" target="_blank" rel="noopener">源码仓库</a>
+                    <a href="https://github.com/LobbyChen/MusicLite/releases/latest" target="_blank" rel="noopener">最新发布</a>
+                    <a href="https://github.com/LobbyChen/MusicLite/releases" target="_blank" rel="noopener">发布历史</a>
+                    <a href="https://github.com/LobbyChen/MusicLite/issues" target="_blank" rel="noopener">问题反馈</a>
+                </div>
+                <div class="footer-col">
+                    <h4>资源</h4>
+                    <a href="https://wails.io/" target="_blank" rel="noopener">Wails</a>
+                    <a href="https://ffmpeg.org/" target="_blank" rel="noopener">FFmpeg</a>
+                    <a href="http://www.fftw.org/" target="_blank" rel="noopener">FFTW</a>
+                    <a href="https://github.com/dhowden/tag" target="_blank" rel="noopener">dhowden/tag</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        (function () {
+            "use strict";
+            // 仓库与 API 端点（取自 app/settings.go 中的 GitHubRepoURL 常量）
+            var REPO = "LobbyChen/MusicLite";
+            var API_URL = "https://api.github.com/repos/" + REPO + "/releases/latest";
+            var RELEASES_URL = "https://github.com/" + REPO + "/releases/latest";
+
+            function setText(id, text) {
+                var el = document.getElementById(id);
+                if (el) el.textContent = text;
+            }
+
+            function setHref(id, url) {
+                var el = document.getElementById(id);
+                if (el) el.setAttribute("href", url);
+            }
+
+            function clearLoading(id) {
+                var el = document.getElementById(id);
+                if (el) el.removeAttribute("data-loading");
+            }
+
+            function formatDate(iso) {
+                if (!iso) return "—";
+                var d = new Date(iso);
+                if (isNaN(d.getTime())) return "—";
+                var pad = function (n) { return String(n).padStart(2, "0"); };
+                return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+            }
+
+            function escapeHtml(s) {
+                return String(s)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+            }
+
+            function applyRelease(r) {
+                var tag = r.tag_name || r.name || "—";
+                var name = r.name || tag;
+                var url = r.html_url || RELEASES_URL;
+                var date = formatDate(r.published_at);
+
+                clearLoading("navVer");
+                setText("navVer", tag);
+                setText("rlTag", tag);
+                setText("rlTag2", tag);
+                setText("rlDate", date);
+                setText("rlDate2", date);
+                setText("rlTitle", name);
+                setText("rlDesc", tag + " · 发布于 " + date);
+
+                setHref("heroDownload", url);
+                setHref("navDownload", url);
+                setHref("rlLink", url);
+            }
+
+            function failGraceful() {
+                clearLoading("navVer");
+                setText("navVer", "—");
+                setText("rlTag", "—");
+                setText("rlTag2", "—");
+                setText("rlDate", "—");
+                setText("rlDate2", "—");
+                setText("rlTitle", "无法获取最新发布信息");
+                setText("rlDesc", "请直接前往 GitHub 仓库查看 releases 页面。");
+                setHref("heroDownload", RELEASES_URL);
+                setHref("navDownload", RELEASES_URL);
+                setHref("rlLink", RELEASES_URL);
+            }
+
+            fetch(API_URL, { headers: { "Accept": "application/vnd.github+json" } })
+                .then(function (res) {
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    return res.json();
+                })
+                .then(applyRelease)
+                .catch(function () { failGraceful(); });
+        })();
+    </script>
+</body>
+
+</html>
