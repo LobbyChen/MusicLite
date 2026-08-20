@@ -39,6 +39,7 @@ class AudioManager {
 		this.isAndroid = /android/i.test(navigator.userAgent);
 
 		if (this.isAndroid) {
+			document.body.classList.add('platform-android');
 			this._initAudioElement();
 		} else {
 			// 桌面端：启动后端轮询 + 一次性动作事件

@@ -3291,3 +3291,34 @@ body.has-lib-queue .lib-queue-overlay {
         width: 100%;
     }
 }
+
+/* ============ Android 平台适配 ============ */
+/* 隐藏自定义标题栏（系统状态栏接管），留出状态栏安全区域 */
+.platform-android .titlebar {
+    display: none;
+}
+.platform-android body {
+    padding-top: env(safe-area-inset-top);
+}
+/* 隐藏设置页"标题栏文字"配置项（Android 无自定义标题栏） */
+.platform-android .setting-item:has(#titlebar-text) {
+    display: none;
+}
+
+/* 触屏设备：移除 hover 视觉反馈，改用 :active 提供触摸反馈 */
+@media (hover: none) and (pointer: coarse) {
+    .track-card:hover,
+    .titlebar-btn:hover,
+    .btn:hover,
+    .nav-item:hover,
+    .setting-item:hover,
+    .theme-btn:hover {
+        background: transparent;
+    }
+    .track-card:active,
+    .btn:active,
+    .nav-item:active {
+        background: var(--hover-color);
+    }
+}
+
