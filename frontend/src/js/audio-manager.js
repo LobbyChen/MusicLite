@@ -1,18 +1,16 @@
-// audio-manager.js — 音频播放管理器（轮询驱动版）
+// audio-manager.js — 音频播放管理器（双模式）
 //
-// 设计：Go 后端是播放状态的唯一可信源。前端不依赖 Wails Events.On
-// 推送（v3 IPC 时序不可靠），而是每 500ms 调用 PlayerGetState() 绑定
-// 拉取快照，通过 diff 对比上一帧状态，自动 emit 对应的 UI 事件。
+// 设计：
+//   - 桌面端：Go 后端是播放状态的唯一可信源，每 500ms 调用
+//     PlayerGetState() 拉取快照，通过 diff emit UI 事件。
+//   - Android：前端 <audio> 元素负责解码与输出，后端 Player 为存根。
+//     直接监听 <audio> 事件 emit UI 事件，不轮询后端。
 //
-// 对外保留与旧版完全相同的事件接口：
+// 对外保留完全相同的事件接口：
 //   play / pause / timeupdate / loadedmetadata / trackloaded /
 //   trackcleared / modechange / volumemodechange / volumechange /
 //   ended / error
-// 让 player.js / libraries.js / designer.js 以零改动迁移。
-//
-// 仅保留 Events.On 用于一次性动作事件（player:ended / tray:toggle-play），
-// 这类事件无法通过轮询可靠检测；若 Events.On 不可用，最坏只是停止时
-// 不自动播放下一首，用户手动点击即可。
+// 让 player.js / libraries.js / designer.js 以零改动跨平台。
 
 import { PlayerLoad, PlayerPlay, PlayerPause, PlayerSeek, PlayerStop, PlayerGetState, PlayerTogglePlayMode, PlayerGetPlayMode, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume } from '@bindings/MusicLite/app/musicservice.js';
 import { Events } from '@wailsio/runtime';
@@ -22,7 +20,7 @@ class AudioManager {
 		this.currentTrack = null;
 		this.listeners = new Map();
 
-		// 播放状态缓存（来自后端快照，前端只读）
+		// 播放状态缓存（前端只读）
 		this._isPlaying = false;
 		this._currentTime = 0;
 		this._duration = 0;
@@ -37,15 +35,71 @@ class AudioManager {
 		// 加载中标记
 		this._pendingLoad = null;
 
-		// 启动轮询
-		this._pollTimer = null;
-		this._startPolling();
+		// 平台检测：Android 下用前端 <audio> 元素播放
+		this.isAndroid = /android/i.test(navigator.userAgent);
 
-		// 保留 Events.On 用于一次性动作事件
-		this._bindActionEvents();
+		if (this.isAndroid) {
+			this._initAudioElement();
+		} else {
+			// 桌面端：启动后端轮询 + 一次性动作事件
+			this._pollTimer = null;
+			this._startPolling();
+			this._bindActionEvents();
+		}
 	}
 
-	// ============ 核心轮询：每 500ms 拉取后端状态，diff 后 emit UI 事件 ============
+	// ============ Android 模式：前端 <audio> 元素 ============
+	_initAudioElement() {
+		this._audioEl = new Audio();
+		this._audioEl.volume = this._volume / 100;
+
+		// play / pause 事件
+		this._audioEl.addEventListener('play', () => {
+			this._isPlaying = true;
+			this.emit('play');
+		});
+		this._audioEl.addEventListener('pause', () => {
+			this._isPlaying = false;
+			this.emit('pause');
+		});
+
+		// 进度更新
+		this._audioEl.addEventListener('timeupdate', () => {
+			this._currentTime = this._audioEl.currentTime;
+			this.emit('timeupdate', {
+				currentTime: this._currentTime,
+				duration: this._duration
+			});
+		});
+
+		// 时长就绪
+		this._audioEl.addEventListener('loadedmetadata', () => {
+			this._duration = this._audioEl.duration || 0;
+			this.emit('loadedmetadata', { duration: this._duration });
+		});
+
+		// 播放结束
+		this._audioEl.addEventListener('ended', () => {
+			this._isPlaying = false;
+			this._currentTime = 0;
+			this.emit('ended');
+		});
+
+		// 错误
+		this._audioEl.addEventListener('error', (e) => {
+			console.error('Audio error:', e);
+			this.emit('error', e);
+		});
+
+		// 托盘播放/暂停（Android 下也可通过 tray 事件触发）
+		try {
+			Events.On('tray:toggle-play', () => {
+				this.toggle();
+			});
+		} catch (e) {}
+	}
+
+	// ============ 桌面端：核心轮询（每 500ms 拉取后端状态） ============
 	_startPolling() {
 		if (this._pollTimer) clearInterval(this._pollTimer);
 		this._pollTimer = setInterval(() => this._pollState(), 500);
@@ -94,8 +148,6 @@ class AudioManager {
 		}
 
 		// ---- 4. 进度更新 ----
-		// 播放中：emit timeupdate 让 UI 刷新进度条和歌词
-		// 暂停/停止：只更新内部缓存，不 emit（避免无意义的 UI 刷新）
 		if (typeof state.position === 'number') {
 			this._currentTime = state.position;
 			if (this._isPlaying) {
@@ -114,22 +166,16 @@ class AudioManager {
 		}
 	}
 
-	// ============ 一次性动作事件（保留 Events.On，轮询无法替代） ============
+	// ============ 桌面端：一次性动作事件（轮询无法替代） ============
 	_bindActionEvents() {
 		try {
-			// player:ended：队列空时后端通知前端选下一首（轮询只能检测到
-			// isPlaying=false，无法区分"暂停"和"结束"，所以保留 Events.On）
 			Events.On('player:ended', () => {
 				this._isPlaying = false;
 				this._currentTime = 0;
 				this.emit('ended');
 			});
-		} catch (e) {
-			// Events.On 不可用时，轮询仍能同步 play/pause/timeupdate，
-			// 只是自动播放下一首功能不可用（用户手动点击即可）
-		}
+		} catch (e) {}
 		try {
-			// 托盘播放/暂停
 			Events.On('tray:toggle-play', () => {
 				this.toggle();
 			});
@@ -145,12 +191,12 @@ class AudioManager {
 		return false;
 	}
 
-	// ============ 控制方法（调用后端绑定，保持 UI 接口不变） ============
+	// ============ 控制方法（跨平台，保持 UI 接口不变） ============
 
-	// 加载曲目：调用后端解码并构建播放管线（加载后处于暂停态）
+	// 加载曲目
 	loadTrack(track) {
 		if (!track || track.id === undefined || track.id === null) return;
-		// 同曲目跳过，避免重复解码打断后端播放
+		// 同曲目跳过，避免重复加载打断播放
 		if (this._sameTrack(track)) {
 			this.currentTrack = track;
 			try { localStorage.setItem('currentTrack', JSON.stringify(track)); } catch (e) {}
@@ -165,27 +211,41 @@ class AudioManager {
 		document.title = track.name || track.Name || 'MusicLite';
 		this.emit('trackloaded', track);
 
-		// 提交到后端解码；记录 pending 以便 play() 等待
-		this._pendingLoad = PlayerLoad(track)
-			.then(() => { this._pendingLoad = null; })
-			.catch((e) => {
-				this._pendingLoad = null;
-				console.error('PlayerLoad 失败:', e);
-				this.emit('error', e);
-			});
+		if (this.isAndroid) {
+			// 前端 <audio> 加载：通过后端 /audio/<id> 路由流式获取
+			this._audioEl.src = '/audio/' + track.id;
+			this._audioEl.load();
+		} else {
+			// 桌面端：提交到后端解码；记录 pending 以便 play() 等待
+			this._pendingLoad = PlayerLoad(track)
+				.then(() => { this._pendingLoad = null; })
+				.catch((e) => {
+					this._pendingLoad = null;
+					console.error('PlayerLoad 失败:', e);
+					this.emit('error', e);
+				});
+		}
 	}
 
 	play() {
-		const doPlay = () => { try { PlayerPlay(); } catch (e) { console.warn('PlayerPlay failed:', e); } };
-		if (this._pendingLoad) {
-			this._pendingLoad.then(doPlay);
+		if (this.isAndroid) {
+			this._audioEl.play().catch(e => console.warn('Audio play failed:', e));
 		} else {
-			doPlay();
+			const doPlay = () => { try { PlayerPlay(); } catch (e) { console.warn('PlayerPlay failed:', e); } };
+			if (this._pendingLoad) {
+				this._pendingLoad.then(doPlay);
+			} else {
+				doPlay();
+			}
 		}
 	}
 
 	pause() {
-		try { PlayerPause(); } catch (e) { console.warn('PlayerPause failed:', e); }
+		if (this.isAndroid) {
+			this._audioEl.pause();
+		} else {
+			try { PlayerPause(); } catch (e) { console.warn('PlayerPause failed:', e); }
+		}
 	}
 
 	toggle() {
@@ -198,21 +258,31 @@ class AudioManager {
 
 	seek(time) {
 		if (typeof time !== 'number' || time < 0) return;
-		try { PlayerSeek(time); } catch (e) { console.warn('PlayerSeek failed:', e); }
+		if (this.isAndroid) {
+			this._audioEl.currentTime = time;
+		} else {
+			try { PlayerSeek(time); } catch (e) { console.warn('PlayerSeek failed:', e); }
+		}
 	}
 
-	// 设置音量（按当前 volume_mode 路由到对应后端接口）
+	// 设置音量
 	setVolume(value) {
 		const vol = Math.max(0, Math.min(100, Math.round(value)));
 		this._volume = vol;
 		try { localStorage.setItem('volume', vol.toString()); } catch (e) {}
-		try {
-			if (this._volumeMode === 'master') {
-				SetSystemMasterVolume(vol);
-			} else {
-				SetApplicationVolume(vol);
-			}
-		} catch (e) { console.warn('setVolume failed:', e); }
+		if (this.isAndroid) {
+			// Android 下音量由前端 <audio> 元素控制
+			this._audioEl.volume = vol / 100;
+		} else {
+			// 桌面端：按 volume_mode 路由到后端
+			try {
+				if (this._volumeMode === 'master') {
+					SetSystemMasterVolume(vol);
+				} else {
+					SetApplicationVolume(vol);
+				}
+			} catch (e) { console.warn('setVolume failed:', e); }
+		}
 	}
 
 	getVolume() {
@@ -224,17 +294,21 @@ class AudioManager {
 		if (mode !== 'synth' && mode !== 'master') return;
 		this._volumeMode = mode;
 		try { localStorage.setItem('musicLite.volumeMode', mode); } catch (e) {}
-		try {
-			const realVol = mode === 'master'
-				? await GetSystemMasterVolume()
-				: await GetApplicationVolume();
-			if (typeof realVol === 'number' && !isNaN(realVol)) {
-				this._volume = realVol;
-				try { localStorage.setItem('volume', realVol.toString()); } catch (e) {}
+		if (!this.isAndroid) {
+			// 桌面端：从后端同步真实音量
+			try {
+				const realVol = mode === 'master'
+					? await GetSystemMasterVolume()
+					: await GetApplicationVolume();
+				if (typeof realVol === 'number' && !isNaN(realVol)) {
+					this._volume = realVol;
+					try { localStorage.setItem('volume', realVol.toString()); } catch (e) {}
+				}
+			} catch (e) {
+				console.warn('setVolumeMode 读取音量失败:', e);
 			}
-		} catch (e) {
-			console.warn('setVolumeMode 读取音量失败:', e);
 		}
+		// Android 下两种模式都由前端 audio.volume 控制
 		this.emit('volumemodechange', mode);
 		this.emit('volumechange', this._volume);
 	}
@@ -255,7 +329,7 @@ class AudioManager {
 		return this._isPlaying;
 	}
 
-	// 切换播放模式（委托后端）
+	// 切换播放模式（委托后端，Android 下后端为存根但仍维护内存状态）
 	async togglePlayMode() {
 		try {
 			const mode = await PlayerTogglePlayMode();
@@ -291,7 +365,13 @@ class AudioManager {
 
 	// 清除当前曲目
 	clearTrack() {
-		try { PlayerStop(); } catch (e) { console.warn('PlayerStop failed:', e); }
+		if (this.isAndroid) {
+			this._audioEl.pause();
+			this._audioEl.removeAttribute('src');
+			this._audioEl.load();
+		} else {
+			try { PlayerStop(); } catch (e) { console.warn('PlayerStop failed:', e); }
+		}
 		this.currentTrack = null;
 		this._isPlaying = false;
 		this._currentTime = 0;
@@ -327,21 +407,24 @@ class AudioManager {
 	}
 
 	// ============ 初始状态恢复（页面加载时调用一次） ============
-	// 轮询已经覆盖初始状态同步，这里只触发一次立即轮询 + 同步音量
 	async restore() {
-		// 立即轮询一次（不等 500ms 定时器）
-		await this._pollState();
-		// 同步音量
-		try {
-			const vol = this._volumeMode === 'master'
-				? await GetSystemMasterVolume()
-				: await GetApplicationVolume();
-			if (typeof vol === 'number' && !isNaN(vol)) {
-				this._volume = vol;
-				try { localStorage.setItem('volume', vol.toString()); } catch (e) {}
+		if (this.isAndroid) {
+			// Android 下同步 audio.volume 到当前音量
+			this._audioEl.volume = this._volume / 100;
+		} else {
+			// 桌面端：立即轮询一次 + 同步音量
+			await this._pollState();
+			try {
+				const vol = this._volumeMode === 'master'
+					? await GetSystemMasterVolume()
+					: await GetApplicationVolume();
+				if (typeof vol === 'number' && !isNaN(vol)) {
+					this._volume = vol;
+					try { localStorage.setItem('volume', vol.toString()); } catch (e) {}
+				}
+			} catch (e) {
+				// IPC 未就绪，轮询会在后续自动同步
 			}
-		} catch (e) {
-			// IPC 未就绪，轮询会在后续自动同步
 		}
 	}
 }
