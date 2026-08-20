@@ -1,3 +1,5 @@
+//go:build !android
+
 package app
 
 // ============ 音量控制（跨平台）============
