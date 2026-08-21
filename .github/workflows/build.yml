@@ -48,7 +48,7 @@ jobs:
             build-essential pkg-config rpm \
             libfftw3-dev libeigen3-dev libgtk-4-dev libwebkitgtk-6.0-dev libnotify-dev \
             libavformat-dev libavcodec-dev libswresample-dev libavutil-dev \
-            libx11-dev libxtst-dev libxkbcommon-dev
+            libasound2-dev libx11-dev libx11-xcb-dev libxtst-dev libxkbcommon-dev
 
       - name: Install Wails v3 CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.8
@@ -77,6 +77,10 @@ jobs:
           Expand-Archive fftw.zip -DestinationPath fftw
           Copy-Item fftw\libfftw3-3.dll libs\
           dlltool -d fftw\libfftw3-3.def -l libs\libfftw3-3.a -D libfftw3-3.dll
+          # 预编译包不含 fftw3.h 头文件，从源码包中单独提取
+          Invoke-WebRequest -Uri "https://fftw.org/fftw-3.3.5.tar.gz" -OutFile fftw-src.tar.gz
+          tar -xzf fftw-src.tar.gz fftw-3.3.5/fftw3.h
+          Copy-Item fftw-3.3.5\fftw3.h fftw\
           # FFmpeg shared 构建（含 .dll.a 导入库，用于 CGO 链接）
           Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl-shared.zip" -OutFile ffmpeg.zip
           Expand-Archive ffmpeg.zip -DestinationPath ffmpeg
@@ -91,7 +95,7 @@ jobs:
           $ff = (Get-ChildItem ffmpeg -Directory | Select-Object -First 1).FullName
           $eigen = (Get-ChildItem eigen -Directory | Select-Object -First 1).FullName
           $env:CGO_ENABLED = "1"
-          $env:CGO_CFLAGS = "-I$ff\include -I$eigen"
+          $env:CGO_CFLAGS = "-I$ff\include -I$eigen -I$PWD\fftw"
           $env:CGO_LDFLAGS = "-L$ff\lib -L$PWD\libs -lavformat -lavcodec -lswresample -lavutil"
           wails3 build
 
