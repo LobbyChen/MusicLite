@@ -18,8 +18,36 @@ android {
         versionName "1.0"
 
         // Configure supported ABIs
+        // Supported values:
+        //   - arm64-v8a   : 64-bit ARM  (new phones / tablets)
+        //   - armeabi-v7a : 32-bit ARM  (older / budget phones, Android TV)
+        //   - x86_64      : 64-bit x86  (Android emulators)
+        //   - x86         : 32-bit x86  (legacy emulators, extremely rare)
+        //
+        // To build a 32-bit-only APK, run Gradle with:
+        //     ./gradlew assembleDebug -Pabi=arm32
+        // or set the project property in ~/.gradle/gradle.properties:
+        //     abi=arm32
         ndk {
-            abiFilters 'arm64-v8a', 'x86_64'
+            def abiMode = project.hasProperty("abi") ? project.getProperty("abi") : "all"
+            switch (abiMode) {
+                case "arm32":
+                    abiFilters 'armeabi-v7a'
+                    break
+                case "arm64":
+                    abiFilters 'arm64-v8a'
+                    break
+                case "arm":
+                    abiFilters 'arm64-v8a', 'armeabi-v7a'
+                    break
+                case "x64":
+                    abiFilters 'x86_64'
+                    break
+                case "all":
+                default:
+                    abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+                    break
+            }
         }
     }
 
@@ -70,6 +98,7 @@ android {
     packagingOptions {
         // Don't strip Go symbols in debug builds
         doNotStrip '*/arm64-v8a/libwails.so'
+        doNotStrip '*/armeabi-v7a/libwails.so'
         doNotStrip '*/x86_64/libwails.so'
     }
 }

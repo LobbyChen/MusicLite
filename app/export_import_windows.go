@@ -13,7 +13,6 @@ import (
 )
 
 // findFontFilePath 在注册表中查找字体名对应的字体文件路径
-// 返回完整路径（通常在 C:\Windows\Fonts\ 下）
 func findFontFilePath(fontName string) (string, error) {
 	// 在注册表中搜索匹配的字体条目
 	for _, root := range []registry.Key{registry.LOCAL_MACHINE, registry.CURRENT_USER} {

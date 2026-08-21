@@ -2,13 +2,13 @@
 
 package app
 
-// Windows 修饰键 virtual-key code（左/右合并）
+// Windows 修饰键 virtual-key code
 // 参考：https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
 var modifierRawcodes = map[uint16]string{
-	162: "ctrl", 163: "ctrl",  // VK_LCONTROL / VK_RCONTROL
+	162: "ctrl", 163: "ctrl", // VK_LCONTROL / VK_RCONTROL
 	160: "shift", 161: "shift", // VK_LSHIFT / VK_RSHIFT
-	164: "alt", 165: "alt",     // VK_LMENU / VK_RMENU
-	91: "win", 92: "win",       // VK_LWIN / VK_RWIN
+	164: "alt", 165: "alt", // VK_LMENU / VK_RMENU
+	91: "win", 92: "win", // VK_LWIN / VK_RWIN
 }
 
 // Windows rawcode → 键名（Win32 Virtual Key）

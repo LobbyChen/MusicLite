@@ -7,9 +7,7 @@ import (
 	"strings"
 )
 
-// AudioHandler 处理前端对音频文件和封面图片的 HTTP 请求（生产模式用）
-// 通过 AssetServer.Handler 注册，处理 /audio/<id> 和 /cover/<id> 路由
-// dev 模式下由 app.go 中的独立 HTTP 服务器处理，不走此 Handler
+// AudioHandler 处理前端对音频文件和封面图片的 HTTP 请求
 type AudioHandler struct {
 	db *storage.Database
 }

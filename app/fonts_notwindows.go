@@ -12,8 +12,7 @@ import (
 )
 
 // readInstalledFonts 非 Windows 平台实现：
-// - macOS: 遍历 ~/Library/Fonts, /Library/Fonts, /System/Library/Fonts 目录，从中解析字体名（粗略），
-//          若 fc-list 存在则优先使用（若用户通过 brew 或 XQuartz 安装了 fontconfig）
+// - macOS: 遍历 ~/Library/Fonts, /Library/Fonts, /System/Library/Fonts 目录
 // - Linux: 使用 fc-list (fontconfig) 列出字体族名；若无 fc-list 则遍历常见字体目录
 func readInstalledFonts(out map[string]struct{}) {
 	// 优先尝试 fc-list（跨 *nix 通用，结果最准确）

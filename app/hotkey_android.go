@@ -4,16 +4,6 @@ package app
 
 import "strings"
 
-// ============ 全局快捷键（Android 存根）============
-//
-// Android 下无全局键盘 hook（gohook 不支持 Android）。
-// 前端播放器页内的快捷键（空格/ESC 等）由 player.js 自行处理，
-// 后端仅提供存根让 MusicService 接口与 Wails 绑定可编译。
-//
-// 与 hotkey.go（!android）互斥：桌面端走 gohook 真实实现，
-// Android 走此存根。纯字符串逻辑（normalizeHotkey 等）保持一致，
-// 让前端设置页的快捷键格式化/解析功能在 Android 下正常显示。
-
 // HotkeyConfig 单个快捷键配置
 type HotkeyConfig struct {
 	Enabled bool   `json:"enabled"`

@@ -17,12 +17,6 @@ type HotkeyConfig struct {
 	Keys    string `json:"keys"`    // 组合键字符串，如 "Ctrl+Shift+P"
 }
 
-// modifierRawcodes: Rawcode → 修饰键名（ctrl/shift/alt/win）。
-// 各平台 Rawcode 不同，由 hotkey_windows.go / hotkey_notwindows.go 通过构建标签提供。
-//
-// rawcodeToName: Rawcode → 标准键名（a-z/0-9/f1-f12/space/enter/...）。
-// 字符键匹配失败时会回退到 ev.Keychar（见 checkHotkey），保证跨平台字符键可用。
-
 // HotkeyManager 全局快捷键管理器
 type HotkeyManager struct {
 	mu       sync.RWMutex

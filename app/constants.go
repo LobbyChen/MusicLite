@@ -10,8 +10,8 @@ import (
 
 func init() {
 	// 数据库路径策略：
-	// 1. 优先检查 exe 旁是否已有数据库（兼容老用户，便携模式）
-	// 2. 否则使用跨平台用户数据目录（推荐，避免权限问题）
+	// 1. 优先检查 exe 旁是否已有数据库
+	// 2. 否则使用跨平台用户数据目录
 	exePath, _ := os.Executable()
 	exePath, _ = filepath.Abs(exePath)
 	RootDir = filepath.Dir(exePath)

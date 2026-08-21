@@ -1,22 +1,6 @@
 package app
 
 // ============ 10 频段图形均衡器（biquad peaking filter，作为 beep.Streamer） ============
-//
-// 设计目标：
-//   1. 真正作用于音频流：在 beep 管线中作为 Streamer 串联，
-//      decoded → resample → equalizer → ctrl → volume → speaker
-//   2. 10 个频段：31 / 62 / 125 / 250 / 500 / 1k / 2k / 4k / 8k / 16k Hz
-//      每段增益 -12 ~ +12 dB，Q ≈ 1.41（约 1 octave 带宽）
-//   3. 系数按 RBJ Audio EQ Cookbook 公式计算（peaking filter），
-//      用 Direct Form II Transposed 结构实现，数值稳定
-//   4. 立体声：左右声道各自维护独立的状态变量
-//   5. 采样率感知：采样率变化时自动重算系数
-//
-// 线程模型：
-//   - SetBand / SetEnabled / SetGains 可能从前端 goroutine 调用，
-//     Stream() 在 speaker goroutine 调用，故 gains/enabled 用 atomic 或 mu 保护
-//   - 系数重算与状态共享：Stream 单线程消费，SetBand 仅改参数并标记 dirty，
-//     下次 Stream 调用前在锁内重算系数（避免在 speaker 锁内做浮点运算）
 
 import (
 	"math"
@@ -95,16 +79,16 @@ func peakingCoeffs(f0, fs, gainDB, Q float64) biquadCoeffs {
 
 // Equalizer 10 频段图形均衡器（beep.Streamer）
 type Equalizer struct {
-	src       beep.Streamer
+	src        beep.Streamer
 	sampleRate beep.SampleRate
 
-	mu       sync.Mutex // 保护 gains/enabled/dirty
-	gains    [EqBandCount]float64 // dB
-	enabled  bool
-	dirty    bool // 参数变化后需要重算系数
-	coeffs   [EqBandCount]biquadCoeffs
+	mu      sync.Mutex           // 保护 gains/enabled/dirty
+	gains   [EqBandCount]float64 // dB
+	enabled bool
+	dirty   bool // 参数变化后需要重算系数
+	coeffs  [EqBandCount]biquadCoeffs
 	// 立体声：每频段每通道一个状态 → [band][channel]state
-	states   [EqBandCount][2]biquadState
+	states [EqBandCount][2]biquadState
 }
 
 // NewEqualizer 创建均衡器，src 是上游 Streamer，sampleRate 是输出采样率

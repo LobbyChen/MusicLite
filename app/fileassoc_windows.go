@@ -2,12 +2,9 @@
 
 package app
 
-// ============ Windows 文件关联（设为默认播放器） ============
 //
 // 通过注册 HKCU\Software\Classes\MusicLite.AudioFile ProgID，
-// 关联 .mp3/.wav/.flac/.m4a/.ogg/.wma/.aac/.opus/.ape/.alac 扩展名。
-// 使用 HKCU（当前用户）而非 HKLM，不需要管理员权限。
-// 调用 SHChangeNotify 通知 Shell 刷新图标和关联。
+// 关联 .mp3/.wav/.flac/.m4a/.ogg/.wma/.aac/.opus/.ape/.alac 扩展名
 
 /*
 #cgo LDFLAGS: -lole32 -lshell32

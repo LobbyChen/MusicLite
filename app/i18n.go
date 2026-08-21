@@ -1,26 +1,8 @@
 package app
 
-// ============ 后端 i18n：统一文案加载机制 ============
 //
 // 初始 i18n.json 通过 go:embed 打包进二进制；首次启动时解压到
 // %APPDATA%/MusicLite/i18n.json。
-//
-// 启动流程（用户确认合并模式）：
-//   1. main.go 调用 EnsureI18nFile()：
-//        - 外部文件不存在 → 直接解压内嵌版本（无需询问）
-//        - 外部文件存在 → 只读取内容，不做任何合并或写回操作
-//   2. 前端 DOM ready 后，调用 CheckI18nNewKeys()：
-//        - 以内嵌为基准 vs 用户外部文件，统计"新增的语言/新增的键/值变更"，
-//          按语言分组后把差异列表返回给前端
-//        - 无差异 → 返回 has_new=false，前端不弹窗
-//        - 有差异 → 返回 has_new=true + 差异摘要，前端弹确认框询问用户是否覆盖
-//   3. 用户点击"是" → 前端调用 ConfirmI18nMerge(keepCustom=true)：
-//        - keepCustom=true  → mergeI18n 策略：内嵌补齐缺失键，不覆盖用户已自定义的值
-//        - 合并后写回外部文件，并使 Go 侧缓存失效，让下次 GetI18nData 读到最新数据
-//   4. 前端完成合并后自行 reload 翻译（重新调 GetI18nData + applyTranslations）。
-//
-// 前端通过 App.GetI18nData() 获取完整翻译数据；后端通过
-// getBackendStrings() 获取自身所需字段。
 
 import (
 	"embed"
