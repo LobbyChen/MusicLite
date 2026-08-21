@@ -54,6 +54,7 @@ desktop.ini
 *.swp
 *.swo
 *~
+*.ps1
 
 # ===== Misc =====
 *.hintrc

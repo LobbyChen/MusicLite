@@ -25,25 +25,17 @@ contents:
     dst: "/usr/share/applications/musiclite.desktop"
 
 # Default dependencies for the GTK4 + WebKitGTK 6.0 stack (Ubuntu 24.04+ / Debian 13+)
-# 以及音频解码/FFT 运行时库 (Ubuntu 24.04 的 FFmpeg 6.1 版本命名)
 depends:
   - libgtk-4-1
   - libwebkitgtk-6.0-4
-  - libfftw3-5
-  - libavcodec60
-  - libavformat60
-  - libavutil58
-  - libswresample4
 
 # Distribution-specific overrides for different package formats
 overrides:
   # RPM packages for Fedora / RHEL / AlmaLinux / Rocky Linux
-  # 注: Fedora 用户需启用 RPM Fusion 以获得提供标准 SONAME 的 ffmpeg-libs
   rpm:
     depends:
       - gtk4
       - webkitgtk6.0
-      - fftw-libs
 
   # Arch Linux packages
   archlinux:
