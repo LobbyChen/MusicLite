@@ -1,5 +1,5 @@
 # ===== Build Outputs =====
-build/
+build/bin/
 *.exe
 *.AppImage
 *.dmg
@@ -7,7 +7,7 @@ build/
 *.rpm
 *.msi
 .task/
-*.ps1
+
 # Build outputs
 /bin/
 *.exe

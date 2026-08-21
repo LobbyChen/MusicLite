@@ -1,5 +1,23 @@
 package app
 
+// ============ 听歌时长统计（跨平台 JSON 文件版） ============
+//
+// 原 Windows 版本使用注册表（HKCU\SOFTWARE\MusicLite\Stats）存储，
+// 为支持 Linux/macOS 改为跨平台的 JSON 文件：
+//   {用户数据目录}/MusicLite/listen_stats.json
+//
+// 结构:
+//   {
+//     "version": 1,
+//     "tracks": { "track_<id>": <seconds uint64> }
+//   }
+//
+// 精度优化（保留原有逻辑）：
+//   - 使用 math.Round 四舍五入
+//   - pending 累积机制
+//   - 500ms 阈值：短于 500ms 的播放不立即写入
+//   - 15 秒 heartbeat：定期提交 pending
+
 import (
 	"encoding/json"
 	"log"
@@ -22,8 +40,8 @@ const statsFileName = "listen_stats.json"
 
 // listenStatsData 持久化 JSON 结构
 type listenStatsData struct {
-	Version int               `json:"version"`
-	Tracks  map[string]uint64 `json:"tracks"` // track_<id> → seconds
+	Version int                `json:"version"`
+	Tracks  map[string]uint64  `json:"tracks"` // track_<id> → seconds
 }
 
 // listenTimeTracker 听歌时长跟踪器

@@ -17,7 +17,7 @@ var (
 
 // broadcastFontChange 广播 WM_FONTCHANGE 消息，通知系统字体列表已变化
 // 安装新字体后调用，让正在运行的应用程序感知到新字体
-
+// 非 Windows 平台：由 font_notify_notwindows.go 提供空实现
 func broadcastFontChange() {
 	procSendNotifyMsg.Call(
 		HWND_BROADCAST,

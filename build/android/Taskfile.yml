@@ -4,7 +4,7 @@ includes:
   common: ../Taskfile.yml
 
 vars:
-  APP_ID: '{{.APP_ID | default "com.wails.app"}}'
+  APP_ID: '{{.APP_ID | default "com.lobbychen.musiclite"}}'
   MIN_SDK: '21'
   TARGET_SDK: '35'
   # The emulator runs the host architecture; physical devices are arm64
@@ -73,9 +73,12 @@ tasks:
         fi
 
         # Determine toolchain based on host OS
+        # Windows 主机在 Git Bash / MSYS2 下 uname -s 形如 MINGW64_NT-10.0
+        # 或 MSYS_NT-*，NDK 的 prebuilt 目录名为 windows-x86_64
         case "$(uname -s)" in
-          Darwin) HOST_TAG="darwin-x86_64" ;;
-          Linux)  HOST_TAG="linux-x86_64" ;;
+          Darwin)               HOST_TAG="darwin-x86_64" ;;
+          Linux)                HOST_TAG="linux-x86_64" ;;
+          MINGW64_NT-*|MSYS_NT-*|MINGW32_NT-*) HOST_TAG="windows-x86_64" ;;
           *)      echo "Unsupported host OS"; exit 1 ;;
         esac
 

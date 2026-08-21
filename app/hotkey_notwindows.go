@@ -2,29 +2,35 @@
 
 package app
 
-// 非 Windows
-
+// 非 Windows 平台（macOS / Linux / BSD）：
+// robotn/gohook 在各平台使用的 Rawcode 不同，这里提供一个"尽量兼容"的映射：
+// - macOS: Carbon Virtual Keycode
+// - Linux (X11): X11 Keycode
+// - Wayland: 根据 compositor 不同而不同
+// 字符键（a-z, 0-9）在 hotkey.go 中会通过 ev.Keychar 匹配，
+// 特殊键这里提供一份常见值，用户若有偏差可调优
+//
 // 修饰键参考值：
 //   macOS:  55=Cmd(Left), 54=Cmd(Right); 59=Ctrl, 62=Ctrl(Right); 56=Shift, 60=Shift(Right); 58=Option(Alt), 61=Option(Right)
 //   Linux X11: 37=Ctrl_L, 105=Ctrl_R; 50=Shift_L, 62=Shift_R; 64=Alt_L, 108=Alt_R; 133=Super_L, 134=Super_R
 var modifierRawcodes = map[uint16]string{
 	// Ctrl（优先保留 macOS；Linux Ctrl_L/R 通过 ev.Keychar/其他逻辑兜底）
-	59:  "ctrl", // macOS Left Ctrl
-	62:  "ctrl", // macOS Right Ctrl
-	37:  "ctrl", // Linux Ctrl_L
+	59: "ctrl",  // macOS Left Ctrl
+	62: "ctrl",  // macOS Right Ctrl
+	37: "ctrl",  // Linux Ctrl_L
 	105: "ctrl", // Linux Ctrl_R
 	// Shift
 	56: "shift", // macOS Left Shift
 	60: "shift", // macOS Right Shift
 	50: "shift", // Linux Shift_L
 	// Alt / Option
-	58:  "alt", // macOS Left Option
-	61:  "alt", // macOS Right Option
-	64:  "alt", // Linux Alt_L
+	58: "alt", // macOS Left Option
+	61: "alt", // macOS Right Option
+	64: "alt", // Linux Alt_L
 	108: "alt", // Linux Alt_R
 	// Win / Cmd / Super
-	55:  "win", // macOS Left Cmd
-	54:  "win", // macOS Right Cmd
+	55: "win",  // macOS Left Cmd
+	54: "win",  // macOS Right Cmd
 	133: "win", // Linux Super_L
 	134: "win", // Linux Super_R
 }
@@ -41,12 +47,11 @@ var rawcodeToName = map[uint16]string{
 	34: "i", 38: "j", 40: "k", 37: "l", 46: "m", 45: "n", 31: "o", 35: "p",
 	12: "q", 15: "r", 1: "s", 17: "t", 32: "u", 9: "v", 13: "w", 7: "x",
 	16: "y", 6: "z",
-	// ===== 字母键（Linux X11）=====
+	// ===== 字母键（Linux X11，仅保留不冲突键值）=====
 	// X11: 26=E,41=F,42=G,43=H,44=J,57=N,33=P,24=Q,27=R,39=S,28=T,30=U,55=V,25=W,53=X,52=Z
-	// 注：53 在 macOS 是 Escape，此处跳过 X=53 以避免与 macOS 冲突
 	26: "e", 41: "f", 42: "g", 43: "h", 44: "j", 57: "n", 33: "p",
 	24: "q", 27: "r", 39: "s", 28: "t", 30: "u", 55: "v", 25: "w",
-	52: "z",
+	53: "x", 52: "z",
 
 	// ===== 数字键（macOS Carbon）=====
 	// 18=1,19=2,20=3,21=4,23=5,22=6,28=8
@@ -73,6 +78,5 @@ var rawcodeToName = map[uint16]string{
 	123: "left", 126: "up", 124: "right", 125: "down",
 	// ===== 方向键（Linux X11）=====
 	// 113=left, 111=up, 114=right, 116=down
-	// 注：111 在 macOS 是 F12，此处跳过 up=111 以避免与 macOS 冲突
-	113: "left", 114: "right", 116: "down",
+	113: "left", 111: "up", 114: "right", 116: "down",
 }

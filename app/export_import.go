@@ -14,6 +14,14 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
+// ============ 设置导出/导入（.msclte.zip） ============
+//
+// 导出格式：ZIP 包含
+//   settings.json — 当前 Settings 结构
+//   fonts.json    — { "FontName": "base64编码的字体文件数据", ... }
+//
+// 导入时：解压 → 应用 settings → 将字体文件写入用户字体目录并注册到注册表
+
 // ExportSettings 导出当前设置为 .msclte.zip 文件
 // 包含 settings.json + 当前所用字体的 base64 编码数据
 func (a *MusicService) ExportSettings() (string, error) {
@@ -73,9 +81,9 @@ func (a *MusicService) ExportSettings() (string, error) {
 
 	// 写入 manifest.json（版本信息）
 	manifest := map[string]interface{}{
-		"version":     1,
-		"app":         "MusicLite",
-		"font_count":  len(fontsData),
+		"version":    1,
+		"app":        "MusicLite",
+		"font_count": len(fontsData),
 		"exported_at": time.Now().Format("2006-01-02 15:04:05"),
 	}
 	manifestJSON, _ := json.MarshalIndent(manifest, "", "  ")

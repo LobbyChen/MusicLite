@@ -1,5 +1,3 @@
-//go:build cgo && !purego
-
 package rawcalc
 
 /*

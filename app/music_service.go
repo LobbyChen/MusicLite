@@ -25,16 +25,16 @@ type MusicService struct {
 	defaultFile     string
 	defaultTrackId  int64
 	database        *storage.Database
-	player          *Player        // 后端音频播放器
-	hotkeyManager   *HotkeyManager // 全局快捷键管理器
-	audioServerPort int            // 独立 HTTP 服务器端口，dev 模式下使用
+	player          *Player         // 后端音频播放器
+	hotkeyManager   *HotkeyManager  // 全局快捷键管理器
+	audioServerPort int             // 独立 HTTP 服务器端口，dev 模式下使用
 	audioServerLn   net.Listener
 	trayQuitting    bool // 托盘"退出"时置 true，让窗口关闭钩子放行
 
-	// 前端驱动托盘模式：图标 + 自绘菜单窗口
+	// 前端驱动托盘模式：图标 + 自绘菜单窗口（traypopup WebViewWindow）
 	_tray        *application.SystemTray
 	_trayPopup   application.Window // 托盘菜单：自绘前端窗口
-	_settingsWin application.Window // 设置窗口：独立 WebViewWindow
+	_settingsWin application.Window // 设置窗口：独立 WebViewWindow（前端驱动 tray 菜单里可直接打开）
 }
 
 // NewMusicService 创建服务实例并连接数据库
