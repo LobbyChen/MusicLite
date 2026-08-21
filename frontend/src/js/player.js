@@ -546,12 +546,12 @@ function syncPlayModeState() {
 
     if (mode === 'loopOne') {
         loopBtn.classList.add('active-loop-one');
-        loopBtn.title = "当前: 单曲循环";
+        loopBtn.title = t('player.loopOne', '当前: 单曲循环');
     } else if (mode === 'random') {
         loopBtn.classList.add('active-random');
-        loopBtn.title = "当前: 随机播放";
+        loopBtn.title = t('player.loopRandom', '当前: 随机播放');
     } else {
-        loopBtn.title = "当前: 顺序播放";
+        loopBtn.title = t('player.loopSequential', '当前: 顺序播放');
     }
 }
 
@@ -758,7 +758,11 @@ function loadTrack(data) {
     artistNameEl.textContent = data.artist || t('common.unknownArtist');
     const imgUrl = data.cover || "";
     if (imgUrl) {
-        coverImgEl.innerHTML = `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
+        coverImgEl.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = imgUrl;
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:inherit;';
+        coverImgEl.appendChild(img);
     } else {
         coverImgEl.innerHTML = '<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"></path></svg></div>';
     }
@@ -834,7 +838,7 @@ audioManager.on('trackcleared', () => {
     currentTimeEl.textContent = '0:00';
     seekSlider.value = 0;
     seekSlider.disabled = true;
-    if (coverImgEl) coverImgEl.src = '';
+    if (coverImgEl) coverImgEl.innerHTML = '';
     if (bgLayerEl) bgLayerEl.style.backgroundImage = '';
     stopSmoothProgress();
     syncPlayState();
@@ -842,7 +846,7 @@ audioManager.on('trackcleared', () => {
 // error：后端解码/播放错误
 audioManager.on('error', (e) => {
     console.error("Playback Error:", e);
-    trackNameEl.textContent = "Load Error";
+    trackNameEl.textContent = t('player.loadError', 'Load Error');
     seekSlider.disabled = true;
 });
 

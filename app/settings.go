@@ -335,10 +335,6 @@ func (a *MusicService) LoadSettings() Settings {
 			s.PlayerBgBlur = def.PlayerBgBlur
 		}
 	}
-	// SortMode 兼容旧版设置文件（缺失或非法时用默认值 "recent"，补充 album 模式）
-	if s.SortMode != "recent" && s.SortMode != "title" && s.SortMode != "artist" && s.SortMode != "album" {
-		s.SortMode = def.SortMode
-	}
 
 	return s
 }

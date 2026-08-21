@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -29,7 +30,7 @@ type MusicService struct {
 	hotkeyManager   *HotkeyManager // 全局快捷键管理器
 	audioServerPort int            // 独立 HTTP 服务器端口，dev 模式下使用
 	audioServerLn   net.Listener
-	trayQuitting    bool // 托盘"退出"时置 true，让窗口关闭钩子放行
+	trayQuitting    atomic.Bool // 托盘"退出"时置 true，让窗口关闭钩子放行
 
 	// 前端驱动托盘模式：图标 + 自绘菜单窗口（traypopup WebViewWindow）
 	_tray        *application.SystemTray
@@ -81,7 +82,7 @@ func (s *MusicService) EmitEvent(name string, data ...any) {
 
 // IsTrayQuitting 返回托盘退出标志（供 main.go 窗口关闭钩子检查）
 func (s *MusicService) IsTrayQuitting() bool {
-	return s.trayQuitting
+	return s.trayQuitting.Load()
 }
 
 // ServiceStartup v3 服务启动回调（前端创建后、加载 index.html 前触发）
@@ -137,10 +138,12 @@ func (s *MusicService) ServiceShutdown() error {
 	if s.player != nil {
 		s.player.Stop()
 	}
+	// 停止听歌时长 heartbeat goroutine
+	StopListenTimeHeartbeat()
 	// 持久化未写入的听歌时长到注册表
 	FlushListenTime()
 	// 检查是否有命令行启动的文件
-	if s.defaultFile != "" {
+	if s.defaultFile != "" && s.defaultTrackId > 0 {
 		// 从库里面剔除
 		s.database.DeleteTrack(s.defaultTrackId)
 	}

@@ -172,7 +172,7 @@ func (s *MusicService) HideMainWindow() {
 
 // QuitApp 暴露给前端：从自定义菜单触发退出（设置 trayQuitting 以便窗口关闭钩子放行）
 func (s *MusicService) QuitApp() {
-	s.trayQuitting = true
+	s.trayQuitting.Store(true)
 	s.app.Quit()
 }
 

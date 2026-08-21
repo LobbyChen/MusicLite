@@ -56,6 +56,9 @@ var listenTracker = &listenTimeTracker{
 	pending:   make(map[int64]int64),
 }
 
+// heartbeatStop 用于停止听歌时长 heartbeat goroutine
+var heartbeatStop chan struct{}
+
 // statsWriteMu 保护 JSON 文件并发写入
 var statsWriteMu sync.Mutex
 
@@ -205,22 +208,35 @@ func flushPending(trackId int64) {
 
 // StartListenTimeHeartbeat 启动定期 heartbeat，提交 pending 中的累积时长
 func StartListenTimeHeartbeat() {
+	heartbeatStop = make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(heartbeatInterval)
 		defer ticker.Stop()
-		for range ticker.C {
-			listenTracker.mu.Lock()
-			ids := make([]int64, 0, len(listenTracker.pending))
-			for id := range listenTracker.pending {
-				ids = append(ids, id)
-			}
-			listenTracker.mu.Unlock()
+		for {
+			select {
+			case <-heartbeatStop:
+				return
+			case <-ticker.C:
+				listenTracker.mu.Lock()
+				ids := make([]int64, 0, len(listenTracker.pending))
+				for id := range listenTracker.pending {
+					ids = append(ids, id)
+				}
+				listenTracker.mu.Unlock()
 
-			for _, id := range ids {
-				flushPending(id)
+				for _, id := range ids {
+					flushPending(id)
+				}
 			}
 		}
 	}()
+}
+
+// StopListenTimeHeartbeat 停止听歌时长 heartbeat goroutine
+func StopListenTimeHeartbeat() {
+	if heartbeatStop != nil {
+		close(heartbeatStop)
+	}
 }
 
 // GetListenTime 获取某首歌的累计听歌时长（秒）

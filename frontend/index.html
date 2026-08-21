@@ -12,9 +12,7 @@
             window.location.href = "/src/html/libraries.html";
         }
         function on_index_load() {
-            setInterval(() => {
-                load_start();
-            }, 100);
+            setTimeout(load_start, 100);
         }
         document.addEventListener("DOMContentLoaded", async function () {
             on_index_load();
