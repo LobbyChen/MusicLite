@@ -1,6 +1,6 @@
 package app
 
-// 版本信息：由 -ldflags='-X app.Version=...' 在构建期注入。
+// 版本信息：由 -ldflags='-X MusicLite/app.Version=...' 在构建期注入。
 // 未注入时使用兜底值，便于本地无 git tag 时直接 go build 运行。
 //
 // CI 与 scripts/version.{ps1,sh} 通过 git describe --tags --always 计算：

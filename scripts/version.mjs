@@ -63,7 +63,7 @@ function computeVersion() {
 
 const info = computeVersion();
 // 不使用单引号包裹 -X 值，避免跨平台 shell 引号处理差异
-const ldflags = `-X app.Version=${info.version} -X app.BuildSHA=${info.sha} -X app.BuildNum=${info.count}`;
+const ldflags = `-X MusicLite/app.Version=${info.version} -X MusicLite/app.BuildSHA=${info.sha} -X MusicLite/app.BuildNum=${info.count}`;
 
 mkdirSync(buildDir, { recursive: true });
 
