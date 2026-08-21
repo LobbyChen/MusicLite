@@ -135,9 +135,14 @@ jobs:
           $env:CGO_ENABLED = "1"
           $env:CGO_CFLAGS = "-I$ff\include"
           $env:CGO_LDFLAGS = "-L$ff\lib -L$PWD\libs -lavformat -lavcodec -lswresample -lavutil"
-          # VERSION_LDFLAGS 已由 Compute version 步骤注入到 $env:VERSION_LDFLAGS
-          # Taskfile 读取 VERSION_LDFLAGS 追加到 -ldflags
-          wails3 build
+          # 跑前置任务：绑定、前端、图标、Windows syso 资源
+          wails3 task common:go:mod:tidy
+          wails3 task common:build:frontend
+          wails3 task common:generate:icons
+          wails3 task generate:syso
+          # 直接 go build 注入 ldflags（绕过 Taskfile 模板，保证 VERSION_LDFLAGS 生效）
+          go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui $env:VERSION_LDFLAGS" -o "bin/musiclite.exe"
+          Remove-Item *.syso -ErrorAction SilentlyContinue
 
       - name: "[Windows] Create installer & portable package"
         if: matrix.platform == 'windows'
@@ -173,8 +178,12 @@ jobs:
         run: |
           export CGO_ENABLED=1
           export CGO_LDFLAGS="-lavformat -lavcodec -lswresample -lavutil"
-          # VERSION_LDFLAGS 已由 Compute version 步骤注入到环境
-          wails3 build
+          # 跑前置任务：绑定、前端、图标
+          wails3 task common:go:mod:tidy
+          wails3 task common:build:frontend
+          wails3 task common:generate:icons
+          # 直接 go build 注入 ldflags（绕过 Taskfile 模板，保证 VERSION_LDFLAGS 生效）
+          go build -tags production -trimpath -buildvcs=false -ldflags="-w -s $VERSION_LDFLAGS" -o bin/musiclite
 
       - name: "[Linux] Create .deb & .rpm packages"
         if: matrix.platform == 'linux'
