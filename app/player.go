@@ -18,6 +18,7 @@ import (
 )
 
 /*
+#cgo linux,darwin LDFLAGS: -lavformat -lavcodec -lswresample -lavutil
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
 #include <libswresample/swresample.h>

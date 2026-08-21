@@ -148,6 +148,8 @@ jobs:
           Copy-Item "$ff\bin\*.dll" libs\
           # wails3 build 已输出 bin\musiclite.exe；NSIS 的 File 指令在 Windows
           # 大小写不敏感，可直接读取 ..\bin\MusicLite.exe，无需额外复制
+          # NSIS 的 OutFile 指向 ..\build\bin\，需预先创建（NSIS 不会自动建目录）
+          New-Item -ItemType Directory -Force build\bin | Out-Null
           # 构建 NSIS 安装程序：注入 PRODUCT_VERSION 与文件名版本片段
           Set-Location installer
           & "C:\Program Files (x86)\NSIS\makensis.exe" /V2 `
