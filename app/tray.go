@@ -38,20 +38,20 @@ func (s *MusicService) initTray() {
 	trayPopup, ok := s.app.Window.GetByName(trayPopupWindowName)
 	if !ok {
 		trayPopup = s.app.Window.NewWithOptions(application.WebviewWindowOptions{
-			Name:    trayPopupWindowName,
-			Title:   "Tray Menu",
-			URL:     "/src/html/tray-menu.html",
-			Width:   280,
-			Height:  260,
-			Hidden:  true,
-			Frameless:       true,
-			AlwaysOnTop:     true,
-			DisableResize:   true,
+			Name:          trayPopupWindowName,
+			Title:         "Tray Menu",
+			URL:           "/src/html/tray-menu.html",
+			Width:         280,
+			Height:        260,
+			Hidden:        true,
+			Frameless:     true,
+			AlwaysOnTop:   true,
+			DisableResize: true,
 			// BackgroundTypeTransparent：必须显式指定，否则 BackgroundColour 的 Alpha=0 不生效
 			BackgroundType:   application.BackgroundTypeTransparent,
 			BackgroundColour: application.RGBA{Red: 0, Green: 0, Blue: 0, Alpha: 0},
 			Windows: application.WindowsWindow{
-				HiddenOnTaskbar:      true,
+				HiddenOnTaskbar:        true,
 				NonClientRegionSupport: false,
 			},
 		})
@@ -232,8 +232,12 @@ func (s *MusicService) OpenSettingsWindow() {
 			sw, sh := settingsWindow.Size()
 			newX := mx + (mw-sw)/2
 			newY := my + (mh-sh)/2
-			if newX < 0 { newX = 0 }
-			if newY < 0 { newY = 0 }
+			if newX < 0 {
+				newX = 0
+			}
+			if newY < 0 {
+				newY = 0
+			}
 			settingsWindow.SetPosition(newX, newY)
 		}
 		settingsWindow.Show()
@@ -249,21 +253,21 @@ func (s *MusicService) ensureSettingsWindow() application.Window {
 	win, ok := s.app.Window.GetByName(traySettingsWindowName)
 	if !ok {
 		win = s.app.Window.NewWithOptions(application.WebviewWindowOptions{
-			Name:             traySettingsWindowName,
-			Title:            "MusicLite Settings",
-			URL:              "/src/html/settings.html",
-			Width:            760,
-			Height:           560,
-			MinWidth:         640,
-			MinHeight:        440,
-			Frameless:        true,
-			Hidden:           true,
-			AlwaysOnTop:      false,
+			Name:        traySettingsWindowName,
+			Title:       "MusicLite Settings",
+			URL:         "/src/html/settings.html",
+			Width:       760,
+			Height:      560,
+			MinWidth:    640,
+			MinHeight:   440,
+			Frameless:   true,
+			Hidden:      true,
+			AlwaysOnTop: false,
 			// BackgroundTypeTransparent：必须显式指定，否则 BackgroundColour 的 Alpha=0 不生效
 			BackgroundType:   application.BackgroundTypeTransparent,
 			BackgroundColour: application.RGBA{Red: 0, Green: 0, Blue: 0, Alpha: 0},
 			Windows: application.WindowsWindow{
-				HiddenOnTaskbar:     false,
+				HiddenOnTaskbar:        false,
 				NonClientRegionSupport: true,
 			},
 		})
