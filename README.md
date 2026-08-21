@@ -8,7 +8,7 @@
 <br>
 <div align="center">
 
-[![License](https://img.shields.io/badge/license-GPL-blue.svg)](./LICENSE.txt)  [![Wails](https://img.shields.io/badge/wails-v3-ff5722.svg)](https://wails.io/) [![Platforms](https://img.shields.io/badge/Platforms-Windows|Linux|MacOS-brightgreen)](#)   [![Go](https://img.shields.io/badge/go-1.21+-00ADD8.svg?logo=go)](https://go.dev/)
+[![License](https://img.shields.io/badge/license-GPL-blue.svg)](./LICENSE.txt)  [![Wails](https://img.shields.io/badge/wails-v3-ff5722.svg)](https://wails.io/) [![Platforms](https://img.shields.io/badge/Platforms-Windows|Linux|MacOS-brightgreen)](#)   [![Go](https://img.shields.io/badge/go-1.21+-00ADD8.svg?logo=go)](https://go.dev/) [![Discord](https://img.shields.io/badge/discord-join-5865F2.svg?logo=discord&logoColor=white)](https://discord.gg/4WpQRwFcWf)
 
 </div>
 <div align="center">
