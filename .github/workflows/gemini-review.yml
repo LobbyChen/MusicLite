@@ -1,0 +1,81 @@
+name: Gemini Code Review
+
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+jobs:
+  gemini-review:
+    name: Gemini Code Review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Review code with Gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          # 获取代码变更 diff
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            DIFF=$(git diff ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} -- '*.go' '*.js' '*.html' '*.css' '*.ts' '*.tsx' '*.jsx' | head -c 50000)
+          else
+            DIFF=$(git diff HEAD~1 -- '*.go' '*.js' '*.html' '*.css' '*.ts' '*.tsx' '*.jsx' | head -c 50000)
+          fi
+
+          if [ -z "$DIFF" ]; then
+            echo "No code changes to review."
+            exit 0
+          fi
+
+          echo "Sending diff to Gemini for review..."
+
+          # 用 jq 安全构建 JSON 请求体，避免转义问题
+          PROMPT="You are an expert code reviewer. Review the following git diff. Focus on:
+1. Bugs and logic errors
+2. Security vulnerabilities
+3. Performance issues
+4. Code style and best practices
+Provide concise, actionable feedback. Use Chinese (中文) for your review.
+
+\`\`\`diff
+${DIFF}
+\`\`\`"
+
+          PAYLOAD=$(jq -n \
+            --arg prompt "$PROMPT" \
+            '{"contents":[{"parts":[{"text":$prompt}]}]}')
+
+          RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          # 检查 API 错误
+          ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+          if [ -n "$ERROR" ]; then
+            echo "::error::Gemini API error: $ERROR"
+            exit 1
+          fi
+
+          # 提取审查结果
+          REVIEW=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
+
+          if [ -z "$REVIEW" ]; then
+            echo "::warning::No review content returned."
+            echo "Raw response: $RESPONSE"
+            exit 1
+          fi
+
+          # 输出审查结果（GitHub Actions 日志可见）
+          echo "========== Gemini Code Review =========="
+          echo "$REVIEW"
+          echo "========================================="
+
+          # 写入 step summary，在 Actions 页面美观展示
+          echo "## Gemini Code Review" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "$REVIEW" >> "$GITHUB_STEP_SUMMARY"
