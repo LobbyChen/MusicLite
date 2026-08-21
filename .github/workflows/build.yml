@@ -48,7 +48,8 @@ jobs:
             build-essential pkg-config rpm \
             libfftw3-dev libeigen3-dev libgtk-4-dev libwebkitgtk-6.0-dev libnotify-dev \
             libavformat-dev libavcodec-dev libswresample-dev libavutil-dev \
-            libasound2-dev libx11-dev libx11-xcb-dev libxtst-dev libxkbcommon-dev
+            libasound2-dev libx11-dev libx11-xcb-dev libxtst-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev
 
       - name: Install Wails v3 CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.8
@@ -77,10 +78,11 @@ jobs:
           Expand-Archive fftw.zip -DestinationPath fftw
           Copy-Item fftw\libfftw3-3.dll libs\
           dlltool -d fftw\libfftw3-3.def -l libs\libfftw3-3.a -D libfftw3-3.dll
-          # 预编译包不含 fftw3.h 头文件，从源码包中单独提取
+          # 预编译包不含 fftw3.h 头文件，从源码包中提取（完整解压后递归查找，避免成员路径差异）
           Invoke-WebRequest -Uri "https://fftw.org/fftw-3.3.5.tar.gz" -OutFile fftw-src.tar.gz
-          tar -xzf fftw-src.tar.gz fftw-3.3.5/fftw3.h
-          Copy-Item fftw-3.3.5\fftw3.h fftw\
+          New-Item -ItemType Directory -Force fftw-src | Out-Null
+          tar -xzf fftw-src.tar.gz -C fftw-src
+          Copy-Item (Get-ChildItem fftw-src -Recurse -Filter fftw3.h | Select-Object -First 1).FullName fftw\
           # FFmpeg shared 构建（含 .dll.a 导入库，用于 CGO 链接）
           Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl-shared.zip" -OutFile ffmpeg.zip
           Expand-Archive ffmpeg.zip -DestinationPath ffmpeg
@@ -95,7 +97,11 @@ jobs:
           $ff = (Get-ChildItem ffmpeg -Directory | Select-Object -First 1).FullName
           $eigen = (Get-ChildItem eigen -Directory | Select-Object -First 1).FullName
           $env:CGO_ENABLED = "1"
-          $env:CGO_CFLAGS = "-I$ff\include -I$eigen -I$PWD\fftw"
+          $inc = "-I$ff\include -I$eigen -I$PWD\fftw"
+          # 注意：calc.cpp 是 C++ 文件，cgo 对其使用 CXXFLAGS/CPPFLAGS 而非 CFLAGS
+          $env:CGO_CFLAGS = $inc
+          $env:CGO_CXXFLAGS = $inc
+          $env:CGO_CPPFLAGS = $inc
           $env:CGO_LDFLAGS = "-L$ff\lib -L$PWD\libs -lavformat -lavcodec -lswresample -lavutil"
           wails3 build
 
@@ -134,7 +140,10 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           export CGO_ENABLED=1
+          # 注意：calc.cpp 是 C++ 文件，cgo 对其使用 CXXFLAGS/CPPFLAGS 而非 CFLAGS
           export CGO_CFLAGS="-I/usr/include/eigen3"
+          export CGO_CXXFLAGS="-I/usr/include/eigen3"
+          export CGO_CPPFLAGS="-I/usr/include/eigen3"
           export CGO_LDFLAGS="-lavformat -lavcodec -lswresample -lavutil"
           wails3 build
 
@@ -162,7 +171,11 @@ jobs:
           PREFIX="$(brew --prefix)"
           export CGO_ENABLED=1
           # 注意：不要 export GOOS，否则会污染 Taskfile 的 GOOS 调度变量
-          export CGO_CFLAGS="-I$PREFIX/include -I$PREFIX/include/eigen3 -mmacosx-version-min=12.0"
+          INC="-I$PREFIX/include -I$PREFIX/include/eigen3"
+          # 注意：calc.cpp 是 C++ 文件，cgo 对其使用 CXXFLAGS/CPPFLAGS 而非 CFLAGS
+          export CGO_CFLAGS="$INC -mmacosx-version-min=12.0"
+          export CGO_CXXFLAGS="$INC -mmacosx-version-min=12.0"
+          export CGO_CPPFLAGS="$INC"
           export CGO_LDFLAGS="-L$PREFIX/lib -lavformat -lavcodec -lswresample -lavutil -mmacosx-version-min=12.0"
           export MACOSX_DEPLOYMENT_TARGET=12.0
           # 前端资源 + bindings（production）
