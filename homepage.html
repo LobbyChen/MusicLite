@@ -3,7 +3,6 @@
 
 <head>
     <meta charset="UTF-8" />
-    <link rel="shortcut icon" href="./icon.ico" >
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MusicLite Cuckoo — 轻量级跨平台离线音乐播放器</title>
     <meta name="description" content="基于 Wails v3 与 Go 构建的桌面音乐应用，专注于本地音乐播放体验。支持多格式、可定制界面、歌词、全局快捷键与系统托盘。" />
@@ -879,15 +878,12 @@
                     <p class="req">CGO 依赖因平台而异：</p>
                     <div class="code">
                         <span class="c"># Windows</span>
-                        <br>
-                        MinGW-w64, libfftw3, ffmpeg
-                        <br>
+                        MinGW-w64, libfftw3-3.dll, ffmpeg
+
                         <span class="c"># macOS</span>
-                        <br>
                         brew install fftw ffmpeg
-                        <br>
+
                         <span class="c"># Linux</span>
-                        <br>
                         sudo apt install libfftw3-dev \
                             libgtk-3-dev \
                             libwebkit2gtk-4.1-dev ffmpeg
@@ -897,17 +893,13 @@
                     <h3>从源码构建</h3>
                     <div class="code">
                         <span class="c"># 安装前端依赖</span>
-                        <br>
                         <span class="p">cd</span> frontend && npm install && <span class="p">cd</span> ..
-                        <br>
+
                         <span class="c"># 启动开发服务器</span>
-                        <br>
                         wails3 dev
-                        <br>
+
                         <span class="c"># 构建生产版本</span>
-                        <br>
                         wails3 build      <span class="c"># macOS / Linux</span>
-                        <br>
                         compile.cmd       <span class="c"># Windows</span>
                     </div>
                     <p class="req" style="margin-top:14px;">构建产物位于 <code style="font-family:var(--mono);color:var(--text)">build/bin/</code> 目录。</p>
@@ -920,7 +912,7 @@
         <div class="wrap footer-inner">
             <div>
                 <div style="margin-bottom:8px;">MusicLite Cuckoo · 轻量级跨平台离线音乐播放器</div>
-                <div class="lic">基于 GNU GPL v3 协议开源</div>
+                <div class="lic">基于 GNU GPL v3 协议开源 · 作者 LobbyChen</div>
             </div>
             <div class="footer-cols">
                 <div class="footer-col">
