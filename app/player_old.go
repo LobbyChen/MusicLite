@@ -1,5 +1,3 @@
-//go:build ignore
-
 package app
 
 // ============ 后端音频播放器  ============
