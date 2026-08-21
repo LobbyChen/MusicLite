@@ -35,20 +35,22 @@ jobs:
           echo "Sending diff to Gemini for review..."
 
           # 用 jq 安全构建 JSON 请求体，避免转义问题
-          PROMPT="You are an expert code reviewer. Review the following git diff. Focus on:
-1. Bugs and logic errors
-2. Security vulnerabilities
-3. Performance issues
-4. Code style and best practices
-Provide concise, actionable feedback. Use Chinese (中文) for your review.
-
-\`\`\`diff
-${DIFF}
-\`\`\`"
+          PROMPT_FILE=$(mktemp)
+          echo "You are an expert code reviewer. Review the following git diff. Focus on:" > "$PROMPT_FILE"
+          echo "1. Bugs and logic errors" >> "$PROMPT_FILE"
+          echo "2. Security vulnerabilities" >> "$PROMPT_FILE"
+          echo "3. Performance issues" >> "$PROMPT_FILE"
+          echo "4. Code style and best practices" >> "$PROMPT_FILE"
+          echo "Provide concise, actionable feedback. Use Chinese for your review." >> "$PROMPT_FILE"
+          echo "" >> "$PROMPT_FILE"
+          echo '```diff' >> "$PROMPT_FILE"
+          echo "$DIFF" >> "$PROMPT_FILE"
+          echo '```' >> "$PROMPT_FILE"
 
           PAYLOAD=$(jq -n \
-            --arg prompt "$PROMPT" \
+            --arg prompt "$(cat "$PROMPT_FILE")" \
             '{"contents":[{"parts":[{"text":$prompt}]}]}')
+          rm -f "$PROMPT_FILE"
 
           RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
             -H "Content-Type: application/json" \
