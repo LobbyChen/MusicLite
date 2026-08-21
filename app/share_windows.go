@@ -53,11 +53,14 @@ import "C"
 
 import (
 	"fmt"
+	"unsafe"
 )
 
 // setClipboardFilesGo 封装 CGO 调用，将文件路径写入剪贴板（Windows 实现）
 func setClipboardFilesGo(filePath string) error {
-	hr := C.setClipboardFiles(C.CString(filePath))
+	cPath := C.CString(filePath)
+	defer C.free(unsafe.Pointer(cPath))
+	hr := C.setClipboardFiles(cPath)
 	if hr != 0 {
 		return fmt.Errorf("剪贴板写入失败: %d", int(hr))
 	}

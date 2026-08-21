@@ -81,9 +81,9 @@ func (a *MusicService) ExportSettings() (string, error) {
 
 	// 写入 manifest.json（版本信息）
 	manifest := map[string]interface{}{
-		"version":    1,
-		"app":        "MusicLite",
-		"font_count": len(fontsData),
+		"version":     1,
+		"app":         "MusicLite",
+		"font_count":  len(fontsData),
 		"exported_at": time.Now().Format("2006-01-02 15:04:05"),
 	}
 	manifestJSON, _ := json.MarshalIndent(manifest, "", "  ")
@@ -142,6 +142,10 @@ func (a *MusicService) ImportSettings() (Settings, error) {
 
 	// 3. 安装字体文件
 	for fontName, b64data := range fontsData {
+		if len(b64data) > 10*1024*1024 { // 10MB 上限
+			log.Printf("字体 %s 数据过大 (%d bytes)，跳过", fontName, len(b64data))
+			continue
+		}
 		if err := installFontFromBase64(fontName, b64data); err != nil {
 			log.Printf("安装字体 %s 失败: %v", fontName, err)
 		}

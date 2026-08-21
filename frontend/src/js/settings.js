@@ -965,9 +965,8 @@ async function setupEventListeners() {
             // 实时预览：直接操作 body class
             const validModes = ['fade', 'slide-up', 'slide-left', 'zoom', 'bounce', 'flip', 'rotate', 'none'];
             const m = validModes.includes(lyricAnimationSelect.value) ? lyricAnimationSelect.value : 'fade';
-            document.body.classList.forEach(c => {
-                if (c.startsWith('lyric-anim-')) document.body.classList.remove(c);
-            });
+            const toRemove = [...document.body.classList].filter(c => c.startsWith('lyric-anim-'));
+            toRemove.forEach(c => document.body.classList.remove(c));
             document.body.classList.add('lyric-anim-' + m);
             // 持久化到 localStorage，供页面加载时同步读取
             try { localStorage.setItem('musicLite.lyricAnimation', m); } catch (e) {}
@@ -1069,81 +1068,81 @@ async function setupEventListeners() {
                 showToast(t('settings.importFailed', err), 'error');
             }
         });
-
-        // Reset settings button（重置为默认设置）
-        if (resetBtn) {
-            resetBtn.addEventListener('click', async () => {
-                // 先确认
-                const confirmed = await showConfirm(t('settings.resetConfirm'), {
-                    title: t('settings.resetSettings'),
-                    okText: t('settings.resetSettings'),
-                    danger: true,
-                });
-                if (!confirmed) return;
-                try {
-                    const defaults = await ResetSettings();
-                    currentSettings = defaults;
-                    applySettingsToUI(defaults);
-                    applyTheme();
-                    applyAccentToUI();
-                    renderHotkeyList();
-                    // 立即保存
-                    await SaveSettings(defaults);
-                    hasChanges = false;
-                    hideSaveBar();
-                    // 通知其他页面
-                    localStorage.setItem('settingsUpdated', Date.now().toString());
-                    showToast(t('settings.resetSuccess'), 'success');
-                } catch (err) {
-                    console.error('Reset failed:', err);
-                    showToast(t('settings.resetFailed', err), 'error');
-                }
-            });
-        }
-
-        // 打开程序数据文件夹（%APPDATA%/MusicLite）
-        if (openDataFolderBtn) {
-            openDataFolderBtn.addEventListener('click', async () => {
-                try {
-                    await OpenAppDataFolder();
-                } catch (e) {
-                    showToast(t('settings.openDataFolderFailed'), 'error');
-                }
-            });
-        }
-        // 在系统默认浏览器中打开项目 GitHub 仓库
-        if (openGitHubBtn) {
-            openGitHubBtn.addEventListener('click', async () => {
-                try {
-                    await OpenGitHubRepo();
-                } catch (e) {
-                    showToast(t('settings.openGitHubFailed'), 'error');
-                }
-            });
-        }
-        // 显示构建期注入的版本号（version / buildSHA / buildNum）
-        const versionEl = document.getElementById('app-version');
-        if (versionEl) {
-            try {
-                const info = await GetVersionInfo();
-                // 形如 "0.7.1" 或 "0.7.1-dev.5.gabc1234"；dev 构建追加 SHA 后缀
-                const label = info.version.includes('-dev.')
-                    ? `${info.version} (${info.buildSha})`
-                    : info.version;
-                versionEl.textContent = label;
-            } catch (e) {
-                versionEl.textContent = 'unknown';
-            }
-        }
-        // 启动使用教程（全新开始，总是从设置页第 0 步开始）
-        if (startTutorialBtn) {
-            startTutorialBtn.addEventListener('click', () => {
-                startTutorialFromSettings(t);
-            });
-        }
-        // 若教程中途跳转回此页，恢复引导
-        resumeTutorialIfAny('settings', t);
     }
+
+    // Reset settings button（重置为默认设置）
+    if (resetBtn) {
+        resetBtn.addEventListener('click', async () => {
+            // 先确认
+            const confirmed = await showConfirm(t('settings.resetConfirm'), {
+                title: t('settings.resetSettings'),
+                okText: t('settings.resetSettings'),
+                danger: true,
+            });
+            if (!confirmed) return;
+            try {
+                const defaults = await ResetSettings();
+                currentSettings = defaults;
+                applySettingsToUI(defaults);
+                applyTheme();
+                applyAccentToUI();
+                renderHotkeyList();
+                // 立即保存
+                await SaveSettings(defaults);
+                hasChanges = false;
+                hideSaveBar();
+                // 通知其他页面
+                localStorage.setItem('settingsUpdated', Date.now().toString());
+                showToast(t('settings.resetSuccess'), 'success');
+            } catch (err) {
+                console.error('Reset failed:', err);
+                showToast(t('settings.resetFailed', err), 'error');
+            }
+        });
+    }
+
+    // 打开程序数据文件夹（%APPDATA%/MusicLite）
+    if (openDataFolderBtn) {
+        openDataFolderBtn.addEventListener('click', async () => {
+            try {
+                await OpenAppDataFolder();
+            } catch (e) {
+                showToast(t('settings.openDataFolderFailed'), 'error');
+            }
+        });
+    }
+    // 在系统默认浏览器中打开项目 GitHub 仓库
+    if (openGitHubBtn) {
+        openGitHubBtn.addEventListener('click', async () => {
+            try {
+                await OpenGitHubRepo();
+            } catch (e) {
+                showToast(t('settings.openGitHubFailed'), 'error');
+            }
+        });
+    }
+    // 显示构建期注入的版本号（version / buildSHA / buildNum）
+    const versionEl = document.getElementById('app-version');
+    if (versionEl) {
+        try {
+            const info = await GetVersionInfo();
+            // 形如 "0.7.1" 或 "0.7.1-dev.5.gabc1234"；dev 构建追加 SHA 后缀
+            const label = info.version.includes('-dev.')
+                ? `${info.version} (${info.buildSha})`
+                : info.version;
+            versionEl.textContent = label;
+        } catch (e) {
+            versionEl.textContent = 'unknown';
+        }
+    }
+    // 启动使用教程（全新开始，总是从设置页第 0 步开始）
+    if (startTutorialBtn) {
+        startTutorialBtn.addEventListener('click', () => {
+            startTutorialFromSettings(t);
+        });
+    }
+    // 若教程中途跳转回此页，恢复引导
+    resumeTutorialIfAny('settings', t);
 }
 
 // ============ 全局快捷键：UI 渲染与按键捕获 ============

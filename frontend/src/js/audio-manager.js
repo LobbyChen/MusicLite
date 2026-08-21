@@ -37,6 +37,9 @@ class AudioManager {
 		// 加载中标记
 		this._pendingLoad = null;
 
+		// 轮询并发守卫
+		this._polling = false;
+
 		// 启动轮询
 		this._pollTimer = null;
 		this._startPolling();
@@ -52,65 +55,71 @@ class AudioManager {
 	}
 
 	async _pollState() {
-		let state;
+		if (this._polling) return;
+		this._polling = true;
 		try {
-			state = await PlayerGetState();
-		} catch (e) {
-			// IPC 尚未就绪，下次轮询自动重试
-			return;
-		}
-		if (!state) return;
-
-		// ---- 1. 曲目变更检测 ----
-		const newTrack = state.track || null;
-		const trackChanged = newTrack && (!this.currentTrack || this.currentTrack.id !== newTrack.id);
-		if (trackChanged) {
-			this.currentTrack = newTrack;
-			try { localStorage.setItem('currentTrack', JSON.stringify(newTrack)); } catch (e) {}
-			document.title = newTrack.name || newTrack.Name || 'MusicLite';
-			// 先同步时长，再 emit trackloaded（让 UI 拿到正确的 duration）
-			if (typeof state.duration === 'number' && state.duration > 0) {
-				this._duration = state.duration;
+			let state;
+			try {
+				state = await PlayerGetState();
+			} catch (e) {
+				// IPC 尚未就绪，下次轮询自动重试
+				return;
 			}
-			this.emit('trackloaded', newTrack);
-			if (this._duration > 0) {
+			if (!state) return;
+
+			// ---- 1. 曲目变更检测 ----
+			const newTrack = state.track || null;
+			const trackChanged = newTrack && (!this.currentTrack || this.currentTrack.id !== newTrack.id);
+			if (trackChanged) {
+				this.currentTrack = newTrack;
+				try { localStorage.setItem('currentTrack', JSON.stringify(newTrack)); } catch (e) {}
+				document.title = newTrack.name || newTrack.Name || 'MusicLite';
+				// 先同步时长，再 emit trackloaded（让 UI 拿到正确的 duration）
+				if (typeof state.duration === 'number' && state.duration > 0) {
+					this._duration = state.duration;
+				}
+				this.emit('trackloaded', newTrack);
+				if (this._duration > 0) {
+					this.emit('loadedmetadata', { duration: this._duration });
+				}
+			}
+
+			// ---- 2. 时长变更（非切曲但后端解码完成后时长更新） ----
+			if (!trackChanged && typeof state.duration === 'number' && state.duration > 0 && state.duration !== this._duration) {
+				this._duration = state.duration;
 				this.emit('loadedmetadata', { duration: this._duration });
 			}
-		}
 
-		// ---- 2. 时长变更（非切曲但后端解码完成后时长更新） ----
-		if (!trackChanged && typeof state.duration === 'number' && state.duration > 0 && state.duration !== this._duration) {
-			this._duration = state.duration;
-			this.emit('loadedmetadata', { duration: this._duration });
-		}
-
-		// ---- 3. 播放/暂停状态变更 ----
-		const wasPlaying = this._isPlaying;
-		this._isPlaying = !!state.isPlaying;
-		if (this._isPlaying && !wasPlaying) {
-			this.emit('play');
-		} else if (!this._isPlaying && wasPlaying) {
-			this.emit('pause');
-		}
-
-		// ---- 4. 进度更新 ----
-		// 播放中：emit timeupdate 让 UI 刷新进度条和歌词
-		// 暂停/停止：只更新内部缓存，不 emit（避免无意义的 UI 刷新）
-		if (typeof state.position === 'number') {
-			this._currentTime = state.position;
-			if (this._isPlaying) {
-				this.emit('timeupdate', {
-					currentTime: this._currentTime,
-					duration: this._duration
-				});
+			// ---- 3. 播放/暂停状态变更 ----
+			const wasPlaying = this._isPlaying;
+			this._isPlaying = !!state.isPlaying;
+			if (this._isPlaying && !wasPlaying) {
+				this.emit('play');
+			} else if (!this._isPlaying && wasPlaying) {
+				this.emit('pause');
 			}
-		}
 
-		// ---- 5. 播放模式变更 ----
-		if (state.playMode && state.playMode !== this.playMode) {
-			this.playMode = state.playMode;
-			try { localStorage.setItem('playMode', state.playMode); } catch (e) {}
-			this.emit('modechange', state.playMode);
+			// ---- 4. 进度更新 ----
+			// 播放中：emit timeupdate 让 UI 刷新进度条和歌词
+			// 暂停/停止：只更新内部缓存，不 emit（避免无意义的 UI 刷新）
+			if (typeof state.position === 'number') {
+				this._currentTime = state.position;
+				if (this._isPlaying) {
+					this.emit('timeupdate', {
+						currentTime: this._currentTime,
+						duration: this._duration
+					});
+				}
+			}
+
+			// ---- 5. 播放模式变更 ----
+			if (state.playMode && state.playMode !== this.playMode) {
+				this.playMode = state.playMode;
+				try { localStorage.setItem('playMode', state.playMode); } catch (e) {}
+				this.emit('modechange', state.playMode);
+			}
+		} finally {
+			this._polling = false;
 		}
 	}
 
@@ -322,7 +331,7 @@ class AudioManager {
 
 	emit(event, data) {
 		if (this.listeners.has(event)) {
-			this.listeners.get(event).forEach(callback => callback(data));
+			[...this.listeners.get(event)].forEach(callback => callback(data));
 		}
 	}
 

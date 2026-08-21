@@ -2283,6 +2283,11 @@ function applyDesignerWinUI3() {
 
 // 移除 WinUI3 页面布局
 function removeWinUI3PageLayout() {
+    // 清理歌词行 MutationObserver
+    if (window._lyricLineObserver) {
+        window._lyricLineObserver.disconnect();
+        window._lyricLineObserver = null;
+    }
     // 播放器 overlay：先还原 DOM（搬走的元素回原位 + 移除 w3-* 容器）
     try { restorePlayerWinUI3(); } catch (e) { console.warn('restorePlayerWinUI3 failed:', e); }
     // 音乐库：恢复 DOM
@@ -2474,9 +2479,11 @@ function applyPlayerWinUI3() {
         // 持续为新生成的 .lyric-line 注入 w3-lyric-line 类
         if (oldLyricsContent) {
             oldLyricsContent.querySelectorAll('.lyric-line').forEach(l => l.classList.add('w3-lyric-line'));
-            new MutationObserver(() => {
+            if (window._lyricLineObserver) window._lyricLineObserver.disconnect();
+            window._lyricLineObserver = new MutationObserver(() => {
                 oldLyricsContent.querySelectorAll('.lyric-line:not(.w3-lyric-line)').forEach(l => l.classList.add('w3-lyric-line'));
-            }).observe(oldLyricsContent, { childList: true });
+            });
+            window._lyricLineObserver.observe(oldLyricsContent, { childList: true });
         }
     }
     pcRight.appendChild(lyrCard);

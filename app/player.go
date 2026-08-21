@@ -227,7 +227,10 @@ func (r *PCMReader) Read(buf []byte) (int, error) {
 		for i := range buf {
 			buf[i] = 0
 		}
-		r.p.muteBytes.Add(-int64(len(buf)))
+		newMute := r.p.muteBytes.Add(-int64(len(buf)))
+		if newMute < 0 {
+			r.p.muteBytes.Store(0)
+		}
 		return len(buf), nil
 	}
 
@@ -379,9 +382,11 @@ func (p *Player) freePCM() {
 	select {
 	case p.freeCh <- snap.cPtr:
 	default:
-		// 通道满时直接释放。
-		// 正常情况下不会发生，因为解码切歌频率远低于 freeLoop 消费速度。
-		C.free(snap.cPtr)
+		// 通道满时延迟释放，避免 PCMReader.Read 仍在读同一块 C 内存。
+		go func(ptr unsafe.Pointer) {
+			time.Sleep(50 * time.Millisecond)
+			C.free(ptr)
+		}(snap.cPtr)
 	}
 }
 
@@ -650,8 +655,11 @@ func (p *Player) resume() {
 	}
 	p.mu.Unlock()
 
-	if wasPaused && p.track != nil && p.app != nil {
-		p.app.RecordPlayStart(p.track.ID)
+	p.mu.Lock()
+	track := p.track
+	p.mu.Unlock()
+	if wasPaused && track != nil && p.app != nil {
+		p.app.RecordPlayStart(track.ID)
 	}
 	p.emitState()
 }
@@ -664,8 +672,11 @@ func (p *Player) pause() {
 	wasPlaying := p.isPlaying.Load() && !p.isPaused.Load()
 	p.isPaused.Store(true)
 
-	if wasPlaying && p.track != nil && p.app != nil {
-		p.app.RecordPlayPause(p.track.ID)
+	p.mu.Lock()
+	track := p.track
+	p.mu.Unlock()
+	if wasPlaying && track != nil && p.app != nil {
+		p.app.RecordPlayPause(track.ID)
 	}
 	p.emitState()
 }
@@ -764,8 +775,11 @@ func (p *Player) restart() error {
 	}
 	p.mu.Unlock()
 
-	if p.track != nil && p.app != nil {
-		p.app.RecordPlayStart(p.track.ID)
+	p.mu.Lock()
+	track := p.track
+	p.mu.Unlock()
+	if track != nil && p.app != nil {
+		p.app.RecordPlayStart(track.ID)
 	}
 	p.emitState()
 	return nil
@@ -893,11 +907,17 @@ func (p *Player) safeDuration() float64 {
 }
 
 func (p *Player) emitTrackLoaded() {
-	if p.app == nil || p.track == nil {
+	if p.app == nil {
+		return
+	}
+	p.mu.Lock()
+	track := p.track
+	p.mu.Unlock()
+	if track == nil {
 		return
 	}
 	p.app.EmitEvent("player:trackloaded", map[string]any{
-		"track":    p.track,
+		"track":    track,
 		"duration": p.safeDuration(),
 	})
 }

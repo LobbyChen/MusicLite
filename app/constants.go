@@ -36,6 +36,3 @@ var RootDir string
 
 // database file（绝对路径）
 var DBFile string
-
-// audio folder
-const audioFolder string = ""

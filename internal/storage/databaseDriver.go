@@ -361,10 +361,7 @@ func (self Database) CreateTable(tableName string) error {
 }
 
 func (self Database) IsEmpty() bool {
-	if self.database != nil {
-		return true
-	}
-	return false
+	return self.database == nil
 }
 
 // 辅助函数：连接字符串
@@ -427,12 +424,12 @@ func (self Database) EnsureTracksTable() error {
 	hasAlbum := false
 	for columns.Next() {
 		var (
-			cid        int
-			name       string
-			colType    string
-			notnull    int
-			dfltValue  *string
-			pk         int
+			cid       int
+			name      string
+			colType   string
+			notnull   int
+			dfltValue *string
+			pk        int
 		)
 		if err := columns.Scan(&cid, &name, &colType, &notnull, &dfltValue, &pk); err != nil {
 			continue

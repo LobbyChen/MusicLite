@@ -773,7 +773,12 @@ function setupEventListeners() {
 function setMiniCover(container, coverUrl) {
     if (!container) return;
     if (coverUrl) {
-        container.innerHTML = `<img src="${coverUrl}" alt="cover" style="width:100%;height:100%;object-fit:cover;border-radius:4px;" />`;
+        container.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = coverUrl;
+        img.alt = 'cover';
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:4px;';
+        container.appendChild(img);
     } else {
         container.innerHTML = `<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"></path></svg></div>`;
     }
@@ -816,8 +821,8 @@ function initMiniPlayer() {
         setMiniCover(miniCover, track.cover);
     };
 
-    miniPlayBtn.addEventListener('click', () => window.audioManager.toggle());
-    miniExpand.addEventListener('click', () => {
+    if (miniPlayBtn) miniPlayBtn.addEventListener('click', () => window.audioManager.toggle());
+    if (miniExpand) miniExpand.addEventListener('click', () => {
         window.location.href = '/src/html/libraries.html';
     });
     if (miniPlayerLeft) {
