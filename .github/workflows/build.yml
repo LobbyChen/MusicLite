@@ -36,12 +36,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
-          cache: true
+          # git describe 需要完整 tag 历史
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -49,6 +46,34 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+
+      # ==================== 版本号计算（Node.js 跨平台脚本）====================
+      # 输出 VERSION / BUILD_SHA / BUILD_NUM / VERSION_LDFLAGS 供后续步骤使用
+      - name: Compute version
+        id: ver
+        shell: bash
+        run: |
+          node scripts/version.mjs --ci
+          # Node 脚本已写入 $GITHUB_OUTPUT / $GITHUB_ENV，这里 source 以便本步骤日志可见
+          source build/version-set.sh
+          echo "::debug::Version=$VERSION SHA=$BUILD_SHA Count=$BUILD_NUM"
+
+      - name: Sync version into build/config.yml
+        shell: bash
+        run: |
+          # 写入 Wails 构建元信息（影响 Windows .syso 与 mac/linux 资源）
+          sed -i.bak "s/^  productVersion: .*/  productVersion: \"${VERSION}\"/" build/config.yml
+          sed -i.bak "s/^  fileVersion: .*/  fileVersion: \"${VERSION}\"/"   build/config.yml
+          rm -f build/config.yml.bak
+          # nfpm.yaml 供 Linux deb/rpm 包使用
+          sed -i.bak "s/^version: .*/version: \"${VERSION}\"/" build/linux/nfpm/nfpm.yaml
+          rm -f build/linux/nfpm/nfpm.yaml.bak
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
 
       # ==================== 平台特定依赖安装 ====================
       # Linux 系统依赖必须先于 Wails CLI 安装：Wails CLI 自身含 gtk4 cgo 代码
@@ -119,6 +144,8 @@ jobs:
           $env:CGO_ENABLED = "1"
           $env:CGO_CFLAGS = "-I$ff\include -I$PWD\fftw"
           $env:CGO_LDFLAGS = "-L$ff\lib -L$PWD\libs -lavformat -lavcodec -lswresample -lavutil"
+          # VERSION_LDFLAGS 已由 Compute version 步骤注入到 $env:VERSION_LDFLAGS
+          # Taskfile 读取 VERSION_LDFLAGS 追加到 -ldflags
           wails3 build
 
       - name: "[Windows] Create installer & portable package"
@@ -131,9 +158,12 @@ jobs:
           # installer.nsi 期望可执行文件位于 <根目录>\bin\MusicLite.exe
           New-Item -ItemType Directory -Force bin | Out-Null
           Copy-Item build\bin\musiclite.exe bin\MusicLite.exe
-          # 构建 NSIS 安装程序
+          # 构建 NSIS 安装程序：注入 PRODUCT_VERSION 与文件名版本片段
           Set-Location installer
-          & "C:\Program Files (x86)\NSIS\makensis.exe" /V2 installer.nsi
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /V2 `
+              /DPRODUCT_VERSION="$env:VERSION" `
+              /DPRODUCT_FILENAME_TAG="B$env:VERSION" `
+              installer.nsi
           Set-Location ..
           # 整理发布产物：安装程序 + 绿色直开包
           New-Item -ItemType Directory -Force dist\portable | Out-Null
@@ -144,19 +174,14 @@ jobs:
           Remove-Item dist\portable -Recurse -Force
 
       # ============================= Linux =============================
-      - name: "[Linux] Set package version from tag"
-        if: matrix.platform == 'linux'
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            VERSION="${GITHUB_REF_NAME#v}"
-            sed -i "s/^version: .*/version: \"$VERSION\"/" build/linux/nfpm/nfpm.yaml
-          fi
+      # 版本号已由上方 "Sync version into build/config.yml" 步骤同步到 nfpm.yaml
 
       - name: "[Linux] Build"
         if: matrix.platform == 'linux'
         run: |
           export CGO_ENABLED=1
           export CGO_LDFLAGS="-lavformat -lavcodec -lswresample -lavutil"
+          # VERSION_LDFLAGS 已由 Compute version 步骤注入到环境
           wails3 build
 
       - name: "[Linux] Create .deb & .rpm packages"
@@ -188,9 +213,10 @@ jobs:
           export MACOSX_DEPLOYMENT_TARGET=12.0
           # 前端资源 + bindings（production）
           wails3 task common:build:frontend
-          # 编译主程序（与 build/darwin/Taskfile.yml build:native 参数一致）
+          # 编译主程序：$VERSION_LDFLAGS 已由 Compute version 步骤注入
+          # 注入 -X app.Version / -X app.BuildSHA / -X app.BuildNum
           mkdir -p bin
-          go build -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o bin/musiclite
+          go build -tags production -trimpath -buildvcs=false -ldflags="-w -s ${VERSION_LDFLAGS}" -o bin/musiclite
           # 组装 .app bundle（与 create:app:bundle 一致）
           mkdir -p bin/MusicLite.app/Contents/MacOS bin/MusicLite.app/Contents/Resources
           cp build/darwin/icons.icns bin/MusicLite.app/Contents/Resources/
