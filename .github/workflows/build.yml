@@ -89,7 +89,8 @@ jobs:
             build-essential pkg-config rpm \
             libgtk-4-dev libwebkitgtk-6.0-dev libnotify-dev \
             libavformat-dev libavcodec-dev libswresample-dev libavutil-dev \
-            libasound2-dev libx11-dev libx11-xcb-dev libxtst-dev libxkbcommon-dev
+            libasound2-dev libx11-dev libx11-xcb-dev libxtst-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev
 
       - name: Install Wails v3 CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
@@ -145,9 +146,8 @@ jobs:
           $ff = (Get-ChildItem ffmpeg -Directory | Select-Object -First 1).FullName
           # 汇总运行时 DLL 到 libs\
           Copy-Item "$ff\bin\*.dll" libs\
-          # installer.nsi 期望可执行文件位于 <根目录>\bin\MusicLite.exe
-          New-Item -ItemType Directory -Force bin | Out-Null
-          Copy-Item build\bin\musiclite.exe bin\MusicLite.exe
+          # wails3 build 已输出 bin\musiclite.exe；NSIS 的 File 指令在 Windows
+          # 大小写不敏感，可直接读取 ..\bin\MusicLite.exe，无需额外复制
           # 构建 NSIS 安装程序：注入 PRODUCT_VERSION 与文件名版本片段
           Set-Location installer
           & "C:\Program Files (x86)\NSIS\makensis.exe" /V2 `
@@ -157,7 +157,7 @@ jobs:
           Set-Location ..
           # 整理发布产物：安装程序 + 绿色直开包
           New-Item -ItemType Directory -Force dist\portable | Out-Null
-          Copy-Item bin\MusicLite.exe dist\portable\
+          Copy-Item bin\musiclite.exe dist\portable\MusicLite.exe
           Copy-Item libs\*.dll dist\portable\
           Compress-Archive -Path dist\portable\* -DestinationPath dist\MusicLite-Windows-x64-Portable.zip
           Copy-Item (Get-ChildItem build\bin\*Setup*.exe | Select-Object -First 1).FullName dist\MusicLite-Windows-x64-Setup.exe
