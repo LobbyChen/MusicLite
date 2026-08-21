@@ -1,0 +1,15 @@
+{
+	"fixed": {
+		"file_version": "0.1.0"
+	},
+	"info": {
+		"0000": {
+			"ProductVersion": "0.1.0",
+			"CompanyName": "LobbyChen",
+			"FileDescription": "MusicLite",
+			"LegalCopyright": "(c) 2026, LobbyChen",
+			"ProductName": "MusicLite Cuckoo",
+			"Comments": "MusicLite Music Player"
+		}
+	}
+}

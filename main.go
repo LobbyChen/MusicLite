@@ -71,7 +71,6 @@ func main() {
 	mainWindow := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:           "main",
 		Title:          "MusicLite",
-		Icon:           app.TrayIconData,
 		Width:          1024,
 		Height:         580,
 		Frameless:      true, // 无原生边框：前端自绘标题栏
