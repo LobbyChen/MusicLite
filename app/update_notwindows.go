@@ -29,5 +29,15 @@ func (a *MusicService) PerformUpdate(info UpdateInfo) error {
 	return nil
 }
 
+// applyDownloadedFile 非 Windows 平台：打开 Release 页面让用户手动安装
+// downloadedPath 已下载的文件路径（非 Windows 平台不自动替换二进制）
+func (a *MusicService) applyDownloadedFile(downloadedPath string) error {
+	url := GitHubRepoURL + "/releases/latest"
+	if err := openURL(url); err != nil {
+		return fmt.Errorf("无法打开浏览器: %w", err)
+	}
+	return nil
+}
+
 // 防止 "declared and not used"：在 darwin/linux 下 runtime.GOOS 间接通过 openURL 使用
 var _ = runtime.GOOS

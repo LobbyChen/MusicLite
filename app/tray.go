@@ -16,6 +16,9 @@ package app
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"sync/atomic"
 	"time"
 
@@ -174,6 +177,30 @@ func (s *MusicService) HideMainWindow() {
 func (s *MusicService) QuitApp() {
 	s.trayQuitting.Store(true)
 	s.app.Quit()
+}
+
+// RestartApp 暴露给前端：重启应用（启动新实例后退出当前实例）
+// 用于 i18n 合并完成后让用户立即看到效果，避免手动重启
+func (s *MusicService) RestartApp() error {
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("无法获取可执行文件路径: %w", err)
+	}
+	exePath, _ = filepath.Abs(exePath)
+
+	// 启动新实例（detached）
+	cmd := exec.Command(exePath, os.Args[1:]...)
+	cmd.Stdin = nil
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("启动新实例失败: %w", err)
+	}
+
+	// 退出当前实例
+	s.trayQuitting.Store(true)
+	s.app.Quit()
+	return nil
 }
 
 // TogglePlayPause 暴露给前端：自定义托盘菜单中切换播放/暂停

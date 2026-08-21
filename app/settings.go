@@ -51,55 +51,82 @@ type Settings struct {
 	SettingsLayout string `json:"settings_layout"` // 设置界面布局："scroll"（默认）| "columns" | "tabs"
 	NewUIEnabled   bool   `json:"new_ui_enabled"`  // 新风格 UI 开关
 	VoidMode       bool   `json:"void_mode"`       // 虚空模式：界面颠倒 + 全黑 + 鼠标手电筒（需自行寻找退出按钮）
+	// i18n 自动合并：用户在弹窗中勾选"下次自动"后的选择
+	// "" / "skip" / "fill" / "overwrite"
+	// - ""         未设置（下次仍然弹窗）
+	// - "skip"     下次自动跳过
+	// - "fill"     下次自动补全（保留用户自定义值，仅添加缺失键）
+	// - "overwrite" 下次自动覆盖（内嵌值覆盖同键不同值）
+	I18nAutoAction string `json:"i18n_auto_action"`
+	// i18n 自动合并时是否清理冗余键
+	I18nAutoCleanObsolete bool `json:"i18n_auto_clean_obsolete"`
+	// 更新下载线程数（1-256，默认 16）
+	UpdateThreadCount int `json:"update_thread_count"`
+	// 更新下载状态持久化（用于重启后恢复进度条显示）
+	// 非空表示有未完成的下载任务
+	UpdateDownloadState *UpdateDownloadState `json:"update_download_state,omitempty"`
 	// 全局快捷键（3 个）
 	HotkeyPlayPause HotkeyConfig `json:"hotkey_playpause"` // 播放 / 暂停切换
 	HotkeyNext      HotkeyConfig `json:"hotkey_next"`      // 下一曲
 	HotkeyPrev      HotkeyConfig `json:"hotkey_prev"`      // 上一曲
 }
 
+// UpdateDownloadState 持久化的下载状态（重启后恢复进度条用）
+type UpdateDownloadState struct {
+	URL          string `json:"url"`        // 下载 URL
+	FileName     string `json:"fileName"`   // 资产名
+	OutputPath   string `json:"outputPath"` // 本地临时文件路径
+	LatestVer    string `json:"latestVer"`  // 新版本号
+	FileSize     int64  `json:"fileSize"`   // 文件总大小（字节）
+	Downloaded   int64  `json:"downloaded"` // 已下载大小（字节）
+	Status       string `json:"status"`     // "downloading" / "completed" / "cancelled" / "error"
+	ErrorMessage string `json:"errorMessage,omitempty"`
+}
+
 // DefaultSettings 返回默认设置
 func DefaultSettings() Settings {
 	return Settings{
-		Theme:           "dark",
-		PlayerFont:      "system-ui",
-		LyricsFont:      "Consolas, Monaco, monospace",
-		UIScale:         135,
-		LyricsScale:     135,
-		LastTrackID:     0,
-		LastPosition:    0,
-		Volume:          70,
-		AccentColor:     "#1DB954",
-		Language:        "zh-CN",
-		LyricAnimation:  "fade",
-		ListMode:        "card",
-		AnimationLevel:  2,
-		VolumeMode:      "synth",
-		MaxLyricLines:   1,
-		SortMode:        "recent",
-		BgType:          "none",
-		BgURL:           "",
-		BgFit:           "cover",
-		BgOpacity:       0.9,
-		BgOverlay:       0.2,
-		BgBlur:          0,
-		BgLoop:          true,
-		BgMuted:         true,
-		BgGlassDisabled: false,
-		WindowAlpha:     1.0,
-		AeroBlur:        0,
-		PlayerBgBlur:    20,
-		DesignRadius:    10,
-		DesignBlur:      16,
-		DesignAnimMult:  1.0,
-		DesignShadow:    0.45,
-		DesignGlow:      0.35,
-		DesignTextGlow:  0,
-		TitlebarText:    "MusicLite Cuckoo",
-		SettingsLayout:  "scroll",
-		NewUIEnabled:    false,
-		HotkeyPlayPause: HotkeyConfig{Enabled: false, Keys: ""},
-		HotkeyNext:      HotkeyConfig{Enabled: false, Keys: ""},
-		HotkeyPrev:      HotkeyConfig{Enabled: false, Keys: ""},
+		Theme:             "dark",
+		PlayerFont:        "system-ui",
+		LyricsFont:        "Consolas, Monaco, monospace",
+		UIScale:           135,
+		LyricsScale:       135,
+		LastTrackID:       0,
+		LastPosition:      0,
+		Volume:            70,
+		AccentColor:       "#1DB954",
+		Language:          "zh-CN",
+		LyricAnimation:    "fade",
+		ListMode:          "card",
+		AnimationLevel:    2,
+		VolumeMode:        "synth",
+		MaxLyricLines:     1,
+		SortMode:          "recent",
+		BgType:            "none",
+		BgURL:             "",
+		BgFit:             "cover",
+		BgOpacity:         0.9,
+		BgOverlay:         0.2,
+		BgBlur:            0,
+		BgLoop:            true,
+		BgMuted:           true,
+		BgGlassDisabled:   false,
+		WindowAlpha:       1.0,
+		AeroBlur:          0,
+		PlayerBgBlur:      20,
+		DesignRadius:      10,
+		DesignBlur:        16,
+		DesignAnimMult:    1.0,
+		DesignShadow:      0.45,
+		DesignGlow:        0.35,
+		DesignTextGlow:    0,
+		TitlebarText:      "MusicLite Cuckoo",
+		SettingsLayout:    "scroll",
+		NewUIEnabled:      false,
+		UpdateThreadCount: 16,
+		HotkeyPlayPause:   HotkeyConfig{Enabled: false, Keys: ""},
+		HotkeyNext:        HotkeyConfig{Enabled: false, Keys: ""},
+		HotkeyPrev:        HotkeyConfig{Enabled: false, Keys: ""},
 	}
 }
 

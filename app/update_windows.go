@@ -2,22 +2,20 @@
 
 package app
 
-// ============ Windows 便携包自动更新（cmd 文件替换自身）============
+// ============ Windows 便携包自动更新（自替换 + 单实例接管）============
 //
-// PerformUpdate 在 Windows 平台的实现：
-//   1. 下载便携包（MusicLite_B*_amd64.exe）到 %TEMP%\MusicLite_update.exe
-//   2. 生成 %TEMP%\MusicLite_updater.cmd：
-//        - 轮询等待当前进程退出（tasklist /PID <pid>）
-//        - 备份旧 exe → MusicLite.exe.bak（失败不影响）
-//        - 用下载的新 exe 覆盖原 exe
-//        - 启动新 exe
-//        - 删除备份与 .cmd 自身
-//   3. 用 cmd /c 启动该 .cmd（detached），返回前端
-//   4. 前端收到返回后调用 Quit() 退出主进程；.cmd 接管完成替换
-//
-// 失败时返回 error，前端展示错误信息。
+// 更新流程（无需 .cmd 脚本）：
+//   1. 从已下载的更新包中提取 MusicLite.exe 到临时位置
+//   2. 解压更新包中除 exe 外的所有文件到当前 exe 所在目录
+//   3. 把自己（当前运行的 exe）重命名为 xxx.exe~
+//      （Windows 允许重命名运行中的 exe，但不允许删除）
+//   4. 把新 exe 移动到原 exe 路径
+//   5. 启动新 exe（通过原路径）
+//      新实例的单实例机制会通知旧实例退出，旧实例 os.Exit(0)
+//   6. 下次启动时检测并删除所有 .exe~ 文件（CleanupOldExeBackups）
 
 import (
+	"archive/zip"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,51 +27,98 @@ import (
 	"time"
 )
 
-// PerformUpdate Windows 平台：下载便携包并通过 .cmd 文件替换自己后重启
-// info 由前端传入（来自 CheckForUpdate 的结果），也可为 nil 时重新检查
+// PerformUpdate Windows 平台：下载便携包并自替换
 func (a *MusicService) PerformUpdate(info UpdateInfo) error {
 	if info.DownloadURL == "" {
 		return fmt.Errorf("没有可用的 Windows 便携包下载地址")
 	}
-	if info.LatestVer == "" {
-		return fmt.Errorf("缺少版本号信息")
-	}
 
-	// 1. 获取当前 exe 路径
+	tempDir := os.Getenv("TEMP")
+	if tempDir == "" {
+		tempDir = os.TempDir()
+	}
+	downloadName := info.DownloadName
+	if downloadName == "" {
+		downloadName = "MusicLite_update.zip"
+	}
+	downloadPath := filepath.Join(tempDir, "MusicLite_update"+filepath.Ext(downloadName))
+
+	if err := downloadFile(info.DownloadURL, downloadPath); err != nil {
+		return fmt.Errorf("下载更新包失败: %w", err)
+	}
+	return a.applyDownloadedFile(downloadPath)
+}
+
+// applyDownloadedFile Windows 平台：自替换更新
+// downloadedPath: 已下载的更新包路径（.zip 或 .exe）
+func (a *MusicService) applyDownloadedFile(downloadedPath string) error {
+	// 1. 获取当前 exe 路径和所在目录
 	exePath, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("无法获取当前可执行文件路径: %w", err)
 	}
 	exePath, _ = filepath.Abs(exePath)
-	exeDir := filepath.Dir(exePath)
+	LogUpdateEvent("applyDownloadedFile", fmt.Sprintf("exePath=%s, downloadedPath=%s", exePath, downloadedPath))
 
-	// 2. 下载新 exe 到临时文件
 	tempDir := os.Getenv("TEMP")
 	if tempDir == "" {
 		tempDir = os.TempDir()
 	}
-	newExePath := filepath.Join(tempDir, "MusicLite_update.exe")
-	if err := downloadFile(info.DownloadURL, newExePath); err != nil {
-		return fmt.Errorf("下载更新包失败: %w", err)
-	}
-	// 校验：下载文件不能为空
-	if st, err := os.Stat(newExePath); err != nil || st.Size() == 0 {
-		return fmt.Errorf("下载的更新包无效或为空")
+	newExeTempPath := filepath.Join(tempDir, "MusicLite_new.exe")
+
+	// 2. 处理已下载的文件
+	lower := strings.ToLower(filepath.Ext(downloadedPath))
+	if lower == ".zip" {
+		// 从 zip 中提取 exe 到临时位置
+		if err := extractExeFromZipToPath(downloadedPath, newExeTempPath); err != nil {
+			return fmt.Errorf("提取新 exe 失败: %w", err)
+		}
+		LogUpdateEvent("extractExe", fmt.Sprintf("新 exe 已提取到 %s", newExeTempPath))
+		// 解压 zip 中除 exe 外的所有文件到当前 exe 所在目录
+		if err := extractAllExceptExeFromZip(downloadedPath, filepath.Dir(exePath)); err != nil {
+			return fmt.Errorf("解压更新文件失败: %w", err)
+		}
+		LogUpdateEvent("extractFiles", "非 exe 文件已解压到当前目录")
+	} else if lower == ".exe" {
+		if err := copyFile(downloadedPath, newExeTempPath); err != nil {
+			return fmt.Errorf("复制新 exe 失败: %w", err)
+		}
+	} else {
+		return fmt.Errorf("不支持的更新包格式: %s", filepath.Ext(downloadedPath))
 	}
 
-	// 3. 当前进程 PID
-	pid := os.Getpid()
-
-	// 4. 生成 .cmd 文件
-	cmdPath := filepath.Join(tempDir, "MusicLite_updater.cmd")
-	cmdContent := buildWindowsUpdaterCMD(exePath, newExePath, pid)
-	if err := os.WriteFile(cmdPath, []byte(cmdContent), 0644); err != nil {
-		return fmt.Errorf("写入更新脚本失败: %w", err)
+	// 3. 把自己重命名为 xxx.exe~
+	// Windows 允许重命名运行中的 exe（只是不能删除）
+	backupPath := exePath + "~"
+	os.Remove(backupPath) // 清理上一次遗留的备份
+	LogUpdateEvent("renameOldExe", fmt.Sprintf("rename %s -> %s", exePath, backupPath))
+	if err := os.Rename(exePath, backupPath); err != nil {
+		// rename 失败（可能被杀软/WebView2 锁定）
+		// 回退方案：用 copy 覆盖旧 exe，旧 exe 保留在原位（下次启动时 CleanupOldExeBackups 无法清理，但至少能更新）
+		LogUpdateEvent("renameOldExe", fmt.Sprintf("rename 失败: %v，尝试 copy 覆盖", err))
+		if err := copyFile(newExeTempPath, exePath); err != nil {
+			return fmt.Errorf("覆盖旧 exe 失败（rename 和 copy 均失败）: %w", err)
+		}
+		LogUpdateEvent("copyOverwrite", "已用 copy 覆盖旧 exe")
+		// copy 成功，删除临时新 exe
+		os.Remove(newExeTempPath)
+	} else {
+		// 4. rename 成功，把新 exe 移动到原 exe 路径
+		LogUpdateEvent("moveNewExe", fmt.Sprintf("rename %s -> %s", newExeTempPath, exePath))
+		if err := os.Rename(newExeTempPath, exePath); err != nil {
+			// move 失败，尝试 copy
+			LogUpdateEvent("moveNewExe", fmt.Sprintf("rename 失败: %v，尝试 copy", err))
+			if err := copyFile(newExeTempPath, exePath); err != nil {
+				os.Rename(backupPath, exePath) // 尝试恢复
+				return fmt.Errorf("移动新 exe 失败: %w", err)
+			}
+			os.Remove(newExeTempPath)
+		}
 	}
 
-	// 5. detached 启动 .cmd（不阻塞当前进程退出）
-	cmd := exec.Command("cmd", "/c", "start", "\"\"", "/b", cmdPath)
-	// CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS：脱离父进程
+	// 5. 启动新 exe（单实例机制会让旧实例自行退出）
+	LogUpdateEvent("startNewExe", fmt.Sprintf("启动 %s", exePath))
+	cmd := exec.Command(exePath)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		CreationFlags: 0x00000008 | 0x00000200, // DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
 		HideWindow:    true,
@@ -82,15 +127,122 @@ func (a *MusicService) PerformUpdate(info UpdateInfo) error {
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("启动更新脚本失败: %w", err)
+		return fmt.Errorf("启动新 exe 失败: %w", err)
 	}
+	LogUpdateEvent("startNewExe", "新 exe 已启动，等待单实例接管")
 
-	// 后续由前端调用 Quit() 退出主进程，.cmd 轮询到 PID 消失后接管替换
-	_ = exeDir // 保留目录引用，未来可能需要清理
+	// 清理下载的压缩包
+	os.Remove(downloadedPath)
+
 	return nil
 }
 
-// downloadFile 下载 URL 到本地文件（覆盖写入）
+// extractExeFromZipToPath 从 zip 中查找 exe 并提取到指定路径
+// 查找规则：优先 MusicLite.exe，否则任意 .exe
+func extractExeFromZipToPath(zipPath, targetPath string) error {
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	tryMatch := func(match func(name string) bool) bool {
+		for _, f := range r.File {
+			if f.FileInfo().IsDir() {
+				continue
+			}
+			if match(filepath.Base(f.Name)) {
+				out, err := os.Create(targetPath)
+				if err != nil {
+					return false
+				}
+				rc, err := f.Open()
+				if err != nil {
+					out.Close()
+					return false
+				}
+				_, err = io.Copy(out, rc)
+				rc.Close()
+				out.Close()
+				return err == nil
+			}
+		}
+		return false
+	}
+
+	// 第一轮：精确匹配 MusicLite.exe
+	if tryMatch(func(base string) bool {
+		return strings.EqualFold(base, "MusicLite.exe")
+	}) {
+		return nil
+	}
+	// 第二轮：任意 .exe
+	if tryMatch(func(base string) bool {
+		return strings.EqualFold(filepath.Ext(base), ".exe")
+	}) {
+		return nil
+	}
+	return fmt.Errorf("zip 中找不到 exe 文件")
+}
+
+// extractAllExceptExeFromZip 解压 zip 中除 exe 外的所有文件到 destDir
+func extractAllExceptExeFromZip(zipPath, destDir string) error {
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(filepath.Join(destDir, f.Name), 0755)
+			continue
+		}
+
+		base := filepath.Base(f.Name)
+		// 跳过所有 .exe 文件（已单独提取）
+		if strings.EqualFold(filepath.Ext(base), ".exe") {
+			continue
+		}
+
+		target := filepath.Join(destDir, f.Name)
+		os.MkdirAll(filepath.Dir(target), 0755)
+
+		out, err := os.Create(target)
+		if err != nil {
+			continue // 文件被占用，跳过
+		}
+		rc, err := f.Open()
+		if err != nil {
+			out.Close()
+			continue
+		}
+		io.Copy(out, rc)
+		rc.Close()
+		out.Close()
+	}
+	return nil
+}
+
+// copyFile 复制文件
+func copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
+}
+
+// downloadFile 下载 URL 到本地文件
 func downloadFile(url, destPath string) error {
 	client := &http.Client{Timeout: 10 * time.Minute}
 	req, err := http.NewRequest("GET", url, nil)
@@ -117,78 +269,4 @@ func downloadFile(url, destPath string) error {
 
 	_, err = io.Copy(out, resp.Body)
 	return err
-}
-
-// buildWindowsUpdaterCMD 生成 Windows 更新脚本
-//
-// 脚本逻辑：
-//  1. timeout 1 秒（让原进程有时间响应退出请求）
-//  2. 轮询 tasklist /PID <pid>，直到进程消失（最多 30 次）
-//  3. 备份旧 exe → .bak
-//  4. copy /Y 新 exe → 旧 exe 路径
-//  5. 启动新 exe
-//  6. 删除备份（延迟 1 秒）与 .cmd 自身
-//
-// 使用 chcp 65001 切换 UTF-8，避免中文路径乱码
-func buildWindowsUpdaterCMD(exePath, newExePath string, pid int) string {
-	// 用 \\\\?\\ 前缀绕过 MAX_PATH 限制并支持特殊字符（cmd copy 支持）
-	exeQuoted := "\"" + exePath + "\""
-	newQuoted := "\"" + newExePath + "\""
-	bakQuoted := "\"" + exePath + ".bak\""
-
-	var b strings.Builder
-	b.WriteString("@echo off\r\n")
-	b.WriteString("chcp 65001 > nul\r\n")
-	b.WriteString("setlocal\r\n\r\n")
-
-	// 等待原进程退出
-	b.WriteString(fmt.Sprintf("rem waiting for PID %d to exit\r\n", pid))
-	b.WriteString("set /a tries=0\r\n")
-	b.WriteString(":waitloop\r\n")
-	b.WriteString(fmt.Sprintf("tasklist /FI \"PID eq %d\" 2>nul | find \"%d\" >nul\r\n", pid, pid))
-	b.WriteString("if errorlevel 1 goto :proceed\r\n")
-	b.WriteString("set /a tries+=1\r\n")
-	b.WriteString("if %tries% GEQ 60 goto :forcekill\r\n")
-	b.WriteString("timeout /t 1 /nobreak > nul\r\n")
-	b.WriteString("goto :waitloop\r\n\r\n")
-
-	// 强杀兜底
-	b.WriteString(":forcekill\r\n")
-	b.WriteString(fmt.Sprintf("taskkill /F /PID %d >nul 2>&1\r\n", pid))
-	b.WriteString("timeout /t 1 /nobreak > nul\r\n\r\n")
-
-	// 备份 + 替换 + 启动
-	b.WriteString(":proceed\r\n")
-	b.WriteString("echo Updating MusicLite...\r\n")
-	// 备份旧 exe（失败也继续）
-	b.WriteString(fmt.Sprintf("copy /Y %s %s >nul 2>&1\r\n", exeQuoted, bakQuoted))
-	// 覆盖为新 exe（最多重试 5 次）
-	b.WriteString("set /a copytries=0\r\n")
-	b.WriteString(":copyloop\r\n")
-	b.WriteString(fmt.Sprintf("copy /Y %s %s >nul 2>&1\r\n", newQuoted, exeQuoted))
-	b.WriteString("if errorlevel 1 (\r\n")
-	b.WriteString("  set /a copytries+=1\r\n")
-	b.WriteString("  if %copytries% LSS 5 (\r\n")
-	b.WriteString("    timeout /t 1 /nobreak > nul\r\n")
-	b.WriteString("    goto :copyloop\r\n")
-	b.WriteString("  )\r\n")
-	b.WriteString("  echo Update failed: cannot replace exe.\r\n")
-	b.WriteString("  goto :cleanup\r\n")
-	b.WriteString(")\r\n\r\n")
-
-	// 启动新 exe（不阻塞 .cmd 退出）
-	b.WriteString("echo Starting new version...\r\n")
-	b.WriteString(fmt.Sprintf("start \"\" %s\r\n\r\n", exeQuoted))
-
-	// 清理
-	b.WriteString(":cleanup\r\n")
-	b.WriteString(fmt.Sprintf("del /F /Q %s >nul 2>&1\r\n", newQuoted))
-	b.WriteString("timeout /t 2 /nobreak > nul\r\n")
-	b.WriteString(fmt.Sprintf("del /F /Q %s >nul 2>&1\r\n", bakQuoted))
-	// 自删除：用 (goto) 2>nul & del 技巧
-	b.WriteString("(goto) 2>nul & del \"%~f0\"\r\n")
-	b.WriteString("endlocal\r\n")
-	b.WriteString("exit /b 0\r\n")
-
-	return b.String()
 }

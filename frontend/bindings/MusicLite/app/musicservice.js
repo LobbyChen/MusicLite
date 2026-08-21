@@ -23,6 +23,23 @@ import * as storage$0 from "../internal/storage/models.js";
 import * as $models from "./models.js";
 
 /**
+ * ApplyDownloadedUpdate 应用已下载完成的更新
+ * 使用已下载的文件（不再重新下载），生成 .cmd 脚本在主进程退出后替换可执行文件
+ * @returns {$CancellablePromise<void>}
+ */
+export function ApplyDownloadedUpdate() {
+    return $Call.ByID(1859028814);
+}
+
+/**
+ * CancelUpdateDownload 取消当前下载
+ * @returns {$CancellablePromise<void>}
+ */
+export function CancelUpdateDownload() {
+    return $Call.ByID(1115137113);
+}
+
+/**
  * CheckForUpdate 拉取 GitHub 最新 Release 并与当前版本比较
  * 不抛出错误，错误信息放在 UpdateInfo.Error 中（前端可直接显示）
  * @returns {$CancellablePromise<$models.UpdateInfo>}
@@ -42,6 +59,14 @@ export function CheckI18nNewKeys() {
     return $Call.ByID(4024078436).then(/** @type {($result: any) => any} */(($result) => {
         return $$createType1($result);
     }));
+}
+
+/**
+ * ClearUpdateDownloadState 清除持久化的下载状态（用户取消或应用更新后调用）
+ * @returns {$CancellablePromise<void>}
+ */
+export function ClearUpdateDownloadState() {
+    return $Call.ByID(2453684779);
 }
 
 /**
@@ -125,12 +150,23 @@ export function GetFileInArgs() {
 }
 
 /**
+ * GetI18nAutoAction 读取用户已设置的自动 i18n 合并动作
+ * 返回 Action="" 表示未设置（应弹窗），"skip"/"fill"/"overwrite" 表示自动应用
+ * @returns {$CancellablePromise<$models.I18nAutoActionResult>}
+ */
+export function GetI18nAutoAction() {
+    return $Call.ByID(703362415).then(/** @type {($result: any) => any} */(($result) => {
+        return $$createType7($result);
+    }));
+}
+
+/**
  * GetI18nData 暴露给前端：返回完整翻译数据
  * @returns {$CancellablePromise<$models.I18nData>}
  */
 export function GetI18nData() {
     return $Call.ByID(2121690250).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType7($result);
+        return $$createType8($result);
     }));
 }
 
@@ -144,7 +180,7 @@ export function GetI18nData() {
  */
 export function GetInstalledFonts() {
     return $Call.ByID(2346987914).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType8($result);
+        return $$createType9($result);
     }));
 }
 
@@ -221,7 +257,17 @@ export function GetTrack(id) {
  */
 export function GetTrayState() {
     return $Call.ByID(2404781643).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType9($result);
+        return $$createType10($result);
+    }));
+}
+
+/**
+ * GetUpdateDownloadProgress 获取当前下载进度
+ * @returns {$CancellablePromise<$models.updateDownloadProgress>}
+ */
+export function GetUpdateDownloadProgress() {
+    return $Call.ByID(2124648952).then(/** @type {($result: any) => any} */(($result) => {
+        return $$createType11($result);
     }));
 }
 
@@ -231,7 +277,7 @@ export function GetTrayState() {
  */
 export function GetVersionInfo() {
     return $Call.ByID(2675164726).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType10($result);
+        return $$createType12($result);
     }));
 }
 
@@ -274,7 +320,7 @@ export function HotkeyFormatKey(keys) {
  */
 export function HotkeyGetActionList() {
     return $Call.ByID(1573858682).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType12($result);
+        return $$createType14($result);
     }));
 }
 
@@ -284,7 +330,7 @@ export function HotkeyGetActionList() {
  */
 export function HotkeyGetConfig() {
     return $Call.ByID(549795818).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType14($result);
+        return $$createType16($result);
     }));
 }
 
@@ -326,7 +372,7 @@ export function ImportFilesFromPaths(paths) {
  */
 export function ImportSettings() {
     return $Call.ByID(2398840366).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType15($result);
+        return $$createType17($result);
     }));
 }
 
@@ -352,7 +398,7 @@ export function IsTrayQuitting() {
  */
 export function LoadSettings() {
     return $Call.ByID(1006476059).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType15($result);
+        return $$createType17($result);
     }));
 }
 
@@ -402,8 +448,7 @@ export function PackShare(id) {
 }
 
 /**
- * PerformUpdate Windows 平台：下载便携包并通过 .cmd 文件替换自己后重启
- * info 由前端传入（来自 CheckForUpdate 的结果），也可为 nil 时重新检查
+ * PerformUpdate Windows 平台：下载便携包并自替换
  * @param {$models.UpdateInfo} info
  * @returns {$CancellablePromise<void>}
  */
@@ -417,7 +462,7 @@ export function PerformUpdate(info) {
  */
 export function PickImageFile() {
     return $Call.ByID(1908735394).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType16($result);
+        return $$createType18($result);
     }));
 }
 
@@ -449,7 +494,7 @@ export function PlayerGetEqEnabled() {
  */
 export function PlayerGetEqFreqs() {
     return $Call.ByID(276610990).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType17($result);
+        return $$createType19($result);
     }));
 }
 
@@ -458,7 +503,7 @@ export function PlayerGetEqFreqs() {
  */
 export function PlayerGetEqGains() {
     return $Call.ByID(1596937225).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType17($result);
+        return $$createType19($result);
     }));
 }
 
@@ -474,7 +519,7 @@ export function PlayerGetPlayMode() {
  */
 export function PlayerGetState() {
     return $Call.ByID(427269906).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType18($result);
+        return $$createType20($result);
     }));
 }
 
@@ -590,7 +635,7 @@ export function QueueAddAllFromLibrary() {
  */
 export function QueueAddTrack(id) {
     return $Call.ByID(68181639, id).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType19($result);
+        return $$createType21($result);
     }));
 }
 
@@ -606,7 +651,7 @@ export function QueueClear() {
  */
 export function QueueGetNext() {
     return $Call.ByID(2031574098).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType19($result);
+        return $$createType21($result);
     }));
 }
 
@@ -615,7 +660,7 @@ export function QueueGetNext() {
  */
 export function QueueGetPrev() {
     return $Call.ByID(3949423462).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType19($result);
+        return $$createType21($result);
     }));
 }
 
@@ -624,7 +669,7 @@ export function QueueGetPrev() {
  */
 export function QueueGetStatus() {
     return $Call.ByID(2959569805).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType20($result);
+        return $$createType22($result);
     }));
 }
 
@@ -675,7 +720,7 @@ export function QuitApp() {
  */
 export function ReadFileForEdit(path) {
     return $Call.ByID(3392836227, path).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType16($result);
+        return $$createType18($result);
     }));
 }
 
@@ -703,8 +748,17 @@ export function RecordPlayStart(trackId) {
  */
 export function ResetSettings() {
     return $Call.ByID(2661309004).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType15($result);
+        return $$createType17($result);
     }));
+}
+
+/**
+ * RestartApp 暴露给前端：重启应用（启动新实例后退出当前实例）
+ * 用于 i18n 合并完成后让用户立即看到效果，避免手动重启
+ * @returns {$CancellablePromise<void>}
+ */
+export function RestartApp() {
+    return $Call.ByID(1003883728);
 }
 
 /**
@@ -733,6 +787,18 @@ export function SetAsDefaultPlayer() {
 }
 
 /**
+ * SetI18nAutoAction 持久化用户在 i18n 弹窗中勾选的"下次自动"选择
+ * action: "" / "skip" / "fill" / "overwrite"
+ * cleanObsolete: 自动模式下是否清理冗余键
+ * @param {string} action
+ * @param {boolean} cleanObsolete
+ * @returns {$CancellablePromise<void>}
+ */
+export function SetI18nAutoAction(action, cleanObsolete) {
+    return $Call.ByID(3742416595, action, cleanObsolete);
+}
+
+/**
  * SetSystemMasterVolume 设置系统主音量 (0-100)
  * 由 itchyny/volume-go 跨平台实现：
  *   - Windows: 走 Core Audio / MMDevice API
@@ -746,11 +812,30 @@ export function SetSystemMasterVolume(vol) {
 }
 
 /**
+ * SetUpdateThreadCount 设置下载线程数（1-256）
+ * @param {number} count
+ * @returns {$CancellablePromise<void>}
+ */
+export function SetUpdateThreadCount(count) {
+    return $Call.ByID(1245644982, count);
+}
+
+/**
  * ShowMainWindow 暴露给前端：从自定义菜单中打开主窗口
  * @returns {$CancellablePromise<void>}
  */
 export function ShowMainWindow() {
     return $Call.ByID(4154600878);
+}
+
+/**
+ * StartUpdateDownload 启动更新下载（异步，立即返回）
+ * info: 前端传入的 UpdateInfo（来自 CheckForUpdate）
+ * @param {$models.UpdateInfo} info
+ * @returns {$CancellablePromise<void>}
+ */
+export function StartUpdateDownload(info) {
+    return $Call.ByID(1313029139, info);
 }
 
 /**
@@ -801,17 +886,19 @@ const $$createType3 = format$0.MscData.createFrom;
 const $$createType4 = $Create.Array($$createType3);
 const $$createType5 = storage$0.Database.createFrom;
 const $$createType6 = $Create.Nullable($$createType5);
-const $$createType7 = $models.I18nData.createFrom;
-const $$createType8 = $Create.Array($Create.Any);
-const $$createType9 = $models.TrayState.createFrom;
-const $$createType10 = $models.VersionInfo.createFrom;
-const $$createType11 = $Create.Map($Create.Any, $Create.Any);
-const $$createType12 = $Create.Array($$createType11);
-const $$createType13 = $models.HotkeyConfig.createFrom;
-const $$createType14 = $Create.Map($Create.Any, $$createType13);
-const $$createType15 = $models.Settings.createFrom;
-const $$createType16 = $models.PickedFile.createFrom;
-const $$createType17 = $Create.Array($Create.Any);
-const $$createType18 = $models.PlayerState.createFrom;
-const $$createType19 = $models.QueueItem.createFrom;
-const $$createType20 = $models.QueueStatus.createFrom;
+const $$createType7 = $models.I18nAutoActionResult.createFrom;
+const $$createType8 = $models.I18nData.createFrom;
+const $$createType9 = $Create.Array($Create.Any);
+const $$createType10 = $models.TrayState.createFrom;
+const $$createType11 = $models.updateDownloadProgress.createFrom;
+const $$createType12 = $models.VersionInfo.createFrom;
+const $$createType13 = $Create.Map($Create.Any, $Create.Any);
+const $$createType14 = $Create.Array($$createType13);
+const $$createType15 = $models.HotkeyConfig.createFrom;
+const $$createType16 = $Create.Map($Create.Any, $$createType15);
+const $$createType17 = $models.Settings.createFrom;
+const $$createType18 = $models.PickedFile.createFrom;
+const $$createType19 = $Create.Array($Create.Any);
+const $$createType20 = $models.PlayerState.createFrom;
+const $$createType21 = $models.QueueItem.createFrom;
+const $$createType22 = $models.QueueStatus.createFrom;

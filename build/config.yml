@@ -14,7 +14,6 @@ info:
   copyright: "(c) 2026, LobbyChen"
   comments: "MusicLite Music Player"
 
-# Dev mode configuration
 dev_mode:
   root_path: .
   log_level: warn
@@ -32,8 +31,8 @@ dev_mode:
       - "*_test.go"
     watched_extension:
       - "*.go"
-      - "*.js"
-      - "*.ts"
+      - "*.js" # Watch for changes to JS/TS files included using the //wails:include directive.
+      - "*.ts" # The frontend directory will be excluded entirely by the setting above.
     git_ignore: true
   executes:
     - cmd: wails3 build DEV=true

@@ -9,6 +9,7 @@ export {
 
 export {
     HotkeyConfig,
+    I18nAutoActionResult,
     I18nData,
     I18nMergeResult,
     I18nNewKeysReport,
@@ -19,6 +20,7 @@ export {
     QueueStatus,
     Settings,
     TrayState,
+    UpdateDownloadState,
     UpdateInfo,
     VersionInfo
 } from "./models.js";

@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -117,10 +119,21 @@ func (a *MusicService) CheckForUpdate() UpdateInfo {
 	// 选取当前平台的便携包资源
 	info.DownloadURL, info.DownloadName, info.DownloadSize = pickPlatformAsset(rel.Assets, runtime.GOOS)
 
-	// 版本比较
-	info.HasUpdate = compareVersion(info.LatestVer, info.CurrentVer) > 0
+	// 版本比较：dev 版本（含 -dev. 后缀）默认不提示更新
+	// dev 构建是开发分支产物，版本号可能领先于正式 release，不应触发自动更新
+	if isDevVersion(Version) {
+		info.HasUpdate = false
+	} else {
+		info.HasUpdate = compareVersion(info.LatestVer, info.CurrentVer) > 0
+	}
 
 	return info
+}
+
+// isDevVersion 判断是否为开发版本（含 -dev. 后缀）
+// 例如 0.7.1-dev.5.gabc1234 是 dev 版本，0.7.1 不是
+func isDevVersion(v string) bool {
+	return strings.Contains(v, "-dev.")
 }
 
 // stripDevSuffix 去掉开发版本后缀：0.7.1-dev.5.gabc1234 → 0.7.1
@@ -200,31 +213,35 @@ func splitVersionParts(v string) []string {
 
 // pickPlatformAsset 为指定平台选取合适的便携包资源
 //
-//	Windows: 匹配 "MusicLite_B*_amd64.exe"（便携单文件，排除 Setup 安装包）
-//	macOS:   匹配 "*darwin*" / "*macos*" / "*.dmg"
-//	Linux:   匹配 "*linux*" / "*.deb" / "*.rpm" / "*.tar.gz"
+//	Windows: 优先匹配便携 .exe（排除 Setup 安装包），其次便携 .zip
+//	macOS:   匹配 "*darwin*" / "*macos*" / "*.dmg" / "*macOS*.zip"
+//	Linux:   匹配 "*.deb" / "*.rpm" / "*linux*.tar.gz"
+//
+// 实际 release 资产名（CI 上传）：
+//
+//	MusicLite-Windows-x64-Portable.zip   便携包（zip）
+//	MusicLite-Windows-x64-Setup.exe       NSIS 安装程序
+//	MusicLite-macOS-arm64.app.zip
+//	musiclite.deb / musiclite.rpm
 func pickPlatformAsset(assets []githubReleaseAsset, goos string) (url, name string, size int64) {
 	var patterns []string
 	switch goos {
 	case "windows":
 		patterns = []string{
-			`^MusicLite_B.*_amd64\.exe$`, // 便携包
-			`^MusicLite_.*_amd64\.exe$`,  // 宽松兜底
-			`^MusicLite_.*\.exe$`,        // 最宽松兜底
+			`(?i)^MusicLite.*Portable.*\.(exe|zip)$`, // 便携包（exe 或 zip）
+			`(?i)^MusicLite.*portable.*\.(exe|zip)$`,
+			`(?i)^MusicLite.*x64.*Portable.*\.(exe|zip)$`,
 		}
 	case "darwin":
 		patterns = []string{
-			`(?i).*darwin.*`,
-			`(?i).*macos.*`,
+			`(?i)^MusicLite.*macos.*\.(zip|dmg)$`,
+			`(?i)^MusicLite.*darwin.*\.(zip|dmg)$`,
 			`(?i).*\.dmg$`,
 		}
 	default: // linux 及其他
 		patterns = []string{
-			`(?i).*linux.*amd64.*`,
-			`(?i).*linux.*x86_64.*`,
-			`(?i).*\.deb$`,
-			`(?i).*\.rpm$`,
-			`(?i).*linux.*\.tar\.gz$`,
+			`(?i)^musiclite\.(deb|rpm)$`,
+			`(?i)^MusicLite.*linux.*\.(tar\.gz|deb|rpm)$`,
 		}
 	}
 
@@ -245,4 +262,25 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "..."
+}
+
+// CleanupOldExeBackups 清理上次更新遗留的 .exe~ 文件
+// 在程序启动时调用，删除 exe 所在目录下所有 .exe~ 结尾的文件
+func CleanupOldExeBackups() {
+	exePath, err := os.Executable()
+	if err != nil {
+		return
+	}
+	exeDir := filepath.Dir(exePath)
+
+	entries, err := os.ReadDir(exeDir)
+	if err != nil {
+		return
+	}
+
+	for _, entry := range entries {
+		if strings.HasSuffix(strings.ToLower(entry.Name()), ".exe~") {
+			os.Remove(filepath.Join(exeDir, entry.Name()))
+		}
+	}
 }

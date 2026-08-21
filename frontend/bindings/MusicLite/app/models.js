@@ -51,6 +51,46 @@ export class HotkeyConfig {
 }
 
 /**
+ * I18nAutoActionResult 返回用户已设置的自动 i18n 合并动作
+ */
+export class I18nAutoActionResult {
+    /**
+     * Creates a new I18nAutoActionResult instance.
+     * @param {Partial<I18nAutoActionResult>} [$$source = {}] - The source object to create the I18nAutoActionResult.
+     */
+    constructor($$source = {}) {
+        if (!("action" in $$source)) {
+            /**
+             * "" / "skip" / "fill" / "overwrite"
+             * @member
+             * @type {string}
+             */
+            this["action"] = "";
+        }
+        if (!("cleanObsolete" in $$source)) {
+            /**
+             * 自动模式下是否清理冗余键
+             * @member
+             * @type {boolean}
+             */
+            this["cleanObsolete"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new I18nAutoActionResult instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {I18nAutoActionResult}
+     */
+    static createFrom($$source = {}) {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new I18nAutoActionResult(/** @type {Partial<I18nAutoActionResult>} */($$parsedSource));
+    }
+}
+
+/**
  * I18nData 统一翻译数据结构（前后端共享）
  */
 export class I18nData {
@@ -811,6 +851,44 @@ export class Settings {
              */
             this["void_mode"] = false;
         }
+        if (!("i18n_auto_action" in $$source)) {
+            /**
+             * i18n 自动合并：用户在弹窗中勾选"下次自动"后的选择
+             * "" / "skip" / "fill" / "overwrite"
+             * - ""         未设置（下次仍然弹窗）
+             * - "skip"     下次自动跳过
+             * - "fill"     下次自动补全（保留用户自定义值，仅添加缺失键）
+             * - "overwrite" 下次自动覆盖（内嵌值覆盖同键不同值）
+             * @member
+             * @type {string}
+             */
+            this["i18n_auto_action"] = "";
+        }
+        if (!("i18n_auto_clean_obsolete" in $$source)) {
+            /**
+             * i18n 自动合并时是否清理冗余键
+             * @member
+             * @type {boolean}
+             */
+            this["i18n_auto_clean_obsolete"] = false;
+        }
+        if (!("update_thread_count" in $$source)) {
+            /**
+             * 更新下载线程数（1-256，默认 16）
+             * @member
+             * @type {number}
+             */
+            this["update_thread_count"] = 0;
+        }
+        if (/** @type {any} */(false)) {
+            /**
+             * 更新下载状态持久化（用于重启后恢复进度条显示）
+             * 非空表示有未完成的下载任务
+             * @member
+             * @type {UpdateDownloadState | null | undefined}
+             */
+            this["update_download_state"] = undefined;
+        }
         if (!("hotkey_playpause" in $$source)) {
             /**
              * 全局快捷键（3 个）
@@ -846,18 +924,22 @@ export class Settings {
      * @returns {Settings}
      */
     static createFrom($$source = {}) {
-        const $$createField38_0 = $$createType9;
-        const $$createField39_0 = $$createType9;
-        const $$createField40_0 = $$createType9;
+        const $$createField41_0 = $$createType10;
+        const $$createField42_0 = $$createType11;
+        const $$createField43_0 = $$createType11;
+        const $$createField44_0 = $$createType11;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("update_download_state" in $$parsedSource) {
+            $$parsedSource["update_download_state"] = $$createField41_0($$parsedSource["update_download_state"]);
+        }
         if ("hotkey_playpause" in $$parsedSource) {
-            $$parsedSource["hotkey_playpause"] = $$createField38_0($$parsedSource["hotkey_playpause"]);
+            $$parsedSource["hotkey_playpause"] = $$createField42_0($$parsedSource["hotkey_playpause"]);
         }
         if ("hotkey_next" in $$parsedSource) {
-            $$parsedSource["hotkey_next"] = $$createField39_0($$parsedSource["hotkey_next"]);
+            $$parsedSource["hotkey_next"] = $$createField43_0($$parsedSource["hotkey_next"]);
         }
         if ("hotkey_prev" in $$parsedSource) {
-            $$parsedSource["hotkey_prev"] = $$createField40_0($$parsedSource["hotkey_prev"]);
+            $$parsedSource["hotkey_prev"] = $$createField44_0($$parsedSource["hotkey_prev"]);
         }
         return new Settings(/** @type {Partial<Settings>} */($$parsedSource));
     }
@@ -912,6 +994,93 @@ export class TrayState {
     static createFrom($$source = {}) {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new TrayState(/** @type {Partial<TrayState>} */($$parsedSource));
+    }
+}
+
+/**
+ * UpdateDownloadState 持久化的下载状态（重启后恢复进度条用）
+ */
+export class UpdateDownloadState {
+    /**
+     * Creates a new UpdateDownloadState instance.
+     * @param {Partial<UpdateDownloadState>} [$$source = {}] - The source object to create the UpdateDownloadState.
+     */
+    constructor($$source = {}) {
+        if (!("url" in $$source)) {
+            /**
+             * 下载 URL
+             * @member
+             * @type {string}
+             */
+            this["url"] = "";
+        }
+        if (!("fileName" in $$source)) {
+            /**
+             * 资产名
+             * @member
+             * @type {string}
+             */
+            this["fileName"] = "";
+        }
+        if (!("outputPath" in $$source)) {
+            /**
+             * 本地临时文件路径
+             * @member
+             * @type {string}
+             */
+            this["outputPath"] = "";
+        }
+        if (!("latestVer" in $$source)) {
+            /**
+             * 新版本号
+             * @member
+             * @type {string}
+             */
+            this["latestVer"] = "";
+        }
+        if (!("fileSize" in $$source)) {
+            /**
+             * 文件总大小（字节）
+             * @member
+             * @type {number}
+             */
+            this["fileSize"] = 0;
+        }
+        if (!("downloaded" in $$source)) {
+            /**
+             * 已下载大小（字节）
+             * @member
+             * @type {number}
+             */
+            this["downloaded"] = 0;
+        }
+        if (!("status" in $$source)) {
+            /**
+             * "downloading" / "completed" / "cancelled" / "error"
+             * @member
+             * @type {string}
+             */
+            this["status"] = "";
+        }
+        if (/** @type {any} */(false)) {
+            /**
+             * @member
+             * @type {string | undefined}
+             */
+            this["errorMessage"] = undefined;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new UpdateDownloadState instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {UpdateDownloadState}
+     */
+    static createFrom($$source = {}) {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new UpdateDownloadState(/** @type {Partial<UpdateDownloadState>} */($$parsedSource));
     }
 }
 
@@ -1095,6 +1264,93 @@ export class VersionInfo {
     }
 }
 
+/**
+ * updateDownloadProgress 返回给前端的进度信息
+ */
+export class updateDownloadProgress {
+    /**
+     * Creates a new updateDownloadProgress instance.
+     * @param {Partial<updateDownloadProgress>} [$$source = {}] - The source object to create the updateDownloadProgress.
+     */
+    constructor($$source = {}) {
+        if (!("downloaded" in $$source)) {
+            /**
+             * 已下载字节
+             * @member
+             * @type {number}
+             */
+            this["downloaded"] = 0;
+        }
+        if (!("total" in $$source)) {
+            /**
+             * 文件总大小
+             * @member
+             * @type {number}
+             */
+            this["total"] = 0;
+        }
+        if (!("progress" in $$source)) {
+            /**
+             * 0~1
+             * @member
+             * @type {number}
+             */
+            this["progress"] = 0;
+        }
+        if (!("speed" in $$source)) {
+            /**
+             * 下载速度（字节/秒）
+             * @member
+             * @type {number}
+             */
+            this["speed"] = 0;
+        }
+        if (!("status" in $$source)) {
+            /**
+             * "idle" / "downloading" / "completed" / "cancelled" / "error"
+             * @member
+             * @type {string}
+             */
+            this["status"] = "";
+        }
+        if (!("fileName" in $$source)) {
+            /**
+             * 资产名
+             * @member
+             * @type {string}
+             */
+            this["fileName"] = "";
+        }
+        if (!("latestVer" in $$source)) {
+            /**
+             * 新版本号
+             * @member
+             * @type {string}
+             */
+            this["latestVer"] = "";
+        }
+        if (/** @type {any} */(false)) {
+            /**
+             * @member
+             * @type {string | undefined}
+             */
+            this["error"] = undefined;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new updateDownloadProgress instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {updateDownloadProgress}
+     */
+    static createFrom($$source = {}) {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new updateDownloadProgress(/** @type {Partial<updateDownloadProgress>} */($$parsedSource));
+    }
+}
+
 // Private type creation functions
 const $$createType0 = $Create.Map($Create.Any, $Create.Any);
 const $$createType1 = $Create.Map($Create.Any, $$createType0);
@@ -1105,4 +1361,6 @@ const $$createType5 = format$0.MscData.createFrom;
 const $$createType6 = $Create.Nullable($$createType5);
 const $$createType7 = QueueItem.createFrom;
 const $$createType8 = $Create.Array($$createType7);
-const $$createType9 = HotkeyConfig.createFrom;
+const $$createType9 = UpdateDownloadState.createFrom;
+const $$createType10 = $Create.Nullable($$createType9);
+const $$createType11 = HotkeyConfig.createFrom;

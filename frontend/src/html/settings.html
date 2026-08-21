@@ -253,17 +253,39 @@
                         <button class="btn btn-primary" id="check-update-btn" data-i18n="settings.checkUpdateBtn">检查更新</button>
                         <span id="update-status" class="toggle-desc" style="align-self: center;"></span>
                     </div>
-                    <div id="update-detail" style="display: none; margin-top: 12px; padding: 12px; border-radius: 8px; background: var(--bg-elevated, rgba(255,255,255,0.04)); border: 1px solid var(--border-color, rgba(255,255,255,0.08)); max-height: 280px; overflow-y: auto;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; flex-wrap: wrap;">
-                            <strong id="update-title"></strong>
-                            <span id="update-version" class="text-muted" style="font-size: 0.9em;"></span>
+                    <div id="update-actions" class="button-row" style="display: none; margin-top: 10px; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" id="perform-update-btn" data-i18n="settings.performUpdate">下载并应用更新</button>
+                        <button class="btn btn-secondary" id="open-release-page-btn" data-i18n="settings.openReleasePage">打开发布页</button>
+                    </div>
+                    <!-- 下载进度条 -->
+                    <div id="update-download-progress" style="display: none; margin-top: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span id="update-progress-label" class="toggle-desc" style="font-size: 0.88em;"></span>
+                            <span id="update-progress-percent" class="toggle-desc" style="font-size: 0.88em; font-weight: 600;"></span>
                         </div>
-                        <pre id="update-notes" style="white-space: pre-wrap; word-break: break-word; font-family: inherit; margin: 0 0 10px; font-size: 0.88em; line-height: 1.5; color: var(--text-muted, #999);"></pre>
-                        <div class="button-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button class="btn btn-primary" id="perform-update-btn" data-i18n="settings.performUpdate">立即更新</button>
-                            <button class="btn btn-secondary" id="open-release-page-btn" data-i18n="settings.openReleasePage">打开发布页</button>
-                            <button class="btn btn-secondary" id="dismiss-update-btn" data-i18n="settings.dismissUpdate">稍后再说</button>
+                        <div style="position: relative; height: 8px; border-radius: 4px; background: var(--hover-color, rgba(255,255,255,0.08)); overflow: hidden;">
+                            <div id="update-progress-bar" style="position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: var(--accent-color, #1DB954); border-radius: 4px; transition: width 0.3s ease;"></div>
                         </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                            <span id="update-progress-detail" class="toggle-desc" style="font-size: 0.82em; opacity: 0.7;"></span>
+                            <button class="btn btn-secondary" id="cancel-update-download-btn" style="padding: 4px 10px; font-size: 0.82em;" data-i18n="settings.cancelDownload">取消</button>
+                        </div>
+                    </div>
+                    <!-- 下载完成提示 -->
+                    <div id="update-download-complete" style="display: none; margin-top: 12px; padding: 12px; border-radius: 8px; background: color-mix(in srgb, var(--accent-color, #1DB954) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent-color, #1DB954) 30%, transparent);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <span id="update-complete-text" class="toggle-desc" style="color: var(--accent-color, #1DB954); font-size: 0.9em;"></span>
+                            <button class="btn btn-primary" id="apply-downloaded-update-btn" data-i18n="settings.restartToUpdate">重启更新</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- 下载线程数配置 -->
+                <div class="setting-item" style="margin-top: 12px;">
+                    <label data-i18n="settings.downloadThreads">下载线程数</label>
+                    <p class="text-muted" style="margin: 4px 0 8px;" data-i18n="settings.downloadThreadsDesc">多线程下载更新包的线程数（1-16）</p>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="range" id="update-thread-count-slider" min="1" max="256" value="16" step="1" style="flex: 1; accent-color: var(--accent-color, #1DB954);" />
+                        <span id="update-thread-count-value" class="toggle-desc" style="min-width: 30px; text-align: center; font-weight: 600;">16</span>
                     </div>
                 </div>
                 <div class="setting-item" style="margin-top: 16px;">

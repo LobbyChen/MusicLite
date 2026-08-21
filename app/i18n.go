@@ -384,6 +384,32 @@ func (a *MusicService) GetI18nData() I18nData {
 	return *loadI18nData()
 }
 
+// SetI18nAutoAction 持久化用户在 i18n 弹窗中勾选的"下次自动"选择
+// action: "" / "skip" / "fill" / "overwrite"
+// cleanObsolete: 自动模式下是否清理冗余键
+func (a *MusicService) SetI18nAutoAction(action string, cleanObsolete bool) {
+	s := a.LoadSettings()
+	s.I18nAutoAction = action
+	s.I18nAutoCleanObsolete = cleanObsolete
+	_ = a.SaveSettings(s)
+}
+
+// I18nAutoActionResult 返回用户已设置的自动 i18n 合并动作
+type I18nAutoActionResult struct {
+	Action          string `json:"action"`            // "" / "skip" / "fill" / "overwrite"
+	CleanObsolete   bool   `json:"cleanObsolete"`   // 自动模式下是否清理冗余键
+}
+
+// GetI18nAutoAction 读取用户已设置的自动 i18n 合并动作
+// 返回 Action="" 表示未设置（应弹窗），"skip"/"fill"/"overwrite" 表示自动应用
+func (a *MusicService) GetI18nAutoAction() I18nAutoActionResult {
+	s := a.LoadSettings()
+	return I18nAutoActionResult{
+		Action:        s.I18nAutoAction,
+		CleanObsolete: s.I18nAutoCleanObsolete,
+	}
+}
+
 // getBackendStrings 根据当前设置的语言返回后端文案
 func (a *MusicService) getBackendStrings() backendStrings {
 	data := loadI18nData()

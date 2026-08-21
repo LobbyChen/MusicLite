@@ -2802,6 +2802,33 @@ body[data-page="designer"][data-new-ui="true"] .save-bar {
     border: none;
 }
 
+/* ============================================================
+   检查更新按钮旋转动画
+   ============================================================ */
+/* 按钮内联旋转图标：::before 生成一个spinner，文字保持不变 */
+.btn-checking {
+    position: relative;
+    opacity: 0.8;
+    cursor: wait;
+}
+.btn-checking::before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+    vertical-align: middle;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: btn-spin 0.8s linear infinite;
+}
+@keyframes btn-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 /* 迷你播放器 WinUI3 风格（Designer 页面）—— 与 save-bar 对齐，避免被侧边栏遮挡 */
 body[data-page="designer"][data-new-ui="true"] .mini-player {
     left: 256px;

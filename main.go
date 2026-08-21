@@ -16,8 +16,16 @@ import (
 var assets embed.FS
 
 func main() {
-	// 单实例控制：若有旧实例运行则 taskkill 后接管
+	// 初始化日志输出到 log.txt（最早调用）
+	app.InitLogger()
+
+	// 单实例控制：若有旧实例运行则通知其退出
 	app.EnsureSingleInstance()
+
+	// 清理上次更新遗留的 .exe~ 文件
+	// 放在 EnsureSingleInstance 之后：此时旧实例已退出，.exe~ 文件已解锁
+	app.CleanupOldExeBackups()
+
 	file := app.GetFileInArgs()
 
 	// 确保 i18n.json 已解压到用户数据目录（首次启动）
