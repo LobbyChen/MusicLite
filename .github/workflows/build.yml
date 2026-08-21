@@ -1,0 +1,254 @@
+name: Build & Release
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+          - os: ubuntu-24.04
+            platform: linux
+          - os: macos-latest
+            platform: macos
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails v3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.8
+
+      # ============================ Windows ============================
+      - name: "[Windows] Install NSIS / MinGW"
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) {
+            choco install mingw -y --no-progress
+            $machine = [Environment]::GetEnvironmentVariable("Path", "Machine")
+            $user = [Environment]::GetEnvironmentVariable("Path", "User")
+            $env:Path = "$machine;$user"
+          }
+          gcc --version
+          choco install nsis -y --no-progress
+
+      - name: "[Windows] Prepare native libs (FFTW + FFmpeg)"
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force libs | Out-Null
+          # FFTW 3.3.5 官方预编译 DLL + 用 dlltool 生成 MinGW 导入库
+          Invoke-WebRequest -Uri "https://fftw.org/pub/fftw/fftw-3.3.5-dll64.zip" -OutFile fftw.zip
+          Expand-Archive fftw.zip -DestinationPath fftw
+          Copy-Item fftw\libfftw3-3.dll libs\
+          dlltool -d fftw\libfftw3-3.def -l libs\libfftw3-3.a -D libfftw3-3.dll
+          # FFmpeg shared 构建（含 .dll.a 导入库，用于 CGO 链接）
+          Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-win64-gpl-shared.zip" -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg
+
+      - name: "[Windows] Build"
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $ff = (Get-ChildItem ffmpeg -Directory | Select-Object -First 1).FullName
+          $env:CGO_ENABLED = "1"
+          $env:CGO_CFLAGS = "-I$ff\include"
+          $env:CGO_LDFLAGS = "-L$ff\lib -L$PWD\libs -lavformat -lavcodec -lswresample -lavutil"
+          wails3 build
+
+      - name: "[Windows] Create installer & portable package"
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $ff = (Get-ChildItem ffmpeg -Directory | Select-Object -First 1).FullName
+          # 汇总运行时 DLL 到 libs\
+          Copy-Item "$ff\bin\*.dll" libs\
+          # installer.nsi 期望可执行文件位于 <根目录>\bin\MusicLite.exe
+          New-Item -ItemType Directory -Force bin | Out-Null
+          Copy-Item build\bin\musiclite.exe bin\MusicLite.exe
+          # 构建 NSIS 安装程序
+          Set-Location installer
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /V2 installer.nsi
+          Set-Location ..
+          # 整理发布产物：安装程序 + 绿色直开包
+          New-Item -ItemType Directory -Force dist\portable | Out-Null
+          Copy-Item bin\MusicLite.exe dist\portable\
+          Copy-Item libs\*.dll dist\portable\
+          Compress-Archive -Path dist\portable\* -DestinationPath dist\MusicLite-Windows-x64-Portable.zip
+          Copy-Item (Get-ChildItem build\bin\*Setup*.exe | Select-Object -First 1).FullName dist\MusicLite-Windows-x64-Setup.exe
+          Remove-Item dist\portable -Recurse -Force
+
+      # ============================= Linux =============================
+      - name: "[Linux] Install system dependencies"
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config rpm \
+            libfftw3-dev libgtk-4-dev libwebkitgtk-6.0-dev libnotify-dev \
+            libavformat-dev libavcodec-dev libswresample-dev libavutil-dev \
+            libx11-dev libxtst-dev libxkbcommon-dev
+
+      - name: "[Linux] Set package version from tag"
+        if: matrix.platform == 'linux'
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            sed -i "s/^version: .*/version: \"$VERSION\"/" build/linux/nfpm/nfpm.yaml
+          fi
+
+      - name: "[Linux] Build"
+        if: matrix.platform == 'linux'
+        run: |
+          export CGO_ENABLED=1
+          export CGO_LDFLAGS="-lavformat -lavcodec -lswresample -lavutil"
+          wails3 build
+
+      - name: "[Linux] Create .deb & .rpm packages"
+        if: matrix.platform == 'linux'
+        env:
+          GOARCH: amd64
+          GIT_COMMITTER_NAME: LobbyChen
+          GIT_COMMITTER_EMAIL: LobbyChen@lobbychen.top
+        run: |
+          wails3 task linux:create:deb
+          wails3 task linux:create:rpm
+          mkdir -p dist
+          cp bin/*.deb bin/*.rpm dist/
+
+      # ============================= macOS =============================
+      - name: "[macOS] Install dependencies (fftw + ffmpeg)"
+        if: matrix.platform == 'macos'
+        run: brew install fftw ffmpeg
+
+      - name: "[macOS] Build .app bundle"
+        if: matrix.platform == 'macos'
+        run: |
+          set -euo pipefail
+          PREFIX="$(brew --prefix)"
+          export CGO_ENABLED=1 GOOS=darwin
+          export CGO_CFLAGS="-I$PREFIX/include -mmacosx-version-min=12.0"
+          export CGO_LDFLAGS="-L$PREFIX/lib -lavformat -lavcodec -lswresample -lavutil -mmacosx-version-min=12.0"
+          export MACOSX_DEPLOYMENT_TARGET=12.0
+          # 前端资源 + bindings（production）
+          wails3 task common:build:frontend
+          # 编译主程序（与 build/darwin/Taskfile.yml build:native 参数一致）
+          mkdir -p bin
+          go build -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o bin/musiclite
+          # 组装 .app bundle（与 create:app:bundle 一致）
+          mkdir -p bin/MusicLite.app/Contents/MacOS bin/MusicLite.app/Contents/Resources
+          cp build/darwin/icons.icns bin/MusicLite.app/Contents/Resources/
+          if [ -f build/darwin/Assets.car ]; then
+            cp build/darwin/Assets.car bin/MusicLite.app/Contents/Resources/
+          fi
+          cp bin/musiclite bin/MusicLite.app/Contents/MacOS/
+          cp build/darwin/Info.plist bin/MusicLite.app/Contents/
+
+      - name: "[macOS] Bundle native dylibs into .app"
+        if: matrix.platform == 'macos'
+        run: |
+          set -euo pipefail
+          APP="bin/MusicLite.app"
+          BIN="$APP/Contents/MacOS/musiclite"
+          FW="$APP/Contents/Frameworks"
+          mkdir -p "$FW"
+          # 递归收集 Homebrew 动态库到 Contents/Frameworks 并改写 install name，
+          # 使 .app 完全自包含，用户无需安装 brew fftw/ffmpeg
+          while true; do
+            added=0
+            targets=("$BIN")
+            for f in "$FW"/*.dylib; do
+              [ -f "$f" ] && targets+=("$f")
+            done
+            for t in "${targets[@]}"; do
+              libs="$(otool -L "$t" | tail -n +2 | awk '{print $1}')"
+              for lib in $libs; do
+                case "$lib" in
+                  /opt/homebrew/*|/usr/local/opt/*|/usr/local/Cellar/*)
+                    name="$(basename "$lib")"
+                    install_name_tool -change "$lib" "@rpath/$name" "$t"
+                    if [ ! -f "$FW/$name" ]; then
+                      cp -L "$lib" "$FW/$name"
+                      install_name_tool -id "@rpath/$name" "$FW/$name"
+                      added=1
+                    fi
+                    ;;
+                esac
+              done
+            done
+            [ "$added" -eq 0 ] && break
+          done
+          install_name_tool -add_rpath "@executable_path/../Frameworks" "$BIN" || true
+          codesign --force --deep --sign - "$APP"
+          echo "--- 主程序依赖（应全部为 @rpath / 系统库）---"
+          otool -L "$BIN"
+
+      - name: "[macOS] Zip .app"
+        if: matrix.platform == 'macos'
+        run: |
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent bin/MusicLite.app dist/MusicLite-macOS-arm64.app.zip
+
+      # ============================= 上传 =============================
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicLite-${{ matrix.platform == 'windows' && 'Windows-x64' || matrix.platform == 'linux' && 'Linux-x64' || 'macOS-arm64' }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Publish Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: MusicLite-*
+          path: collected
+          merge-multiple: true
+
+      - name: Assemble release assets
+        run: |
+          mkdir -p release-assets
+          find collected -type f -exec cp {} release-assets/ \;
+          cp scripts/macOS-Installer.sh release-assets/
+          chmod +x release-assets/macOS-Installer.sh
+          ls -la release-assets/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false

@@ -59,13 +59,8 @@ Section "MainSection" SEC01
   File "..\LICENSE.txt"
   SetOverwrite on
   File "..\bin\MusicLite.exe"
-  File "..\libs\libfftw3-3.dll"
-  File "..\libs\avcodec-63.dll"
-  File "..\libs\avdevice-63.dll"
-  File "..\libs\avformat-63.dll"
-  File "..\libs\avutil-61.dll"
-  File "..\libs\swresample-7.dll"
-  File "..\libs\swscale-10.dll"
+  ; è‡ªåŠ¨æ‰“åŒ… libs\ ä¸‹å…¨éƒ¨è¿è¡Œæ—¶ DLLï¼ˆfftw / ffmpegï¼Œç”±æ„å»ºè„šæœ¬å‡†å¤‡ï¼‰
+  File "..\libs\*.dll"
 
 ; Shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
@@ -94,27 +89,22 @@ SectionEnd
 
 Function un.onUninstSuccess
   HideWindow
-  MessageBox MB_ICONINFORMATION|MB_OK "$(^Name) ÒÑ³É¹¦µØ´ÓÄãµÄ¼ÆËã»úÒÆ³ı¡£"
+  MessageBox MB_ICONINFORMATION|MB_OK "$(^Name) ï¿½Ñ³É¹ï¿½ï¿½Ø´ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½Æ³ï¿½ï¿½ï¿½"
 FunctionEnd
 
 Function un.onInit
-  MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "ÄãÈ·ÊµÒªÍêÈ«ÒÆ³ı $(^Name) £¬Æä¼°ËùÓĞµÄ×é¼ş£¿" IDYES +2
+  MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "ï¿½ï¿½È·ÊµÒªï¿½ï¿½È«ï¿½Æ³ï¿½ $(^Name) ï¿½ï¿½ï¿½ä¼°ï¿½ï¿½ï¿½Ğµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½" IDYES +2
   Abort
 FunctionEnd
 
 Section Uninstall
   !insertmacro MUI_STARTMENU_GETFOLDER "Application" $ICONS_GROUP
   Delete "$INSTDIR\uninst.exe"
-  Delete "$INSTDIR\libfftw3-3.dll"
   Delete "$INSTDIR\MusicLite.exe"
   Delete "$INSTDIR\musiclite.exe"
   Delete "$INSTDIR\LICENCE.txt"
-  Delete "$INSTDIR\avcodec-63.dll"
-  Delete "$INSTDIR\avdevice-63.dll"
-  Delete "$INSTDIR\avformat-63.dll"
-  Delete "$INSTDIR\avutil-61.dll"
-  Delete "$INSTDIR\swresample-7.dll"
-  Delete "$INSTDIR\swscale-10.dll"
+  ; æ¸…ç†å…¨éƒ¨è¿è¡Œæ—¶ DLL
+  Delete "$INSTDIR\*.dll"
   Delete "$SMPROGRAMS\$ICONS_GROUP\Uninstall.lnk"
   Delete "$DESKTOP\MusicLiteCuckoo.lnk"
   Delete "$SMPROGRAMS\$ICONS_GROUP\MusicLiteCuckoo.lnk"
