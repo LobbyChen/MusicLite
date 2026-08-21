@@ -95,8 +95,8 @@ const voidModeBtns = document.querySelectorAll('.anim-level-btn[data-void-mode]'
 // ============ 全局快捷键 ============
 const HOTKEY_ACTIONS = [
     { action: 'playpause', field: 'hotkey_playpause', label: 'settings.hotkeyPlayPause', default: 'Ctrl+Shift+P' },
-    { action: 'next', field: 'hotkey_next', label: 'settings.hotkeyNext', default: 'Ctrl+Shift+Right' },
-    { action: 'prev', field: 'hotkey_prev', label: 'settings.hotkeyPrev', default: 'Ctrl+Shift+Left' },
+    { action: 'next',      field: 'hotkey_next',      label: 'settings.hotkeyNext',      default: 'Ctrl+Shift+Right' },
+    { action: 'prev',      field: 'hotkey_prev',      label: 'settings.hotkeyPrev',      default: 'Ctrl+Shift+Left' },
 ];
 const hotkeyListEl = document.getElementById('hotkey-list');
 let hotkeyListeningAction = null; // 当前正在监听按键的动作名
@@ -531,7 +531,7 @@ function setAnimationLevel(level) {
     // 兼容旧逻辑：level 0 时添加 .no-anim（让原 no-anim 规则也生效）
     document.body.classList.toggle('no-anim', clamped === 0);
     // 持久化到 localStorage，供 settings-apply.js 启动时同步读取（避免首屏闪烁）
-    try { localStorage.setItem('musicLite.animationsLevel', clamped.toString()); } catch (e) { }
+    try { localStorage.setItem('musicLite.animationsLevel', clamped.toString()); } catch (e) {}
     return clamped;
 }
 
@@ -596,19 +596,19 @@ function switchTab(sectionId) {
 // ============ WinUI3 NavigationView 布局（新UI专属） ============
 // WinUI3 图标（简洁线条 SVG，24x24，currentColor）
 const WINUI3_ICONS = {
-    appearance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18V3z" fill="currentColor" stroke="none"/></svg>',
+  appearance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18V3z" fill="currentColor" stroke="none"/></svg>',
 
-    font: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h10v2"/><path d="M9 5v14"/><path d="M6 19h6"/><path d="M14.5 19l3.5-10 3.5 10"/><path d="M15.75 15.5h4.5"/></svg>',
+  font: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h10v2"/><path d="M9 5v14"/><path d="M6 19h6"/><path d="M14.5 19l3.5-10 3.5 10"/><path d="M15.75 15.5h4.5"/></svg>',
 
-    playback: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
+  playback: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
 
-    hotkeys: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="3"/><line x1="6" y1="10" x2="8" y2="10"/><line x1="11" y1="10" x2="13" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="6" y1="14" x2="18" y2="14"/></svg>',
+  hotkeys: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="3"/><line x1="6" y1="10" x2="8" y2="10"/><line x1="11" y1="10" x2="13" y2="10"/><line x1="16" y1="10" x2="18" y2="10"/><line x1="6" y1="14" x2="18" y2="14"/></svg>',
 
-    language: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M4.5 7.5h15"/><path d="M4.5 16.5h15"/></svg>',
+  language: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M4.5 7.5h15"/><path d="M4.5 16.5h15"/></svg>',
 
-    about: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="17"/><circle cx="12" cy="7.5" r="0.75" fill="currentColor" stroke="none"/></svg>',
+  about: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="17"/><circle cx="12" cy="7.5" r="0.75" fill="currentColor" stroke="none"/></svg>',
 
-    more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.75" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.75" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.75" fill="currentColor" stroke="none"/></svg>'
+  more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.75" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.75" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.75" fill="currentColor" stroke="none"/></svg>'
 };
 // 生成 WinUI3 NavigationView 左侧导航栏
 function applyWinUI3Layout() {
@@ -910,9 +910,9 @@ async function setupEventListeners() {
             // audioManager 尚未初始化时的兜底（理论上不会发生）
             const mode = currentSettings.volume_mode || 'synth';
             if (mode === 'master') {
-                SetSystemMasterVolume(vol).catch(() => { });
+                SetSystemMasterVolume(vol).catch(() => {});
             } else {
-                SetApplicationVolume(vol).catch(() => { });
+                SetApplicationVolume(vol).catch(() => {});
             }
         }
         markChanged();
@@ -924,7 +924,7 @@ async function setupEventListeners() {
             const mode = btn.dataset.volMode;
             currentSettings.volume_mode = mode;
             volumeModeBtns.forEach(b => b.classList.toggle('active', b === btn));
-            try { localStorage.setItem('musicLite.volumeMode', mode); } catch (e) { }
+            try { localStorage.setItem('musicLite.volumeMode', mode); } catch (e) {}
             // 通知 audioManager 切换模式（它会从对应音源读取真实音量并更新缓存）
             if (window.audioManager && typeof window.audioManager.setVolumeMode === 'function') {
                 await window.audioManager.setVolumeMode(mode);
@@ -950,7 +950,7 @@ async function setupEventListeners() {
             const v = parseInt(maxLyricLinesSlider.value, 10);
             maxLyricLinesValue.textContent = v;
             currentSettings.max_lyric_lines = v;
-            try { localStorage.setItem('musicLite.maxLyricLines', v.toString()); } catch (e) { }
+            try { localStorage.setItem('musicLite.maxLyricLines', v.toString()); } catch (e) {}
             markChanged();
         });
     }
@@ -978,7 +978,7 @@ async function setupEventListeners() {
             toRemove.forEach(c => document.body.classList.remove(c));
             document.body.classList.add('lyric-anim-' + m);
             // 持久化到 localStorage，供页面加载时同步读取
-            try { localStorage.setItem('musicLite.lyricAnimation', m); } catch (e) { }
+            try { localStorage.setItem('musicLite.lyricAnimation', m); } catch (e) {}
             markChanged();
         });
     }
@@ -1152,56 +1152,71 @@ async function setupEventListeners() {
     }
     // 若教程中途跳转回此页，恢复引导
     resumeTutorialIfAny('settings', t);
-    // 打开程序数据文件夹（%APPDATA%/MusicLite）
-    if (openDataFolderBtn) {
-        openDataFolderBtn.addEventListener('click', async () => {
+        // 打开程序数据文件夹（%APPDATA%/MusicLite）
+        if (openDataFolderBtn) {
+            openDataFolderBtn.addEventListener('click', async () => {
+                try {
+                    await OpenAppDataFolder();
+                } catch (e) {
+                    showToast(t('settings.openDataFolderFailed'), 'error');
+                }
+            });
+        }
+        // 在系统默认浏览器中打开项目 GitHub 仓库
+        if (openGitHubBtn) {
+            openGitHubBtn.addEventListener('click', async () => {
+                try {
+                    await OpenGitHubRepo();
+                } catch (e) {
+                    showToast(t('settings.openGitHubFailed'), 'error');
+                }
+            });
+        }
+        // 检查更新：调用后端 CheckForUpdate，展示新版本信息并按平台分发更新方式
+        if (checkUpdateBtn) {
+            checkUpdateBtn.addEventListener('click', handleCheckUpdate);
+        }
+        if (performUpdateBtn) {
+            performUpdateBtn.addEventListener('click', handlePerformUpdate);
+        }
+        if (openReleasePageBtn) {
+            openReleasePageBtn.addEventListener('click', () => {
+                const url = updateDetailEl?.dataset.releaseUrl;
+                if (url) {
+                    // 复用后端 openURL：通过 OpenGitHubRepo 不可行（路径不同），直接前端打开
+                    try { window.open(url, '_blank'); } catch (_) {}
+                }
+            });
+        }
+        if (dismissUpdateBtn) {
+            dismissUpdateBtn.addEventListener('click', () => {
+                if (updateDetailEl) updateDetailEl.style.display = 'none';
+                if (updateStatusEl) updateStatusEl.textContent = '';
+            });
+        }
+        // 显示构建期注入的版本号（version / buildSHA / buildNum）
+        const versionEl = document.getElementById('app-version');
+        if (versionEl) {
             try {
-                await OpenAppDataFolder();
+                const info = await GetVersionInfo();
+                // 形如 "0.7.1" 或 "0.7.1-dev.5.gabc1234"；dev 构建追加 SHA 后缀
+                const label = info.version.includes('-dev.')
+                    ? `${info.version} (${info.buildSha})`
+                    : info.version;
+                versionEl.textContent = label;
             } catch (e) {
-                showToast(t('settings.openDataFolderFailed'), 'error');
+                versionEl.textContent = 'unknown';
             }
-        });
+        }
+        // 启动使用教程（全新开始，总是从设置页第 0 步开始）
+        if (startTutorialBtn) {
+            startTutorialBtn.addEventListener('click', () => {
+                startTutorialFromSettings(t);
+            });
+        }
+        // 若教程中途跳转回此页，恢复引导
+        resumeTutorialIfAny('settings', t);
     }
-    // 在系统默认浏览器中打开项目 GitHub 仓库
-    if (openGitHubBtn) {
-        openGitHubBtn.addEventListener('click', async () => {
-            try {
-                await OpenGitHubRepo();
-            } catch (e) {
-                showToast(t('settings.openGitHubFailed'), 'error');
-            }
-        });
-    }
-    // 检查更新：调用后端 CheckForUpdate，展示新版本信息并按平台分发更新方式
-    if (checkUpdateBtn) {
-        checkUpdateBtn.addEventListener('click', handleCheckUpdate);
-    }
-    if (performUpdateBtn) {
-        performUpdateBtn.addEventListener('click', handlePerformUpdate);
-    }
-    if (openReleasePageBtn) {
-        openReleasePageBtn.addEventListener('click', () => {
-            const url = updateDetailEl?.dataset.releaseUrl;
-            if (url) {
-                // 复用后端 openURL：通过 OpenGitHubRepo 不可行（路径不同），直接前端打开
-                try { window.open(url, '_blank'); } catch (_) { }
-            }
-        });
-    }
-    if (dismissUpdateBtn) {
-        dismissUpdateBtn.addEventListener('click', () => {
-            if (updateDetailEl) updateDetailEl.style.display = 'none';
-            if (updateStatusEl) updateStatusEl.textContent = '';
-        });
-    }
-    // 启动使用教程（全新开始，总是从设置页第 0 步开始）
-    if (startTutorialBtn) {
-        startTutorialBtn.addEventListener('click', () => {
-            startTutorialFromSettings(t);
-        });
-    }
-    // 若教程中途跳转回此页，恢复引导
-    resumeTutorialIfAny('settings', t);
 }
 
 // ============ 全局快捷键：UI 渲染与按键捕获 ============
@@ -1406,7 +1421,7 @@ async function saveSettings() {
             document.querySelectorAll('.titlebar-title').forEach(el => { el.textContent = custom; });
         }
         // 同步全局快捷键配置到后端 HotkeyManager
-        try { await HotkeyApply(); } catch (_) { }
+        try { await HotkeyApply(); } catch (_) {}
         showToast(t('libraries.saved'), 'success');
     } catch (err) {
         console.error('Failed to save settings:', err);
@@ -1492,7 +1507,7 @@ function renderUpdateDetail(info) {
             try {
                 const d = new Date(info.publishedAt);
                 parts.push(`${t('settings.publishedAt')}: ${d.toLocaleDateString()}`);
-            } catch (_) { }
+            } catch (_) {}
         }
         updateVersionEl.textContent = parts.join(' · ');
     }
@@ -1574,7 +1589,7 @@ async function handlePerformUpdate() {
             setTimeout(() => {
                 try { QuitApp(); } catch (_) {
                     // 兜底：直接关闭窗口
-                    try { window.close(); } catch (_) { }
+                    try { window.close(); } catch (_) {}
                 }
             }, 1500);
         } catch (e) {
@@ -1595,7 +1610,7 @@ async function handlePerformUpdate() {
     } catch (e) {
         // 兜底：前端直接打开 release URL
         if (info.releaseURL) {
-            try { window.open(info.releaseURL, '_blank'); } catch (_) { }
+            try { window.open(info.releaseURL, '_blank'); } catch (_) {}
         } else {
             showToast(t('settings.updateFailed', e?.message || String(e)), 'error');
         }
