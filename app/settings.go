@@ -375,6 +375,15 @@ func (a *MusicService) ResetSettings() Settings {
 	return DefaultSettings()
 }
 
+// GetVersionInfo 返回构建期注入的版本信息（version / commit / build number）
+func (a *MusicService) GetVersionInfo() VersionInfo {
+	return VersionInfo{
+		Version:  Version,
+		BuildSHA: BuildSHA,
+		BuildNum: BuildNum,
+	}
+}
+
 // OpenAppDataFolder 在系统文件管理器中打开程序数据文件夹（%APPDATA%/MusicLite）
 func (a *MusicService) OpenAppDataFolder() error {
 	dir := settingsDir()

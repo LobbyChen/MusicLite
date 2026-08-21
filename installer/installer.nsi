@@ -2,7 +2,14 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "MusicLite Cuckoo"
-!define PRODUCT_VERSION "0.7.1"
+; 版本号由 CI 通过 /DPRODUCT_VERSION 注入；本地直接 makensis 时使用兜底值
+!ifndef PRODUCT_VERSION
+  !define PRODUCT_VERSION "0.0.0-dev"
+!endif
+; 输出文件名中的版本片段（如 B0.7.1）；未注入时使用 "dev"
+!ifndef PRODUCT_FILENAME_TAG
+  !define PRODUCT_FILENAME_TAG "dev"
+!endif
 !define PRODUCT_PUBLISHER "LobbyChen"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\MusicLite.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
@@ -47,7 +54,7 @@ var ICONS_GROUP
 ; MUI end ------
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "..\build\bin\MusicLiteCuckoo_B0.7.1_Setup_amd64.exe"
+OutFile "..\build\bin\MusicLiteCuckoo_${PRODUCT_FILENAME_TAG}_Setup_amd64.exe"
 InstallDir "$LOCALAPPDATA\Programs\MusicLiteCuckoo"
 InstallDirRegKey HKLM "${PRODUCT_DIR_REGKEY}" ""
 ShowInstDetails show

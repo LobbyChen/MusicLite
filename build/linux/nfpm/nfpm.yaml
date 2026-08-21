@@ -6,7 +6,9 @@
 name: "musiclite"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.1.0"
+# 版本号由 CI 在构建前通过 sed 注入（来自 git describe --tags）
+# 本地直接 wails3 task create:deb 时使用兜底值
+version: "0.0.0-dev"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>

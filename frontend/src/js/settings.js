@@ -1,4 +1,4 @@
-import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, OpenGitHubRepo, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, PlayerSetSmartEQEnabled, PlayerSetSmartEQIntensity, HotkeyApply, HotkeyGetActionList } from '@bindings/MusicLite/app/musicservice.js';
+import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, OpenGitHubRepo, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, PlayerSetSmartEQEnabled, PlayerSetSmartEQIntensity, HotkeyApply, HotkeyGetActionList, GetVersionInfo } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
 import { Window } from '@wailsio/runtime';
 import { startTutorialFromSettings, resumeTutorialIfAny } from './tutorial.js';
@@ -1161,6 +1161,20 @@ function setupEventListeners() {
                     showToast(t('settings.openGitHubFailed'), 'error');
                 }
             });
+        }
+        // 显示构建期注入的版本号（version / buildSHA / buildNum）
+        const versionEl = document.getElementById('app-version');
+        if (versionEl) {
+            try {
+                const info = await GetVersionInfo();
+                // 形如 "0.7.1" 或 "0.7.1-dev.5.gabc1234"；dev 构建追加 SHA 后缀
+                const label = info.version.includes('-dev.')
+                    ? `${info.version} (${info.buildSha})`
+                    : info.version;
+                versionEl.textContent = label;
+            } catch (e) {
+                versionEl.textContent = 'unknown';
+            }
         }
         // 启动使用教程（全新开始，总是从设置页第 0 步开始）
         if (startTutorialBtn) {
