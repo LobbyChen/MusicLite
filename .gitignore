@@ -55,7 +55,7 @@ desktop.ini
 *.swo
 *~
 *.ps1
-
+*.syso
 # ===== Misc =====
 *.hintrc
 *.py

@@ -1,10 +1,11 @@
 package app
 
-// ============ 10 频段图形均衡器（biquad peaking filter，作为 beep.Streamer） ============
+// ============ 10 频段图形均衡器（biquad peaking filter）============
 //
 // 设计目标：
-//   1. 真正作用于音频流：在 beep 管线中作为 Streamer 串联，
-//      decoded → resample → equalizer → ctrl → volume → speaker
+//   1. 真正作用于音频流：在新管线（FFmpeg → RAM PCM → PCMReader → oto）
+//      中由 PCMReader.Read 调用 ProcessFloat32LE 就地处理缓冲区
+//      PCM → EQ → 音量 → oto
 //   2. 10 个频段：31 / 62 / 125 / 250 / 500 / 1k / 2k / 4k / 8k / 16k Hz
 //      每段增益 -12 ~ +12 dB，Q ≈ 1.41（约 1 octave 带宽）
 //   3. 系数按 RBJ Audio EQ Cookbook 公式计算（peaking filter），
@@ -14,15 +15,15 @@ package app
 //
 // 线程模型：
 //   - SetBand / SetEnabled / SetGains 可能从前端 goroutine 调用，
-//     Stream() 在 speaker goroutine 调用，故 gains/enabled 用 atomic 或 mu 保护
-//   - 系数重算与状态共享：Stream 单线程消费，SetBand 仅改参数并标记 dirty，
-//     下次 Stream 调用前在锁内重算系数（避免在 speaker 锁内做浮点运算）
+//     ProcessFloat32LE 在 oto 音频回调 goroutine 调用，
+//     故 gains/enabled/dirty 用 mu 保护
+//   - 系数重算与状态共享：Process 单线程消费，SetBand 仅改参数并标记 dirty，
+//     下次 Process 调用前在锁内重算系数（避免在热路径做浮点运算）
 
 import (
 	"math"
 	"sync"
-
-	"github.com/gopxl/beep"
+	"unsafe"
 )
 
 // EqBandCount 频段数量
@@ -93,37 +94,28 @@ func peakingCoeffs(f0, fs, gainDB, Q float64) biquadCoeffs {
 	}
 }
 
-// Equalizer 10 频段图形均衡器（beep.Streamer）
+// Equalizer 10 频段图形均衡器
 type Equalizer struct {
-	src       beep.Streamer
-	sampleRate beep.SampleRate
+	sampleRate int
 
-	mu       sync.Mutex // 保护 gains/enabled/dirty
-	gains    [EqBandCount]float64 // dB
-	enabled  bool
-	dirty    bool // 参数变化后需要重算系数
-	coeffs   [EqBandCount]biquadCoeffs
+	mu      sync.Mutex           // 保护 gains/enabled/dirty
+	gains   [EqBandCount]float64 // dB
+	enabled bool
+	dirty   bool // 参数变化后需要重算系数
+	coeffs  [EqBandCount]biquadCoeffs
 	// 立体声：每频段每通道一个状态 → [band][channel]state
-	states   [EqBandCount][2]biquadState
+	states [EqBandCount][2]biquadState
 }
 
-// NewEqualizer 创建均衡器，src 是上游 Streamer，sampleRate 是输出采样率
-func NewEqualizer(src beep.Streamer, sampleRate beep.SampleRate) *Equalizer {
+// NewEqualizer 创建均衡器，sampleRate 为输出采样率（Hz）
+func NewEqualizer(sampleRate int) *Equalizer {
 	eq := &Equalizer{
-		src:        src,
 		sampleRate: sampleRate,
 		enabled:    false, // 默认旁路
 		dirty:      true,
 	}
 	eq.recomputeCoeffs()
 	return eq
-}
-
-// SetSource 重新指向上游 Streamer（切歌时复用同一个 EQ 实例，保留增益与状态）
-func (eq *Equalizer) SetSource(src beep.Streamer) {
-	eq.mu.Lock()
-	eq.src = src
-	eq.mu.Unlock()
 }
 
 // recomputeCoeffs 根据当前 gains 与采样率重算所有频段系数（调用者持锁）
@@ -200,7 +192,7 @@ func (eq *Equalizer) GetGains() [EqBandCount]float64 {
 }
 
 // SetSampleRate 更新采样率（采样率变化时需重算系数）
-func (eq *Equalizer) SetSampleRate(sr beep.SampleRate) {
+func (eq *Equalizer) SetSampleRate(sr int) {
 	eq.mu.Lock()
 	if sr != eq.sampleRate {
 		eq.sampleRate = sr
@@ -219,14 +211,17 @@ func (eq *Equalizer) Reset() {
 	eq.mu.Unlock()
 }
 
-// Stream 实现 beep.Streamer
-// 从 src 读取样本，依次通过 10 个级联的 biquad 滤波器（仅 enabled 时）
-func (eq *Equalizer) Stream(samples [][2]float64) (int, bool) {
-	n, ok := eq.src.Stream(samples)
-	if !ok {
-		return n, false
+// ProcessFloat32LE 就地处理 Float32LE 交错立体声 PCM 缓冲区。
+// 一帧 = 4 字节 L + 4 字节 R = 8 字节；尾部不足一帧的字节保持原样。
+// 由 PCMReader.Read 在音频回调线程调用，单线程消费。
+func (eq *Equalizer) ProcessFloat32LE(buf []byte) {
+	n := len(buf)
+	n -= n % 8 // 对齐到完整立体声帧
+	if n < 8 {
+		return
 	}
-	// 快速路径：未启用或全 0 增益 → 直通
+	buf = buf[:n]
+
 	eq.mu.Lock()
 	enabled := eq.enabled
 	dirty := eq.dirty
@@ -248,26 +243,23 @@ func (eq *Equalizer) Stream(samples [][2]float64) (int, bool) {
 	states := &eq.states
 	eq.mu.Unlock()
 
+	// 旁路或全 0 增益：直通
 	if allZero {
-		return n, ok
+		return
 	}
 
-	// 逐样本逐频段处理
-	for i := 0; i < n; i++ {
-		l := samples[i][0]
-		r := samples[i][1]
+	// 将 byte 缓冲区视作 float32 切片（小端交错：L,R,L,R,...）
+	f32 := unsafe.Slice((*float32)(unsafe.Pointer(&buf[0])), n/4)
+	frames := n / 8
+	for i := 0; i < frames; i++ {
+		l := float64(f32[i*2])
+		r := float64(f32[i*2+1])
 		for b := 0; b < EqBandCount; b++ {
 			c := &coeffs[b]
 			l = c.process(&states[b][0], l)
 			r = c.process(&states[b][1], r)
 		}
-		samples[i][0] = l
-		samples[i][1] = r
+		f32[i*2] = float32(l)
+		f32[i*2+1] = float32(r)
 	}
-	return n, ok
-}
-
-// Err 实现 beep.Streamer
-func (eq *Equalizer) Err() error {
-	return eq.src.Err()
 }

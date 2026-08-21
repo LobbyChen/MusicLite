@@ -1191,7 +1191,7 @@ body[data-new-ui="true"] .btn-danger:hover {
     background: #b32719;
 }
 
-/* --- 动画级别 / 音量模式 / SmartEQ / 新UI 按钮组 --- */
+/* --- 动画级别 / 音量模式 / 新UI 按钮组 --- */
 body[data-new-ui="true"] .anim-level-btn {
     border-radius: var(--w3-radius);
     border: 1px solid var(--w3-stroke);
@@ -2136,8 +2136,8 @@ body[data-page="libraries"][data-new-ui="true"] .player-overlay {
 }
 body[data-page="libraries"][data-new-ui="true"] .player-overlay .player-bg-layer {
     opacity: 0.7;
-    /* 30px 模糊视觉接近 40/60px，但 GPU 采样工作量显著降低 */
-    filter: blur(30px);
+    /* 封面背景模糊：由 --player-bg-blur 驱动（设计器“播放器背景模糊”控制，与旧 UI 共用同一变量） */
+    filter: blur(var(--player-bg-blur, 20px));
 }
 
 /* player-container：三行网格 header / content / bottom */

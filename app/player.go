@@ -192,6 +192,9 @@ type Player struct {
 	playMode string
 	queue    *PlayQueue
 
+	// 10 频段图形均衡器，作用于 PCMReader.Read 输出的 Float32LE 缓冲
+	eq *Equalizer
+
 	otoCtx    *oto.Context
 	otoPlayer *oto.Player
 
@@ -277,6 +280,11 @@ func (r *PCMReader) Read(buf []byte) (int, error) {
 		}
 	}
 
+	// 应用图形均衡器（仅作用于有效音频字节，EQ 在音量前以保证滤波器在线性区工作）
+	if r.p.eq != nil {
+		r.p.eq.ProcessFloat32LE(buf[:n])
+	}
+
 	// 应用内音量控制
 	gain := volumeToGain(int(r.p.volume.Load()))
 	if gain < 0.99 && n >= 4 {
@@ -297,6 +305,7 @@ func NewPlayer(db *storage.Database, app *MusicService) *Player {
 		closed:   make(chan struct{}),
 		endCh:    make(chan struct{}, 1),
 		freeCh:   make(chan unsafe.Pointer, 16),
+		eq:       NewEqualizer(playerSampleRate),
 	}
 	p.queue = NewPlayQueue(db, app)
 	p.volume.Store(70)
@@ -304,8 +313,7 @@ func NewPlayer(db *storage.Database, app *MusicService) *Player {
 }
 
 func (p *Player) Queue() *PlayQueue     { return p.queue }
-func (p *Player) Equalizer() *Equalizer { return nil }
-func (p *Player) SmartEQ() *SmartEQ     { return nil }
+func (p *Player) Equalizer() *Equalizer { return p.eq }
 
 func (p *Player) Start() {
 	op := &oto.NewContextOptions{}
@@ -433,19 +441,52 @@ func (a *MusicService) PlayerGetPlayMode() string {
 }
 func (a *MusicService) PlayerRestart() error { return a.player.restart() }
 
-// 均衡器方法 Stub
-func (a *MusicService) PlayerGetEqBandCount() int                 { return 0 }
-func (a *MusicService) PlayerGetEqFreqs() []float64               { return []float64{} }
-func (a *MusicService) PlayerSetEqBand(index int, gainDB float64) {}
-func (a *MusicService) PlayerSetEqGains(gains []float64)          {}
-func (a *MusicService) PlayerGetEqGains() []float64               { return []float64{} }
-func (a *MusicService) PlayerSetEqEnabled(on bool)                {}
-func (a *MusicService) PlayerGetEqEnabled() bool                  { return false }
-func (a *MusicService) PlayerResetEq()                            {}
-func (a *MusicService) PlayerSetSmartEQEnabled(on bool)           {}
-func (a *MusicService) PlayerGetSmartEQEnabled() bool             { return false }
-func (a *MusicService) PlayerSetSmartEQIntensity(v float64)       {}
-func (a *MusicService) PlayerGetSmartEQIntensity() float64        { return 0 }
+// 均衡器方法（转发到 Player.eq）
+func (a *MusicService) PlayerGetEqBandCount() int { return EqBandCount }
+func (a *MusicService) PlayerGetEqFreqs() []float64 {
+	out := make([]float64, EqBandCount)
+	for i, f := range EqCenterFreqs {
+		out[i] = f
+	}
+	return out
+}
+func (a *MusicService) PlayerSetEqBand(index int, gainDB float64) {
+	if a.player.eq != nil {
+		a.player.eq.SetBand(index, gainDB)
+	}
+}
+func (a *MusicService) PlayerSetEqGains(gains []float64) {
+	if a.player.eq != nil {
+		a.player.eq.SetGains(gains)
+	}
+}
+func (a *MusicService) PlayerGetEqGains() []float64 {
+	if a.player.eq == nil {
+		return make([]float64, EqBandCount)
+	}
+	g := a.player.eq.GetGains()
+	out := make([]float64, EqBandCount)
+	for i, v := range g {
+		out[i] = v
+	}
+	return out
+}
+func (a *MusicService) PlayerSetEqEnabled(on bool) {
+	if a.player.eq != nil {
+		a.player.eq.SetEnabled(on)
+	}
+}
+func (a *MusicService) PlayerGetEqEnabled() bool {
+	if a.player.eq == nil {
+		return false
+	}
+	return a.player.eq.IsEnabled()
+}
+func (a *MusicService) PlayerResetEq() {
+	if a.player.eq != nil {
+		a.player.eq.SetGains(make([]float64, EqBandCount))
+	}
+}
 
 // 队列与音量方法
 func (a *MusicService) QueueAddTrack(id int64) QueueItem {
@@ -554,6 +595,11 @@ func (p *Player) loadTrack(track format.MscData) error {
 	p.muteBytes.Store(0)
 	p.isPaused.Store(true)
 	p.isPlaying.Store(false)
+
+	// 切歌时清空 EQ 滤波器内部状态，避免上一首的残留瞬态泄漏到新曲目
+	if p.eq != nil {
+		p.eq.Reset()
+	}
 
 	p.mu.Lock()
 	p.track = &track
@@ -918,8 +964,6 @@ func (p *Player) GetVolume() int {
 func (p *Player) SetInitialVolume(vol int) {
 	p.volume.Store(int32(vol))
 }
-
-func (p *Player) SetSmartEQDefaults(enabled bool, intensity float64) {}
 
 func volumeToGain(vol int) float64 {
 	if vol <= 0 {

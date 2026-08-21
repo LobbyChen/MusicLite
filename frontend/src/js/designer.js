@@ -115,6 +115,8 @@ const windowAlphaSlider = document.getElementById('window-alpha');
 const windowAlphaValue = document.getElementById('window-alpha-value');
 const aeroBlurSlider = document.getElementById('aero-blur-slider');
 const aeroBlurValue = document.getElementById('aero-blur-value');
+const playerBgBlurSlider = document.getElementById('player-bg-blur-slider');
+const playerBgBlurValue = document.getElementById('player-bg-blur-value');
 
 // ============ Toast / Confirm（与 settings.js 一致） ============
 function showToast(message, type = 'info', duration = 2500) {
@@ -262,6 +264,14 @@ function previewWindowAlphaNow() {
     }
 }
 
+// 播放器封面背景模糊实时预览（作用于新/旧 UI 共用的 --player-bg-blur）
+function previewPlayerBgBlurNow() {
+    if (!window.MusicLiteSettings || !currentSettings) return;
+    if (window.MusicLiteSettings.applyPlayerBgBlur) {
+        window.MusicLiteSettings.applyPlayerBgBlur(currentSettings.player_bg_blur);
+    }
+}
+
 // ============ 把后端设置同步到 UI 控件 ============
 function applySettingsToUI(s) {
     currentSettings = s;
@@ -325,6 +335,10 @@ function applySettingsToUI(s) {
     if (aeroBlurSlider) { aeroBlurSlider.value = ab; }
     if (aeroBlurValue)  { aeroBlurValue.textContent = ab + 'px'; }
 
+    const pbb = typeof s.player_bg_blur === 'number' ? Math.max(0, Math.min(30, s.player_bg_blur)) : 20;
+    if (playerBgBlurSlider) { playerBgBlurSlider.value = pbb; }
+    if (playerBgBlurValue)  { playerBgBlurValue.textContent = pbb + 'px'; }
+
     if (bgFileNameEl) {
         if (s.bg_url) {
             let name = s.bg_url;
@@ -351,6 +365,7 @@ async function loadSettings() {
         applyAnimationLevelLive();
         previewBackgroundNow();
         previewWindowAlphaNow();
+        previewPlayerBgBlurNow();
     } catch (e) {
         console.warn('LoadSettings failed:', e);
     }
@@ -408,6 +423,7 @@ async function resetToDefaults() {
         applyAnimationLevelLive();
         previewBackgroundNow();
         previewWindowAlphaNow();
+        previewPlayerBgBlurNow();
         await SaveSettings(defaults);
         if (window.MusicLiteSettings) window.MusicLiteSettings.cached = defaults;
         hideSaveBar();
@@ -703,6 +719,17 @@ function setupEventListeners() {
             currentSettings.aero_blur = v;
             if (aeroBlurValue) aeroBlurValue.textContent = v + 'px';
             previewWindowAlphaNow();
+            markChanged();
+        });
+    }
+
+    // 播放器封面背景模糊（新/旧 UI 共用）
+    if (playerBgBlurSlider) {
+        playerBgBlurSlider.addEventListener('input', () => {
+            const v = parseInt(playerBgBlurSlider.value, 10) || 0;
+            currentSettings.player_bg_blur = v;
+            if (playerBgBlurValue) playerBgBlurValue.textContent = v + 'px';
+            previewPlayerBgBlurNow();
             markChanged();
         });
     }

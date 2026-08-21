@@ -66,7 +66,7 @@ Section "MainSection" SEC01
   File "..\LICENSE.txt"
   SetOverwrite on
   File "..\bin\MusicLite.exe"
-  ; 自动打包 libs\ 下全部运行时 DLL（fftw / ffmpeg，由构建脚本准备）
+  ; 自动打包 libs\ 下全部运行时 DLL（ffmpeg，由构建脚本准备）
   File "..\libs\*.dll"
 
 ; Shortcuts

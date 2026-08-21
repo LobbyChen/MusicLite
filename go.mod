@@ -5,7 +5,6 @@ go 1.25.0
 require (
 	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8
 	github.com/ebitengine/oto/v3 v3.1.0
-	github.com/gopxl/beep v1.4.1
 	github.com/itchyny/volume-go v0.2.3
 	github.com/mattn/go-sqlite3 v1.14.44
 	github.com/robotn/gohook v0.42.3

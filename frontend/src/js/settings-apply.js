@@ -1186,6 +1186,17 @@ function applyAeroBlur(blurPx) {
     }
 }
 
+// 应用播放器封面背景模糊量（px，0-30）。
+// 作用于新/旧 UI 共用的 .player-bg-layer，通过 CSS 变量 --player-bg-blur 驱动，
+// 由 CSS filter: blur(var(--player-bg-blur)) 在两侧 UI 消费。
+function applyPlayerBgBlur(blurPx) {
+    const root = document.documentElement;
+    const v = isFinite(blurPx) ? Math.max(0, Math.min(30, blurPx)) : 20;
+    root.style.setProperty('--player-bg-blur', v + 'px');
+    // 持久化到 localStorage，供首屏快速恢复（避免闪到默认值）
+    try { localStorage.setItem('musicLite.playerBgBlur', String(v)); } catch (e) {}
+}
+
 // 应用全页面背景（图片或视频）
 // 思路：独立全屏层 <img>/<video> + 遮罩层；仅切换 html 根节点 data-attribute 让 CSS 统一生效，避免 inline 残留
 function applyBackground(opts) {
@@ -1706,6 +1717,8 @@ const SettingsManager = {
         applyWindowAlpha(s.window_alpha);
         // Aero 模糊量（独立于 design_blur）
         applyAeroBlur(s.aero_blur);
+        // 播放器封面背景模糊（新/旧 UI 共用 .player-bg-layer）
+        applyPlayerBgBlur(s.player_bg_blur);
 
         return s;
     },
@@ -1782,6 +1795,8 @@ const SettingsManager = {
             applyWindowAlpha(this.cached.window_alpha);
             // Aero 模糊量
             applyAeroBlur(this.cached.aero_blur);
+            // 播放器封面背景模糊（新/旧 UI 共用 .player-bg-layer）
+            applyPlayerBgBlur(this.cached.player_bg_blur);
 
             // i18n 新键检查：检测到内嵌翻译有更新时提示用户确认覆盖。
             // 放在 apply() 末尾：i18n 已初始化 + UI 已渲染，
@@ -1838,6 +1853,9 @@ const SettingsManager = {
     applyAeroBlur(blurPx) {
         injectBgCSSOnce();
         applyAeroBlur(blurPx);
+    },
+    applyPlayerBgBlur(blurPx) {
+        applyPlayerBgBlur(blurPx);
     }
 };
 
@@ -1921,6 +1939,14 @@ if (document.readyState === 'loading') {
     try {
         const m = localStorage.getItem('musicLite.settingsLayout');
         if (m) applySettingsLayout(m);
+    } catch (e) {}
+})();
+
+// 同步应用播放器封面背景模糊（在 DOMContentLoaded 之前应用，避免播放器背景闪到无模糊默认值）
+(function syncApplyPlayerBgBlur() {
+    try {
+        const v = localStorage.getItem('musicLite.playerBgBlur');
+        if (v !== null) applyPlayerBgBlur(parseInt(v, 10));
     } catch (e) {}
 })();
 

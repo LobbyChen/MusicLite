@@ -53,9 +53,9 @@
 - Node.js 18+
 - Wails v3 CLI (`go install github.com/wailsapp/wails/v3/cmd/wails3@latest`)
 - CGO dependencies:
-  - **Windows**: MinGW-w64, `libfftw3-3.dll`, `ffmpeg`
-  - **macOS**: `brew install fftw ffmpeg`
-  - **Linux**: `sudo apt install libfftw3-dev libgtk-3-dev libwebkit2gtk-4.1-dev ffmpeg`
+  - **Windows**: MinGW-w64, `ffmpeg`
+  - **macOS**: `brew install ffmpeg`
+  - **Linux**: `sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev ffmpeg`
 
 ### Development Mode
 
@@ -109,5 +109,4 @@ This project is open source under the [GNU GPL V3](./LICENCE.txt).
 
 - `https://wails.io/` - Excellent Go desktop framework
 - `https://ffmpeg.org/` - Open source cross-platform audio/video processing framework
-- `http://www.fftw.org/` - Fast Fourier Transform library
 - `https://github.com/dhowden/tag` - Audio tag parsing

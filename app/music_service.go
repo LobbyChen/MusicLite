@@ -25,9 +25,9 @@ type MusicService struct {
 	defaultFile     string
 	defaultTrackId  int64
 	database        *storage.Database
-	player          *Player         // 后端音频播放器
-	hotkeyManager   *HotkeyManager  // 全局快捷键管理器
-	audioServerPort int             // 独立 HTTP 服务器端口，dev 模式下使用
+	player          *Player        // 后端音频播放器
+	hotkeyManager   *HotkeyManager // 全局快捷键管理器
+	audioServerPort int            // 独立 HTTP 服务器端口，dev 模式下使用
 	audioServerLn   net.Listener
 	trayQuitting    bool // 托盘"退出"时置 true，让窗口关闭钩子放行
 
@@ -115,8 +115,6 @@ func (s *MusicService) ServiceStartup(ctx context.Context, options application.S
 	// 从设置同步初始音量到播放器
 	settings := s.LoadSettings()
 	s.player.SetInitialVolume(settings.Volume)
-	// 同步智能均衡器设置到播放器（管线构建时自动创建 SmartEQ 实例，此处仅缓存参数）
-	s.player.SetSmartEQDefaults(settings.SmartEQEnabled, settings.SmartEQIntensity)
 
 	// 初始化全局快捷键
 	s.hotkeyManager = NewHotkeyManager(s, s.player)

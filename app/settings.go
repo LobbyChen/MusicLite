@@ -38,16 +38,15 @@ type Settings struct {
 	BgGlassDisabled bool    `json:"bg_glass_disabled"` // 有背景时关闭所有容器毛玻璃（backdrop-filter）效果，避免边界与撕裂
 	WindowAlpha     float64 `json:"window_alpha"`      // 整窗透明度 0.01-1.0，默认 1；对桌面透出实现 Aero 效果
 	AeroBlur        int     `json:"aero_blur"`         // Aero 透明模式下的背景模糊量（px，0-40，默认 0）；0=关闭模糊
+	PlayerBgBlur    int     `json:"player_bg_blur"`    // 播放器封面背景模糊量（px，0-30，默认 20）；作用于新/旧 UI 的 .player-bg-layer
 	// 设计令牌（设计器实时调整，持久化到 settings.json）
-	DesignRadius     float64 `json:"design_radius"`      // 圆角（px，0-28，默认 10）
-	DesignBlur       int     `json:"design_blur"`        // 毛玻璃模糊量（px，0-40，默认 16）
-	DesignAnimMult   float64 `json:"design_anim_mult"`   // 动画速度倍率（0.3-2.5，默认 1.0）
-	DesignShadow     float64 `json:"design_shadow"`      // 浮层阴影强度（0-1，默认 0.45）
-	DesignGlow       float64 `json:"design_glow"`        // 主题色辉光范围（0-1，默认 0.35）
-	DesignTextGlow   float64 `json:"design_text_glow"`   // 字体晕影强度（0-1，默认 0）
-	TitlebarText     string  `json:"titlebar_text"`      // 自定义标题栏文字（空则使用默认 "MusicLite Cuckoo"）
-	SmartEQEnabled   bool    `json:"smart_eq_enabled"`   // 智能均衡器开关
-	SmartEQIntensity float64 `json:"smart_eq_intensity"` // 智能均衡器补偿强度 0-1
+	DesignRadius   float64 `json:"design_radius"`    // 圆角（px，0-28，默认 10）
+	DesignBlur     int     `json:"design_blur"`      // 毛玻璃模糊量（px，0-40，默认 16）
+	DesignAnimMult float64 `json:"design_anim_mult"` // 动画速度倍率（0.3-2.5，默认 1.0）
+	DesignShadow   float64 `json:"design_shadow"`    // 浮层阴影强度（0-1，默认 0.45）
+	DesignGlow     float64 `json:"design_glow"`      // 主题色辉光范围（0-1，默认 0.35）
+	DesignTextGlow float64 `json:"design_text_glow"` // 字体晕影强度（0-1，默认 0）
+	TitlebarText   string  `json:"titlebar_text"`    // 自定义标题栏文字（空则使用默认 "MusicLite Cuckoo"）
 	// 设置界面布局与新 UI
 	SettingsLayout string `json:"settings_layout"` // 设置界面布局："scroll"（默认）| "columns" | "tabs"
 	NewUIEnabled   bool   `json:"new_ui_enabled"`  // 新风格 UI 开关
@@ -61,47 +60,46 @@ type Settings struct {
 // DefaultSettings 返回默认设置
 func DefaultSettings() Settings {
 	return Settings{
-		Theme:            "dark",
-		PlayerFont:       "system-ui",
-		LyricsFont:       "Consolas, Monaco, monospace",
-		UIScale:          135,
-		LyricsScale:      135,
-		LastTrackID:      0,
-		LastPosition:     0,
-		Volume:           70,
-		AccentColor:      "#1DB954",
-		Language:         "zh-CN",
-		LyricAnimation:   "fade",
-		ListMode:         "card",
-		AnimationLevel:   2,
-		VolumeMode:       "synth",
-		MaxLyricLines:    1,
-		SortMode:         "recent",
-		BgType:           "none",
-		BgURL:            "",
-		BgFit:            "cover",
-		BgOpacity:        0.9,
-		BgOverlay:        0.2,
-		BgBlur:           0,
-		BgLoop:           true,
-		BgMuted:          true,
-		BgGlassDisabled:  false,
-		WindowAlpha:      1.0,
-		AeroBlur:         0,
-		DesignRadius:     10,
-		DesignBlur:       16,
-		DesignAnimMult:   1.0,
-		DesignShadow:     0.45,
-		DesignGlow:       0.35,
-		DesignTextGlow:   0,
-		TitlebarText:     "MusicLite Cuckoo",
-		SmartEQEnabled:   false,
-		SmartEQIntensity: 0.7,
-		SettingsLayout:   "scroll",
-		NewUIEnabled:     false,
-		HotkeyPlayPause:  HotkeyConfig{Enabled: false, Keys: ""},
-		HotkeyNext:       HotkeyConfig{Enabled: false, Keys: ""},
-		HotkeyPrev:       HotkeyConfig{Enabled: false, Keys: ""},
+		Theme:           "dark",
+		PlayerFont:      "system-ui",
+		LyricsFont:      "Consolas, Monaco, monospace",
+		UIScale:         135,
+		LyricsScale:     135,
+		LastTrackID:     0,
+		LastPosition:    0,
+		Volume:          70,
+		AccentColor:     "#1DB954",
+		Language:        "zh-CN",
+		LyricAnimation:  "fade",
+		ListMode:        "card",
+		AnimationLevel:  2,
+		VolumeMode:      "synth",
+		MaxLyricLines:   1,
+		SortMode:        "recent",
+		BgType:          "none",
+		BgURL:           "",
+		BgFit:           "cover",
+		BgOpacity:       0.9,
+		BgOverlay:       0.2,
+		BgBlur:          0,
+		BgLoop:          true,
+		BgMuted:         true,
+		BgGlassDisabled: false,
+		WindowAlpha:     1.0,
+		AeroBlur:        0,
+		PlayerBgBlur:    20,
+		DesignRadius:    10,
+		DesignBlur:      16,
+		DesignAnimMult:  1.0,
+		DesignShadow:    0.45,
+		DesignGlow:      0.35,
+		DesignTextGlow:  0,
+		TitlebarText:    "MusicLite Cuckoo",
+		SettingsLayout:  "scroll",
+		NewUIEnabled:    false,
+		HotkeyPlayPause: HotkeyConfig{Enabled: false, Keys: ""},
+		HotkeyNext:      HotkeyConfig{Enabled: false, Keys: ""},
+		HotkeyPrev:      HotkeyConfig{Enabled: false, Keys: ""},
 	}
 }
 
@@ -225,20 +223,6 @@ func (a *MusicService) LoadSettings() Settings {
 	if s.SortMode != "recent" && s.SortMode != "title" && s.SortMode != "artist" {
 		s.SortMode = def.SortMode
 	}
-	// SmartEQ 兼容旧版设置文件（缺失时用默认值补齐，越界时钳制到合法范围）
-	{
-		var raw3 map[string]json.RawMessage
-		_ = json.Unmarshal(data, &raw3)
-		has3 := func(key string) bool { _, ok := raw3[key]; return ok }
-		if !has3("smart_eq_enabled") {
-			s.SmartEQEnabled = def.SmartEQEnabled
-		}
-		if !has3("smart_eq_intensity") {
-			s.SmartEQIntensity = def.SmartEQIntensity
-		} else if s.SmartEQIntensity < 0 || s.SmartEQIntensity > 1 {
-			s.SmartEQIntensity = def.SmartEQIntensity
-		}
-	}
 	// SettingsLayout / NewUIEnabled 兼容旧版设置文件
 	{
 		var raw4 map[string]json.RawMessage
@@ -344,6 +328,11 @@ func (a *MusicService) LoadSettings() Settings {
 			s.AeroBlur = def.AeroBlur
 		} else if s.AeroBlur < 0 || s.AeroBlur > 40 {
 			s.AeroBlur = def.AeroBlur
+		}
+		if !has5("player_bg_blur") {
+			s.PlayerBgBlur = def.PlayerBgBlur
+		} else if s.PlayerBgBlur < 0 || s.PlayerBgBlur > 30 {
+			s.PlayerBgBlur = def.PlayerBgBlur
 		}
 	}
 	// SortMode 兼容旧版设置文件（缺失或非法时用默认值 "recent"，补充 album 模式）

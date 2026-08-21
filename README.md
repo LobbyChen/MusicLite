@@ -59,9 +59,9 @@
 - Node.js 18+
 - Wails v3 CLI (`go install github.com/wailsapp/wails/v3/cmd/wails3@latest`)
 - CGO 依赖：
-  - **Windows**: MinGW-w64, `libfftw3-3.dll`, `ffmpeg`
-  - **macOS**: `brew install fftw ffmpeg`
-  - **Linux**: `sudo apt install libfftw3-dev libgtk-3-dev libwebkit2gtk-4.1-dev ffmpeg`
+  - **Windows**: MinGW-w64, `ffmpeg`
+  - **macOS**: `brew install ffmpeg`
+  - **Linux**: `sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev ffmpeg`
 
 ### 开发模式
 
@@ -115,5 +115,4 @@ wails3 build
 
 - [Wails](https://wails.io/) - 优秀的 Go 桌面框架
 - [FFmpeg](https://ffmpeg.org/) - 开源的跨平台音视频处理框架
-- [FFTW](http://www.fftw.org/) - 快速傅里叶变换库
 - [dhowden/tag](https://github.com/dhowden/tag) - 音频标签解析

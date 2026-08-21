@@ -834,7 +834,7 @@
             <div class="section-head">
                 <span class="idx">05 / 技术栈</span>
                 <h2>构建依赖</h2>
-                <p>核心由 Go 与 Wails v3 构成，音频解码依赖 FFmpeg，频谱分析依赖 FFTW。所有依赖均为开源项目。</p>
+                <p>核心由 Go 与 Wails v3 构成，音频解码依赖 FFmpeg。所有依赖均为开源项目。</p>
             </div>
             <div class="tech">
                 <div class="tech-item">
@@ -844,10 +844,6 @@
                 <div class="tech-item">
                     <div class="t-name"><a href="https://ffmpeg.org/" target="_blank" rel="noopener">FFmpeg</a></div>
                     <div class="t-desc">音频解码后端，支撑 MP3 之外的所有扩展格式。</div>
-                </div>
-                <div class="tech-item">
-                    <div class="t-name"><a href="http://www.fftw.org/" target="_blank" rel="noopener">FFTW</a></div>
-                    <div class="t-desc">快速傅里叶变换库，用于频谱分析与智能均衡器。</div>
                 </div>
                 <div class="tech-item">
                     <div class="t-name"><a href="https://github.com/dhowden/tag" target="_blank" rel="noopener">dhowden/tag</a></div>
@@ -878,13 +874,13 @@
                     <p class="req">CGO 依赖因平台而异：</p>
                     <div class="code">
                         <span class="c"># Windows</span>
-                        MinGW-w64, libfftw3-3.dll, ffmpeg
+                        MinGW-w64, ffmpeg
 
                         <span class="c"># macOS</span>
-                        brew install fftw ffmpeg
+                        brew install ffmpeg
 
                         <span class="c"># Linux</span>
-                        sudo apt install libfftw3-dev \
+                        sudo apt install \
                             libgtk-3-dev \
                             libwebkit2gtk-4.1-dev ffmpeg
                     </div>
@@ -934,7 +930,6 @@
                     <h4>资源</h4>
                     <a href="https://wails.io/" target="_blank" rel="noopener">Wails</a>
                     <a href="https://ffmpeg.org/" target="_blank" rel="noopener">FFmpeg</a>
-                    <a href="http://www.fftw.org/" target="_blank" rel="noopener">FFTW</a>
                     <a href="https://github.com/dhowden/tag" target="_blank" rel="noopener">dhowden/tag</a>
                 </div>
             </div>

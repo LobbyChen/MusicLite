@@ -1,4 +1,4 @@
-import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, OpenGitHubRepo, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, PlayerSetSmartEQEnabled, PlayerSetSmartEQIntensity, HotkeyApply, HotkeyGetActionList, GetVersionInfo } from '@bindings/MusicLite/app/musicservice.js';
+import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, OpenGitHubRepo, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, HotkeyApply, HotkeyGetActionList, GetVersionInfo } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
 import { Window } from '@wailsio/runtime';
 import { startTutorialFromSettings, resumeTutorialIfAny } from './tutorial.js';
@@ -80,9 +80,6 @@ const accentColorInput = document.getElementById('accent-color');
 const accentColorText = document.getElementById('accent-color-text');
 const presetColors = document.querySelectorAll('.preset-color');
 const animLevelBtns = document.querySelectorAll('.anim-level-btn[data-level]');
-const smartEQModeBtns = document.querySelectorAll('.anim-level-btn[data-smarteq-mode]');
-const smartEQIntensitySlider = document.getElementById('smarteq-intensity');
-const smartEQIntensityValue = document.getElementById('smarteq-intensity-value');
 const newUIModeBtns = document.querySelectorAll('.anim-level-btn[data-newui-mode]');
 const voidModeBtns = document.querySelectorAll('.anim-level-btn[data-void-mode]');
 
@@ -416,9 +413,7 @@ async function loadSettings() {
             volume_mode: 'synth',
             accent_color: '#1DB954',
             animation_level: 2,
-            max_lyric_lines: 1,
-            smart_eq_enabled: false,
-            smart_eq_intensity: 0.7
+            max_lyric_lines: 1
         };
         applySettingsToUI(currentSettings);
     }
@@ -468,18 +463,6 @@ function applySettingsToUI(s) {
     if (maxLyricLinesSlider) {
         maxLyricLinesSlider.value = maxLines;
         maxLyricLinesValue.textContent = maxLines;
-    }
-
-    // SmartEQ 启用/旁路
-    const smartEQOn = s.smart_eq_enabled || false;
-    smartEQModeBtns.forEach(btn => {
-        btn.classList.toggle('active', (btn.dataset.smarteqMode === 'on') === smartEQOn);
-    });
-    // SmartEQ 补偿强度（后端存 0-1，UI 显示 0-100%）
-    const smartEQIntensityVal = (typeof s.smart_eq_intensity === 'number') ? Math.round(s.smart_eq_intensity * 100) : 70;
-    if (smartEQIntensitySlider) {
-        smartEQIntensitySlider.value = smartEQIntensityVal;
-        smartEQIntensityValue.textContent = smartEQIntensityVal + '%';
     }
 
     // Language
@@ -772,7 +755,7 @@ function applyTheme() {
 }
 
 // Setup event listeners
-function setupEventListeners() {
+async function setupEventListeners() {
     // Back button
     backBtn.addEventListener('click', async () => {
         if (hasChanges) {
@@ -959,30 +942,6 @@ function setupEventListeners() {
             maxLyricLinesValue.textContent = v;
             currentSettings.max_lyric_lines = v;
             try { localStorage.setItem('musicLite.maxLyricLines', v.toString()); } catch (e) {}
-            markChanged();
-        });
-    }
-
-    // SmartEQ 启用/旁路按钮
-    smartEQModeBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const enabled = btn.dataset.smarteqMode === 'on';
-            currentSettings.smart_eq_enabled = enabled;
-            smartEQModeBtns.forEach(b => b.classList.toggle('active', b === btn));
-            // 实时应用到后端播放器
-            PlayerSetSmartEQEnabled(enabled).catch(() => {});
-            markChanged();
-        });
-    });
-
-    // SmartEQ 补偿强度滑块
-    if (smartEQIntensitySlider) {
-        smartEQIntensitySlider.addEventListener('input', () => {
-            const v = parseInt(smartEQIntensitySlider.value, 10);
-            smartEQIntensityValue.textContent = v + '%';
-            currentSettings.smart_eq_intensity = v / 100;
-            // 实时应用到后端播放器
-            PlayerSetSmartEQIntensity(v / 100).catch(() => {});
             markChanged();
         });
     }

@@ -131,7 +131,11 @@ function toggle() {
 function getIsOpen() { return isOpen; }
 
 // 初始化：构建 UI、加载后端状态、绑定事件
+// 仅首次调用时绑定；openPlayer 每次打开播放器都会调用 init()，若不幂等会
+// 在 eqBtn 上累加多个 click 监听器 → 单次点击触发多次 toggle() → 开+关抵消，
+// 表现为“均衡器拉不出来”。故已初始化则直接返回。
 async function init() {
+    if (initialized) return;
     panelEl = document.getElementById('eqPanel');
     bandsEl = document.getElementById('eqBands');
     toggleEl = document.getElementById('eqEnabledToggle');

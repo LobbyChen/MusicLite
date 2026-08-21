@@ -285,6 +285,16 @@
                     </div>
                     <span class="toggle-desc" data-i18n="designer.aeroBlurDesc">透明模式下背景的毛玻璃模糊量；默认关闭，开启后会极大增强GPU占用!</span>
                 </div>
+
+                <!-- 播放器封面背景模糊（新/旧 UI 共用） -->
+                <div class="setting-item" id="player-bg-blur-item">
+                    <label for="player-bg-blur-slider" data-i18n="designer.playerBgBlur">播放器背景模糊</label>
+                    <div class="slider-row">
+                        <input type="range" id="player-bg-blur-slider" min="0" max="30" value="20" step="1" class="setting-slider" />
+                        <span id="player-bg-blur-value" class="slider-value">20px</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.playerBgBlurDesc">播放器封面背景的模糊量，同时作用于新 UI 与旧 UI</span>
+                </div>
             </section>
 
             <!-- 动画 -->

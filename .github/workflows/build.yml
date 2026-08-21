@@ -1,7 +1,11 @@
 name: Build & Release
 
 on:
+  # 只在 push v* 版本 tag 时自动触发（正式发布）
   push:
+    tags:
+      - 'v*'
+  # 允许在 Actions 页面手动触发（用于测试构建，不会发布 release）
   workflow_dispatch:
 
 permissions:
@@ -84,7 +88,6 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential pkg-config rpm \
             libgtk-4-dev libwebkitgtk-6.0-dev libnotify-dev \
-            libfftw3-dev \
             libavformat-dev libavcodec-dev libswresample-dev libavutil-dev \
             libasound2-dev libx11-dev libx11-xcb-dev libxtst-dev libxkbcommon-dev
 
@@ -103,35 +106,22 @@ jobs:
           }
           & $nsis /VERSION
 
-      # FFTW (DLL + 用 dlltool 生成 MinGW 导入库) 与 FFmpeg shared 构建均不变，使用缓存
-      - name: "[Windows] Cache native libs (FFTW + FFmpeg)"
+      # FFmpeg shared 构建不变，使用缓存
+      - name: "[Windows] Cache native libs (FFmpeg)"
         if: matrix.platform == 'windows'
         id: cache-libs
         uses: actions/cache@v4
         with:
           path: |
             libs
-            fftw
             ffmpeg
-          key: ${{ runner.os }}-native-libs-fftw335-ffmpeg-master-shared-v2
+          key: ${{ runner.os }}-native-libs-ffmpeg-master-shared-v3
 
-      - name: "[Windows] Prepare native libs (FFTW + FFmpeg)"
+      - name: "[Windows] Prepare native libs (FFmpeg)"
         if: matrix.platform == 'windows' && steps.cache-libs.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force libs, fftw | Out-Null
-          # FFTW 3.3.5: 官方预编译 DLL + 用 dlltool 生成 MinGW 导入库
-          # 注意：cgo 指令 `-lfftw3` 期望找到 libfftw3.a，故输出名必须为 libfftw3.a
-          # 运行时仍链接 libfftw3-3.dll（由 -D 参数指定）
-          Invoke-WebRequest -Uri "https://fftw.org/pub/fftw/fftw-3.3.5-dll64.zip" -OutFile fftw.zip
-          Expand-Archive fftw.zip -DestinationPath fftw
-          Copy-Item fftw\libfftw3-3.dll libs\
-          dlltool -d fftw\libfftw3-3.def -l libs\libfftw3.a -D libfftw3-3.dll
-          # 预编译包不含 fftw3.h 头文件，从源码包中单独提取
-          # 源码树中 fftw3.h 位于 api/ 子目录（见 github.com/FFTW/fftw3）
-          Invoke-WebRequest -Uri "https://fftw.org/fftw-3.3.5.tar.gz" -OutFile fftw-src.tar.gz
-          tar -xzf fftw-src.tar.gz fftw-3.3.5/api/fftw3.h
-          Copy-Item fftw-3.3.5\api\fftw3.h fftw\
+          New-Item -ItemType Directory -Force libs | Out-Null
           # FFmpeg shared 构建（含 .dll.a 导入库与头文件，用于 CGO 链接）
           Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl-shared.zip" -OutFile ffmpeg.zip
           Expand-Archive ffmpeg.zip -DestinationPath ffmpeg
@@ -142,7 +132,7 @@ jobs:
         run: |
           $ff = (Get-ChildItem ffmpeg -Directory | Select-Object -First 1).FullName
           $env:CGO_ENABLED = "1"
-          $env:CGO_CFLAGS = "-I$ff\include -I$PWD\fftw"
+          $env:CGO_CFLAGS = "-I$ff\include"
           $env:CGO_LDFLAGS = "-L$ff\lib -L$PWD\libs -lavformat -lavcodec -lswresample -lavutil"
           # VERSION_LDFLAGS 已由 Compute version 步骤注入到 $env:VERSION_LDFLAGS
           # Taskfile 读取 VERSION_LDFLAGS 追加到 -ldflags
@@ -197,9 +187,9 @@ jobs:
           cp bin/*.deb bin/*.rpm dist/
 
       # ============================= macOS =============================
-      - name: "[macOS] Install dependencies (fftw + ffmpeg)"
+      - name: "[macOS] Install dependencies (ffmpeg)"
         if: matrix.platform == 'macos'
-        run: brew install fftw ffmpeg
+        run: brew install ffmpeg
 
       - name: "[macOS] Build .app bundle"
         if: matrix.platform == 'macos'
@@ -235,7 +225,7 @@ jobs:
           FW="$APP/Contents/Frameworks"
           mkdir -p "$FW"
           # 递归收集 Homebrew 动态库到 Contents/Frameworks 并改写 install name，
-          # 使 .app 完全自包含，用户无需安装 brew fftw/ffmpeg
+          # 使 .app 完全自包含，用户无需安装 brew ffmpeg
           while true; do
             added=0
             targets=("$BIN")

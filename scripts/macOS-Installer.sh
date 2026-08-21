@@ -13,7 +13,7 @@
 #
 # 说明:
 #   Release 中的 .app 已在 CI 打包阶段内置全部原生依赖
-#   (FFmpeg / FFTW 等动态库)，无需 Homebrew 或任何额外依赖。
+#   (FFmpeg 等动态库)，无需 Homebrew 或任何额外依赖。
 
 set -euo pipefail
 

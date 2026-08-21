@@ -1634,6 +1634,8 @@ h2 {
     background-repeat: no-repeat;
     background-position: center;
     opacity: 0.80;
+    /* 封面背景模糊：由 --player-bg-blur 驱动（设计器“播放器背景模糊”控制，新/旧 UI 共用） */
+    filter: blur(var(--player-bg-blur, 0px));
     z-index: -1;
 }
 
@@ -2279,7 +2281,8 @@ body.lyric-anim-none .fs-lyric-line {
     background-position: center;
     background-repeat: no-repeat;
     opacity: 0.25;
-    filter: blur(30px);
+    /* 复用播放器封面背景模糊变量（全屏歌词是播放器子视图，保持一致） */
+    filter: blur(var(--player-bg-blur, 20px));
     z-index: -1;
 }
 

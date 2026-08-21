@@ -721,6 +721,14 @@ export class Settings {
              */
             this["aero_blur"] = 0;
         }
+        if (!("player_bg_blur" in $$source)) {
+            /**
+             * 播放器封面背景模糊量（px，0-30，默认 20）；作用于新/旧 UI 的 .player-bg-layer
+             * @member
+             * @type {number}
+             */
+            this["player_bg_blur"] = 0;
+        }
         if (!("design_radius" in $$source)) {
             /**
              * 设计令牌（设计器实时调整，持久化到 settings.json）
@@ -777,22 +785,6 @@ export class Settings {
              * @type {string}
              */
             this["titlebar_text"] = "";
-        }
-        if (!("smart_eq_enabled" in $$source)) {
-            /**
-             * 智能均衡器开关
-             * @member
-             * @type {boolean}
-             */
-            this["smart_eq_enabled"] = false;
-        }
-        if (!("smart_eq_intensity" in $$source)) {
-            /**
-             * 智能均衡器补偿强度 0-1
-             * @member
-             * @type {number}
-             */
-            this["smart_eq_intensity"] = 0;
         }
         if (!("settings_layout" in $$source)) {
             /**
@@ -854,18 +846,18 @@ export class Settings {
      * @returns {Settings}
      */
     static createFrom($$source = {}) {
+        const $$createField38_0 = $$createType9;
         const $$createField39_0 = $$createType9;
         const $$createField40_0 = $$createType9;
-        const $$createField41_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("hotkey_playpause" in $$parsedSource) {
-            $$parsedSource["hotkey_playpause"] = $$createField39_0($$parsedSource["hotkey_playpause"]);
+            $$parsedSource["hotkey_playpause"] = $$createField38_0($$parsedSource["hotkey_playpause"]);
         }
         if ("hotkey_next" in $$parsedSource) {
-            $$parsedSource["hotkey_next"] = $$createField40_0($$parsedSource["hotkey_next"]);
+            $$parsedSource["hotkey_next"] = $$createField39_0($$parsedSource["hotkey_next"]);
         }
         if ("hotkey_prev" in $$parsedSource) {
-            $$parsedSource["hotkey_prev"] = $$createField41_0($$parsedSource["hotkey_prev"]);
+            $$parsedSource["hotkey_prev"] = $$createField40_0($$parsedSource["hotkey_prev"]);
         }
         return new Settings(/** @type {Partial<Settings>} */($$parsedSource));
     }
@@ -920,6 +912,51 @@ export class TrayState {
     static createFrom($$source = {}) {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new TrayState(/** @type {Partial<TrayState>} */($$parsedSource));
+    }
+}
+
+/**
+ * VersionInfo 供前端 bindings 直接消费的结构
+ */
+export class VersionInfo {
+    /**
+     * Creates a new VersionInfo instance.
+     * @param {Partial<VersionInfo>} [$$source = {}] - The source object to create the VersionInfo.
+     */
+    constructor($$source = {}) {
+        if (!("version" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["version"] = "";
+        }
+        if (!("buildSha" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["buildSha"] = "";
+        }
+        if (!("buildNum" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["buildNum"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VersionInfo instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {VersionInfo}
+     */
+    static createFrom($$source = {}) {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new VersionInfo(/** @type {Partial<VersionInfo>} */($$parsedSource));
     }
 }
 
