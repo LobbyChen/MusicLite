@@ -19,5 +19,6 @@ export {
     QueueStatus,
     Settings,
     TrayState,
+    UpdateInfo,
     VersionInfo
 } from "./models.js";

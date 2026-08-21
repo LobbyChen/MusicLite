@@ -72,8 +72,8 @@ func (s *MusicService) initTray() {
 
 	// ---------- 2) 创建 SystemTray 图标 ----------
 	tray := s.app.SystemTray.New()
-	if len(trayIconData) > 0 {
-		tray.SetIcon(trayIconData)
+	if len(TrayIconData) > 0 {
+		tray.SetIcon(TrayIconData)
 	}
 	tray.SetLabel("MusicLite")
 	tray.SetTooltip(strs.TrayTooltip)

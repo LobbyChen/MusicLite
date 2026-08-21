@@ -1,4 +1,4 @@
-import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, OpenGitHubRepo, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, HotkeyApply, HotkeyGetActionList, GetVersionInfo } from '@bindings/MusicLite/app/musicservice.js';
+import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, OpenGitHubRepo, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, HotkeyApply, HotkeyGetActionList, GetVersionInfo, CheckForUpdate, PerformUpdate, QuitApp } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
 import { Window } from '@wailsio/runtime';
 import { startTutorialFromSettings, resumeTutorialIfAny } from './tutorial.js';
@@ -61,6 +61,15 @@ const resetBtn = document.getElementById('reset-settings-btn');
 const openDataFolderBtn = document.getElementById('open-data-folder-btn');
 const openGitHubBtn = document.getElementById('open-github-btn');
 const startTutorialBtn = document.getElementById('start-tutorial-btn');
+const checkUpdateBtn = document.getElementById('check-update-btn');
+const updateStatusEl = document.getElementById('update-status');
+const updateDetailEl = document.getElementById('update-detail');
+const updateTitleEl = document.getElementById('update-title');
+const updateVersionEl = document.getElementById('update-version');
+const updateNotesEl = document.getElementById('update-notes');
+const performUpdateBtn = document.getElementById('perform-update-btn');
+const openReleasePageBtn = document.getElementById('open-release-page-btn');
+const dismissUpdateBtn = document.getElementById('dismiss-update-btn');
 const volumeSlider = document.getElementById('volume-slider');
 const volumeValue = document.getElementById('volume-value');
 const volumeModeBtns = document.querySelectorAll('.anim-level-btn[data-vol-mode]');
@@ -1121,6 +1130,28 @@ async function setupEventListeners() {
                 }
             });
         }
+        // 检查更新：调用后端 CheckForUpdate，展示新版本信息并按平台分发更新方式
+        if (checkUpdateBtn) {
+            checkUpdateBtn.addEventListener('click', handleCheckUpdate);
+        }
+        if (performUpdateBtn) {
+            performUpdateBtn.addEventListener('click', handlePerformUpdate);
+        }
+        if (openReleasePageBtn) {
+            openReleasePageBtn.addEventListener('click', () => {
+                const url = updateDetailEl?.dataset.releaseUrl;
+                if (url) {
+                    // 复用后端 openURL：通过 OpenGitHubRepo 不可行（路径不同），直接前端打开
+                    try { window.open(url, '_blank'); } catch (_) {}
+                }
+            });
+        }
+        if (dismissUpdateBtn) {
+            dismissUpdateBtn.addEventListener('click', () => {
+                if (updateDetailEl) updateDetailEl.style.display = 'none';
+                if (updateStatusEl) updateStatusEl.textContent = '';
+            });
+        }
         // 显示构建期注入的版本号（version / buildSHA / buildNum）
         const versionEl = document.getElementById('app-version');
         if (versionEl) {
@@ -1353,5 +1384,193 @@ async function saveSettings() {
     } catch (err) {
         console.error('Failed to save settings:', err);
         showToast(t('libraries.saveFailed', err?.message || err), 'error');
+    }
+}
+
+// ============ 检查更新 ============
+// 保存最近一次检查得到的 UpdateInfo（供"立即更新"按钮使用）
+let lastUpdateInfo = null;
+
+async function handleCheckUpdate() {
+    if (!checkUpdateBtn) return;
+    // 进入"检查中"状态
+    checkUpdateBtn.disabled = true;
+    checkUpdateBtn.textContent = t('settings.updateChecking');
+    if (updateStatusEl) updateStatusEl.textContent = '';
+    if (updateDetailEl) updateDetailEl.style.display = 'none';
+
+    try {
+        const info = await CheckForUpdate();
+        lastUpdateInfo = info;
+
+        // 错误优先
+        if (info.error) {
+            if (updateStatusEl) {
+                updateStatusEl.textContent = t('settings.updateCheckFailed', info.error);
+                updateStatusEl.style.color = '';
+            }
+            showToast(t('settings.updateCheckFailed', info.error), 'error');
+            return;
+        }
+
+        if (info.hasUpdate) {
+            // 有新版本：展开详情面板
+            if (updateStatusEl) {
+                updateStatusEl.textContent = t('settings.updateAvailable', info.latestVer);
+                updateStatusEl.style.color = 'var(--accent-color, #1DB954)';
+            }
+            renderUpdateDetail(info);
+            showToast(t('settings.updateAvailable', info.latestVer), 'info', 4000);
+        } else {
+            // 已是最新版本
+            if (updateStatusEl) {
+                updateStatusEl.textContent = t('settings.upToDate', info.currentVer);
+                updateStatusEl.style.color = 'var(--accent-color, #1DB954)';
+            }
+            if (updateDetailEl) updateDetailEl.style.display = 'none';
+            showToast(t('settings.upToDate', info.currentVer), 'success');
+        }
+    } catch (e) {
+        console.error('Check update failed:', e);
+        const msg = e?.message || String(e);
+        if (updateStatusEl) {
+            updateStatusEl.textContent = t('settings.updateCheckFailed', msg);
+            updateStatusEl.style.color = '';
+        }
+        showToast(t('settings.updateCheckFailed', msg), 'error');
+    } finally {
+        checkUpdateBtn.disabled = false;
+        checkUpdateBtn.textContent = t('settings.checkUpdateBtn');
+    }
+}
+
+// 渲染更新详情面板
+function renderUpdateDetail(info) {
+    if (!updateDetailEl) return;
+    // 记录 release URL 给"打开发布页"按钮使用
+    updateDetailEl.dataset.releaseUrl = info.releaseURL || '';
+
+    if (updateTitleEl) {
+        updateTitleEl.textContent = info.releaseTitle || info.latestTag || info.latestVer || '';
+    }
+    if (updateVersionEl) {
+        const parts = [`${t('settings.currentVersion')}: ${info.currentVer}`, `${t('settings.latestVersion')}: ${info.latestVer}`];
+        if (info.downloadName) {
+            parts.push(`${t('settings.downloadFile')}: ${info.downloadName}`);
+        }
+        if (info.downloadSize > 0) {
+            parts.push(`${t('settings.downloadSize')}: ${formatBytes(info.downloadSize)}`);
+        }
+        if (info.publishedAt) {
+            try {
+                const d = new Date(info.publishedAt);
+                parts.push(`${t('settings.publishedAt')}: ${d.toLocaleDateString()}`);
+            } catch (_) {}
+        }
+        updateVersionEl.textContent = parts.join(' · ');
+    }
+    if (updateNotesEl) {
+        // 简单展示 markdown 原文（不渲染 markdown，避免引入依赖）
+        updateNotesEl.textContent = info.releaseNotes || '';
+    }
+
+    // 根据平台调整"立即更新"按钮文案与可见性
+    if (performUpdateBtn) {
+        if (info.platform === 'windows') {
+            // Windows：有便携包才能自动更新
+            if (info.downloadURL) {
+                performUpdateBtn.style.display = '';
+                performUpdateBtn.textContent = t('settings.performUpdate');
+            } else {
+                performUpdateBtn.style.display = 'none';
+            }
+        } else {
+            // 其他平台：自动打开浏览器
+            performUpdateBtn.style.display = '';
+            performUpdateBtn.textContent = t('settings.openReleasePage');
+        }
+    }
+    if (openReleasePageBtn) {
+        openReleasePageBtn.style.display = info.releaseURL ? '' : 'none';
+    }
+
+    updateDetailEl.style.display = 'block';
+}
+
+// 格式化字节数为人类可读字符串
+function formatBytes(bytes) {
+    if (typeof bytes !== 'number' || !isFinite(bytes) || bytes <= 0) return '--';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let i = 0;
+    while (bytes >= 1024 && i < units.length - 1) {
+        bytes /= 1024;
+        i++;
+    }
+    return bytes.toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
+}
+
+// 触发更新：Windows 调用 PerformUpdate 后退出主进程；其他平台打开浏览器
+async function handlePerformUpdate() {
+    if (!lastUpdateInfo) {
+        showToast(t('settings.updateNoInfo'), 'warning');
+        return;
+    }
+    const info = lastUpdateInfo;
+
+    // Windows 平台：先确认，然后调用后端下载并替换
+    if (info.platform === 'windows') {
+        if (!info.downloadURL) {
+            showToast(t('settings.updateNoPkg'), 'warning');
+            return;
+        }
+        // 二次确认
+        const ok = await showConfirm(
+            t('settings.updateConfirmMsg', info.latestVer),
+            {
+                title: t('settings.performUpdate'),
+                okText: t('settings.performUpdate'),
+                cancelText: t('common.cancel'),
+                danger: false,
+            }
+        );
+        if (!ok) return;
+
+        if (performUpdateBtn) {
+            performUpdateBtn.disabled = true;
+            performUpdateBtn.textContent = t('settings.updating');
+        }
+        try {
+            await PerformUpdate(info);
+            // 后端已启动 .cmd 更新脚本，提示用户并退出主进程
+            showToast(t('settings.updateRestarting'), 'info', 5000);
+            // 给前端 1.5 秒展示提示，然后退出
+            setTimeout(() => {
+                try { QuitApp(); } catch (_) {
+                    // 兜底：直接关闭窗口
+                    try { window.close(); } catch (_) {}
+                }
+            }, 1500);
+        } catch (e) {
+            console.error('Perform update failed:', e);
+            showToast(t('settings.updateFailed', e?.message || String(e)), 'error');
+            if (performUpdateBtn) {
+                performUpdateBtn.disabled = false;
+                performUpdateBtn.textContent = t('settings.performUpdate');
+            }
+        }
+        return;
+    }
+
+    // 非 Windows：调用后端 PerformUpdate（内部调用 openURL 打开 Release 页面）
+    try {
+        await PerformUpdate(info);
+        showToast(t('settings.updateOpenBrowser'), 'info');
+    } catch (e) {
+        // 兜底：前端直接打开 release URL
+        if (info.releaseURL) {
+            try { window.open(info.releaseURL, '_blank'); } catch (_) {}
+        } else {
+            showToast(t('settings.updateFailed', e?.message || String(e)), 'error');
+        }
     }
 }

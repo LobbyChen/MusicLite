@@ -916,6 +916,141 @@ export class TrayState {
 }
 
 /**
+ * UpdateInfo 检查更新返回结构
+ */
+export class UpdateInfo {
+    /**
+     * Creates a new UpdateInfo instance.
+     * @param {Partial<UpdateInfo>} [$$source = {}] - The source object to create the UpdateInfo.
+     */
+    constructor($$source = {}) {
+        if (!("hasUpdate" in $$source)) {
+            /**
+             * 是否有新版本
+             * @member
+             * @type {boolean}
+             */
+            this["hasUpdate"] = false;
+        }
+        if (!("currentVer" in $$source)) {
+            /**
+             * 当前版本（已剥离 -dev 后缀）
+             * @member
+             * @type {string}
+             */
+            this["currentVer"] = "";
+        }
+        if (!("latestVer" in $$source)) {
+            /**
+             * 最新版本
+             * @member
+             * @type {string}
+             */
+            this["latestVer"] = "";
+        }
+        if (!("latestTag" in $$source)) {
+            /**
+             * 最新版本 tag（如 Beta0.7.1）
+             * @member
+             * @type {string}
+             */
+            this["latestTag"] = "";
+        }
+        if (!("releaseTitle" in $$source)) {
+            /**
+             * Release 标题
+             * @member
+             * @type {string}
+             */
+            this["releaseTitle"] = "";
+        }
+        if (!("releaseNotes" in $$source)) {
+            /**
+             * Release notes（markdown 原文）
+             * @member
+             * @type {string}
+             */
+            this["releaseNotes"] = "";
+        }
+        if (!("releaseURL" in $$source)) {
+            /**
+             * Release 网页地址
+             * @member
+             * @type {string}
+             */
+            this["releaseURL"] = "";
+        }
+        if (!("downloadURL" in $$source)) {
+            /**
+             * 当前平台的便携包下载地址（无则空）
+             * @member
+             * @type {string}
+             */
+            this["downloadURL"] = "";
+        }
+        if (!("downloadName" in $$source)) {
+            /**
+             * 下载文件名（展示用）
+             * @member
+             * @type {string}
+             */
+            this["downloadName"] = "";
+        }
+        if (!("downloadSize" in $$source)) {
+            /**
+             * 下载字节数
+             * @member
+             * @type {number}
+             */
+            this["downloadSize"] = 0;
+        }
+        if (!("publishedAt" in $$source)) {
+            /**
+             * 发布时间 RFC3339
+             * @member
+             * @type {string}
+             */
+            this["publishedAt"] = "";
+        }
+        if (!("platform" in $$source)) {
+            /**
+             * 当前平台（windows/darwin/linux）
+             * @member
+             * @type {string}
+             */
+            this["platform"] = "";
+        }
+        if (!("isPrerelease" in $$source)) {
+            /**
+             * @member
+             * @type {boolean}
+             */
+            this["isPrerelease"] = false;
+        }
+        if (!("error" in $$source)) {
+            /**
+             * 检查失败时的错误信息
+             * @member
+             * @type {string}
+             */
+            this["error"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new UpdateInfo instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {UpdateInfo}
+     */
+    static createFrom($$source = {}) {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new UpdateInfo(/** @type {Partial<UpdateInfo>} */($$parsedSource));
+    }
+}
+
+/**
  * VersionInfo 供前端 bindings 直接消费的结构
  */
 export class VersionInfo {

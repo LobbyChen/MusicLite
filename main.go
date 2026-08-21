@@ -30,6 +30,7 @@ func main() {
 	wailsApp := application.New(application.Options{
 		Name:        "MusicLite",
 		Description: "MusicLite 离线音乐播放器",
+		Icon:        app.TrayIconData,
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 			// 中间件：拦截 /audio/ 和 /cover/ 请求交给 AudioHandler，
@@ -70,6 +71,7 @@ func main() {
 	mainWindow := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:           "main",
 		Title:          "MusicLite",
+		Icon:           app.TrayIconData,
 		Width:          1024,
 		Height:         580,
 		Frameless:      true, // 无原生边框：前端自绘标题栏

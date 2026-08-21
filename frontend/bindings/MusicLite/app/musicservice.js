@@ -23,13 +23,24 @@ import * as storage$0 from "../internal/storage/models.js";
 import * as $models from "./models.js";
 
 /**
+ * CheckForUpdate 拉取 GitHub 最新 Release 并与当前版本比较
+ * 不抛出错误，错误信息放在 UpdateInfo.Error 中（前端可直接显示）
+ * @returns {$CancellablePromise<$models.UpdateInfo>}
+ */
+export function CheckForUpdate() {
+    return $Call.ByID(3345269732).then(/** @type {($result: any) => any} */(($result) => {
+        return $$createType0($result);
+    }));
+}
+
+/**
  * CheckI18nNewKeys 检查内嵌 i18n 相对于用户外部文件是否存在新键/值变更，返回差异报告。
  * 前端据此决定是否弹窗询问用户覆盖。
  * @returns {$CancellablePromise<$models.I18nNewKeysReport>}
  */
 export function CheckI18nNewKeys() {
     return $Call.ByID(4024078436).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType0($result);
+        return $$createType1($result);
     }));
 }
 
@@ -45,7 +56,7 @@ export function CheckI18nNewKeys() {
  */
 export function ConfirmI18nMerge(keepCustom, removeObsolete) {
     return $Call.ByID(3238815206, keepCustom, removeObsolete).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType1($result);
+        return $$createType2($result);
     }));
 }
 
@@ -83,7 +94,7 @@ export function ExportSettings() {
  */
 export function GetAllTracks() {
     return $Call.ByID(2221140177).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType3($result);
+        return $$createType4($result);
     }));
 }
 
@@ -100,7 +111,7 @@ export function GetApplicationVolume() {
  */
 export function GetDatabase() {
     return $Call.ByID(1326684263).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType5($result);
+        return $$createType6($result);
     }));
 }
 
@@ -109,7 +120,7 @@ export function GetDatabase() {
  */
 export function GetFileInArgs() {
     return $Call.ByID(2280569798).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType2($result);
+        return $$createType3($result);
     }));
 }
 
@@ -119,7 +130,7 @@ export function GetFileInArgs() {
  */
 export function GetI18nData() {
     return $Call.ByID(2121690250).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType6($result);
+        return $$createType7($result);
     }));
 }
 
@@ -133,7 +144,7 @@ export function GetI18nData() {
  */
 export function GetInstalledFonts() {
     return $Call.ByID(2346987914).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType7($result);
+        return $$createType8($result);
     }));
 }
 
@@ -153,7 +164,7 @@ export function GetListenTime(trackId) {
  */
 export function GetNextTracks(currTrackId) {
     return $Call.ByID(3284356975, currTrackId).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType2($result);
+        return $$createType3($result);
     }));
 }
 
@@ -163,7 +174,7 @@ export function GetNextTracks(currTrackId) {
  */
 export function GetPrevTracks(currTrackId) {
     return $Call.ByID(384409383, currTrackId).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType2($result);
+        return $$createType3($result);
     }));
 }
 
@@ -173,7 +184,7 @@ export function GetPrevTracks(currTrackId) {
  */
 export function GetRandomTrack(currTrackId) {
     return $Call.ByID(3034848620, currTrackId).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType2($result);
+        return $$createType3($result);
     }));
 }
 
@@ -200,7 +211,7 @@ export function GetTotalListenTime() {
  */
 export function GetTrack(id) {
     return $Call.ByID(577520329, id).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType2($result);
+        return $$createType3($result);
     }));
 }
 
@@ -210,7 +221,7 @@ export function GetTrack(id) {
  */
 export function GetTrayState() {
     return $Call.ByID(2404781643).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType8($result);
+        return $$createType9($result);
     }));
 }
 
@@ -220,7 +231,7 @@ export function GetTrayState() {
  */
 export function GetVersionInfo() {
     return $Call.ByID(2675164726).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType9($result);
+        return $$createType10($result);
     }));
 }
 
@@ -263,7 +274,7 @@ export function HotkeyFormatKey(keys) {
  */
 export function HotkeyGetActionList() {
     return $Call.ByID(1573858682).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType11($result);
+        return $$createType12($result);
     }));
 }
 
@@ -273,7 +284,7 @@ export function HotkeyGetActionList() {
  */
 export function HotkeyGetConfig() {
     return $Call.ByID(549795818).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType13($result);
+        return $$createType14($result);
     }));
 }
 
@@ -315,7 +326,7 @@ export function ImportFilesFromPaths(paths) {
  */
 export function ImportSettings() {
     return $Call.ByID(2398840366).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType14($result);
+        return $$createType15($result);
     }));
 }
 
@@ -341,7 +352,7 @@ export function IsTrayQuitting() {
  */
 export function LoadSettings() {
     return $Call.ByID(1006476059).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType14($result);
+        return $$createType15($result);
     }));
 }
 
@@ -391,12 +402,22 @@ export function PackShare(id) {
 }
 
 /**
+ * PerformUpdate Windows 平台：下载便携包并通过 .cmd 文件替换自己后重启
+ * info 由前端传入（来自 CheckForUpdate 的结果），也可为 nil 时重新检查
+ * @param {$models.UpdateInfo} info
+ * @returns {$CancellablePromise<void>}
+ */
+export function PerformUpdate(info) {
+    return $Call.ByID(1444417726, info);
+}
+
+/**
  * PickImageFile 打开文件对话框选择图片，读取并返回 base64 数据 + MIME
  * @returns {$CancellablePromise<$models.PickedFile>}
  */
 export function PickImageFile() {
     return $Call.ByID(1908735394).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType15($result);
+        return $$createType16($result);
     }));
 }
 
@@ -428,7 +449,7 @@ export function PlayerGetEqEnabled() {
  */
 export function PlayerGetEqFreqs() {
     return $Call.ByID(276610990).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType16($result);
+        return $$createType17($result);
     }));
 }
 
@@ -437,7 +458,7 @@ export function PlayerGetEqFreqs() {
  */
 export function PlayerGetEqGains() {
     return $Call.ByID(1596937225).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType16($result);
+        return $$createType17($result);
     }));
 }
 
@@ -453,7 +474,7 @@ export function PlayerGetPlayMode() {
  */
 export function PlayerGetState() {
     return $Call.ByID(427269906).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType17($result);
+        return $$createType18($result);
     }));
 }
 
@@ -569,7 +590,7 @@ export function QueueAddAllFromLibrary() {
  */
 export function QueueAddTrack(id) {
     return $Call.ByID(68181639, id).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType18($result);
+        return $$createType19($result);
     }));
 }
 
@@ -585,7 +606,7 @@ export function QueueClear() {
  */
 export function QueueGetNext() {
     return $Call.ByID(2031574098).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType18($result);
+        return $$createType19($result);
     }));
 }
 
@@ -594,7 +615,7 @@ export function QueueGetNext() {
  */
 export function QueueGetPrev() {
     return $Call.ByID(3949423462).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType18($result);
+        return $$createType19($result);
     }));
 }
 
@@ -603,7 +624,7 @@ export function QueueGetPrev() {
  */
 export function QueueGetStatus() {
     return $Call.ByID(2959569805).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType19($result);
+        return $$createType20($result);
     }));
 }
 
@@ -654,7 +675,7 @@ export function QuitApp() {
  */
 export function ReadFileForEdit(path) {
     return $Call.ByID(3392836227, path).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType15($result);
+        return $$createType16($result);
     }));
 }
 
@@ -682,7 +703,7 @@ export function RecordPlayStart(trackId) {
  */
 export function ResetSettings() {
     return $Call.ByID(2661309004).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType14($result);
+        return $$createType15($result);
     }));
 }
 
@@ -773,23 +794,24 @@ export function UpdateTrackCover(id, coverData, coverMIME) {
 }
 
 // Private type creation functions
-const $$createType0 = $models.I18nNewKeysReport.createFrom;
-const $$createType1 = $models.I18nMergeResult.createFrom;
-const $$createType2 = format$0.MscData.createFrom;
-const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = storage$0.Database.createFrom;
-const $$createType5 = $Create.Nullable($$createType4);
-const $$createType6 = $models.I18nData.createFrom;
-const $$createType7 = $Create.Array($Create.Any);
-const $$createType8 = $models.TrayState.createFrom;
-const $$createType9 = $models.VersionInfo.createFrom;
-const $$createType10 = $Create.Map($Create.Any, $Create.Any);
-const $$createType11 = $Create.Array($$createType10);
-const $$createType12 = $models.HotkeyConfig.createFrom;
-const $$createType13 = $Create.Map($Create.Any, $$createType12);
-const $$createType14 = $models.Settings.createFrom;
-const $$createType15 = $models.PickedFile.createFrom;
-const $$createType16 = $Create.Array($Create.Any);
-const $$createType17 = $models.PlayerState.createFrom;
-const $$createType18 = $models.QueueItem.createFrom;
-const $$createType19 = $models.QueueStatus.createFrom;
+const $$createType0 = $models.UpdateInfo.createFrom;
+const $$createType1 = $models.I18nNewKeysReport.createFrom;
+const $$createType2 = $models.I18nMergeResult.createFrom;
+const $$createType3 = format$0.MscData.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = storage$0.Database.createFrom;
+const $$createType6 = $Create.Nullable($$createType5);
+const $$createType7 = $models.I18nData.createFrom;
+const $$createType8 = $Create.Array($Create.Any);
+const $$createType9 = $models.TrayState.createFrom;
+const $$createType10 = $models.VersionInfo.createFrom;
+const $$createType11 = $Create.Map($Create.Any, $Create.Any);
+const $$createType12 = $Create.Array($$createType11);
+const $$createType13 = $models.HotkeyConfig.createFrom;
+const $$createType14 = $Create.Map($Create.Any, $$createType13);
+const $$createType15 = $models.Settings.createFrom;
+const $$createType16 = $models.PickedFile.createFrom;
+const $$createType17 = $Create.Array($Create.Any);
+const $$createType18 = $models.PlayerState.createFrom;
+const $$createType19 = $models.QueueItem.createFrom;
+const $$createType20 = $models.QueueStatus.createFrom;

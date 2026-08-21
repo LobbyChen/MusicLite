@@ -247,6 +247,26 @@
                     </div>
                 </div>
                 <div class="setting-item" style="margin-top: 16px;">
+                    <label data-i18n="settings.checkUpdate">检查更新</label>
+                    <p class="text-muted" style="margin: 4px 0 8px;" data-i18n="settings.checkUpdateDesc">检查 GitHub 上是否有新版本</p>
+                    <div class="button-row" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <button class="btn btn-primary" id="check-update-btn" data-i18n="settings.checkUpdateBtn">检查更新</button>
+                        <span id="update-status" class="toggle-desc" style="align-self: center;"></span>
+                    </div>
+                    <div id="update-detail" style="display: none; margin-top: 12px; padding: 12px; border-radius: 8px; background: var(--bg-elevated, rgba(255,255,255,0.04)); border: 1px solid var(--border-color, rgba(255,255,255,0.08)); max-height: 280px; overflow-y: auto;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; flex-wrap: wrap;">
+                            <strong id="update-title"></strong>
+                            <span id="update-version" class="text-muted" style="font-size: 0.9em;"></span>
+                        </div>
+                        <pre id="update-notes" style="white-space: pre-wrap; word-break: break-word; font-family: inherit; margin: 0 0 10px; font-size: 0.88em; line-height: 1.5; color: var(--text-muted, #999);"></pre>
+                        <div class="button-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn btn-primary" id="perform-update-btn" data-i18n="settings.performUpdate">立即更新</button>
+                            <button class="btn btn-secondary" id="open-release-page-btn" data-i18n="settings.openReleasePage">打开发布页</button>
+                            <button class="btn btn-secondary" id="dismiss-update-btn" data-i18n="settings.dismissUpdate">稍后再说</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="setting-item" style="margin-top: 16px;">
                     <label data-i18n="tutorial.title">使用教程</label>
                     <p class="text-muted" style="margin: 4px 0 8px;" data-i18n="tutorial.startTip">一步步熟悉所有页面与功能</p>
                     <div class="button-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
