@@ -1,4 +1,4 @@
-import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, OpenGitHubRepo, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, HotkeyApply, HotkeyGetActionList, GetVersionInfo, CheckForUpdate, PerformUpdate, QuitApp, StartUpdateDownload, GetUpdateDownloadProgress, CancelUpdateDownload, ApplyDownloadedUpdate, SetUpdateThreadCount, SetI18nAutoAction } from '@bindings/MusicLite/app/musicservice.js';
+import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, OpenGitHubRepo, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, HotkeyApply, HotkeyGetActionList, GetVersionInfo, CheckForUpdate, PerformUpdate, QuitApp, StartUpdateDownload, GetUpdateDownloadProgress, CancelUpdateDownload, ApplyDownloadedUpdate, SetUpdateThreadCount, SetI18nAutoAction, PauseAndResumeUpdateDownload } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
 import { Window } from '@wailsio/runtime';
 import { startTutorialFromSettings, resumeTutorialIfAny } from './tutorial.js';
@@ -75,6 +75,7 @@ const progressLabelEl = document.getElementById('update-progress-label');
 const progressPercentEl = document.getElementById('update-progress-percent');
 const progressDetailEl = document.getElementById('update-progress-detail');
 const cancelDownloadBtn = document.getElementById('cancel-update-download-btn');
+const pauseResumeBtn = document.getElementById('pause-resume-download-btn');
 const downloadCompleteEl = document.getElementById('update-download-complete');
 const completeTextEl = document.getElementById('update-complete-text');
 const applyDownloadedUpdateBtn = document.getElementById('apply-downloaded-update-btn');
@@ -1315,7 +1316,7 @@ async function setupEventListeners() {
                 }
             });
         }
-        // 下载进度：取消按钮
+        // 下载进度：取消按钮（下载中 / 暂停中都可以取消）
         if (cancelDownloadBtn) {
             cancelDownloadBtn.addEventListener('click', async () => {
                 try {
@@ -1325,6 +1326,29 @@ async function setupEventListeners() {
                     showToast(t('settings.downloadCancelled'), 'info');
                 } catch (e) {
                     showToast(t('settings.downloadCancelFailed', e?.message || String(e)), 'error');
+                }
+            });
+        }
+        // 下载进度：暂停 / 继续按钮
+        if (pauseResumeBtn) {
+            pauseResumeBtn.addEventListener('click', async () => {
+                const status = pauseResumeBtn.dataset.downloadStatus || 'downloading';
+                try {
+                    if (status === 'paused') {
+                        await PauseAndResumeUpdateDownload();
+                        pauseResumeBtn.dataset.downloadStatus = 'downloading';
+                        pauseResumeBtn.textContent = t('settings.pauseDownload');
+                        showToast(t('settings.downloadResumed'), 'info');
+                    } else {
+                        await PauseAndResumeUpdateDownload();
+                        pauseResumeBtn.dataset.downloadStatus = 'paused';
+                        pauseResumeBtn.textContent = t('settings.resumeDownload');
+                        showToast(t('settings.downloadPaused'), 'info');
+                    }
+                } catch (e) {
+                    showToast((status === 'paused'
+                        ? t('settings.resumeDownloadFailed', e?.message || String(e))
+                        : t('settings.pauseDownloadFailed', e?.message || String(e))), 'error');
                 }
             });
         }
@@ -1727,16 +1751,29 @@ function renderDownloadProgress(p) {
     if (progressBarEl) progressBarEl.style.width = pct + '%';
     if (progressPercentEl) progressPercentEl.textContent = pct + '%';
 
-    // 标签
-    if (progressLabelEl) {
-        progressLabelEl.textContent = t('settings.downloading', p.latestVer || '');
+    // 标签 + 暂停按钮文案（按后端返回的 status 实时同步，避免按钮点过一次后状态不准）
+    const isPaused = p.status === 'paused';
+    if (pauseResumeBtn) {
+        pauseResumeBtn.dataset.downloadStatus = isPaused ? 'paused' : 'downloading';
+        pauseResumeBtn.textContent = isPaused ? t('settings.resumeDownload') : t('settings.pauseDownload');
+        // 未开始/已结束的状态不需要暂停按钮
+        const useless = (p.status === 'idle' || p.status === 'completed' || p.status === 'cancelled' || p.status === 'error');
+        pauseResumeBtn.style.display = useless ? 'none' : '';
     }
 
-    // 详情：已下载 / 总大小 + 速度
+    if (progressLabelEl) {
+        if (isPaused) {
+            progressLabelEl.textContent = t('settings.downloadPausedLabel', p.latestVer || '');
+        } else {
+            progressLabelEl.textContent = t('settings.downloading', p.latestVer || '');
+        }
+    }
+
+    // 详情：已下载 / 总大小 + 速度（暂停时不显示速度）
     if (progressDetailEl) {
         const downloadedStr = formatBytes(p.downloaded || 0);
         const totalStr = formatBytes(p.total || 0);
-        const speedStr = p.speed > 0 ? formatBytes(p.speed) + '/s' : '';
+        const speedStr = (!isPaused && p.speed > 0) ? formatBytes(p.speed) + '/s' : '';
         let detail = `${downloadedStr} / ${totalStr}`;
         if (speedStr) detail += ` · ${speedStr}`;
         progressDetailEl.textContent = detail;
@@ -1779,10 +1816,11 @@ function formatBytes(bytes) {
 async function restoreDownloadState() {
     try {
         const p = await GetUpdateDownloadProgress();
-        if (p.status === 'downloading') {
-            // 有正在进行的下载：恢复进度条并开始轮询
+        if (p.status === 'downloading' || p.status === 'paused') {
+            // 正在下载或暂停中：显示进度条并开始轮询（暂停态也会在 UI 上显示"已暂停"+继续按钮）
             if (downloadProgressEl) downloadProgressEl.style.display = '';
             if (updateActionsEl) updateActionsEl.style.display = 'none';
+            renderDownloadProgress(p);
             startDownloadPolling();
         } else if (p.status === 'completed') {
             // 下载已完成但尚未应用：显示完成提示

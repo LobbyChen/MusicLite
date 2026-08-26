@@ -93,10 +93,8 @@ const bgLoopBtns = document.querySelectorAll('.anim-level-btn[data-bg-loop]');
 const bgMutedBtns = document.querySelectorAll('.anim-level-btn[data-bg-muted]');
 const bgGlassBtns = document.querySelectorAll('.anim-level-btn[data-bg-glass]');
 const bgPickImageBtn = document.getElementById('bg-pick-image');
-const bgPickVideoBtn = document.getElementById('bg-pick-video');
 const bgClearFileBtn = document.getElementById('bg-clear-file');
 const bgFileInputImage = document.getElementById('bg-file-input-image');
-const bgFileInputVideo = document.getElementById('bg-file-input-video');
 const bgFileNameEl = document.getElementById('bg-file-name');
 const bgFileItem = document.getElementById('bg-file-item');
 const bgFitItem = document.getElementById('bg-fit-item');
@@ -225,16 +223,14 @@ function applyAnimationLevelLive() {
 
 // ============ 背景设置：根据 bg_type 切换子项可见性 ============
 function setBgUIForType(type) {
-    const showSubOptions = type === 'image' || type === 'video';
+    const showSubOptions = type === 'image' ;
     if (bgFileItem) bgFileItem.style.display = showSubOptions ? '' : 'none';
     if (bgPickImageBtn) bgPickImageBtn.style.display = type === 'image' ? '' : 'none';
-    if (bgPickVideoBtn) bgPickVideoBtn.style.display = type === 'video' ? '' : 'none';
     if (bgFitItem) bgFitItem.style.display = showSubOptions ? '' : 'none';
     if (bgOpacityItem) bgOpacityItem.style.display = showSubOptions ? '' : 'none';
     if (bgOverlayItem) bgOverlayItem.style.display = showSubOptions ? '' : 'none';
     if (bgBlurItem) bgBlurItem.style.display = showSubOptions ? '' : 'none';
     if (bgGlassItem) bgGlassItem.style.display = showSubOptions ? '' : 'none';
-    if (bgVideoOptions) bgVideoOptions.style.display = type === 'video' ? '' : 'none';
     if (bgClearFileBtn) bgClearFileBtn.style.display = (currentSettings && currentSettings.bg_url) ? '' : 'none';
 }
 
@@ -304,7 +300,7 @@ function applySettingsToUI(s) {
     layoutModeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.layoutMode === layoutMode));
 
     // ============ 背景设置 ============
-    const bgType = (s.bg_type === 'image' || s.bg_type === 'video') ? s.bg_type : 'none';
+    const bgType = (s.bg_type === 'image' ) ? s.bg_type : 'none';
     bgTypeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.bgType === bgType));
     const bgFit = (['cover','contain','fill','none','scaledown'].includes(s.bg_fit)) ? s.bg_fit : 'cover';
     bgFitBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.bgFit === bgFit));
@@ -612,12 +608,6 @@ function setupEventListeners() {
         });
     }
 
-    // 选择视频按钮
-    if (bgPickVideoBtn) {
-        bgPickVideoBtn.addEventListener('click', () => {
-            bgFileInputVideo.click();
-        });
-    }
 
     // 清除按钮
     if (bgClearFileBtn) {

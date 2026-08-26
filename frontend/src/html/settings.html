@@ -292,9 +292,12 @@
                         <div style="position: relative; height: 8px; border-radius: 4px; background: var(--hover-color, rgba(255,255,255,0.08)); overflow: hidden;">
                             <div id="update-progress-bar" style="position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: var(--accent-color, #1DB954); border-radius: 4px; transition: width 0.3s ease;"></div>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
                             <span id="update-progress-detail" class="toggle-desc" style="font-size: 0.82em; opacity: 0.7;"></span>
-                            <button class="btn btn-secondary" id="cancel-update-download-btn" style="padding: 4px 10px; font-size: 0.82em;" data-i18n="settings.cancelDownload">取消</button>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <button class="btn btn-secondary" id="pause-resume-download-btn" style="padding: 4px 10px; font-size: 0.82em;" data-i18n="settings.pauseDownload">暂停</button>
+                                <button class="btn btn-secondary" id="cancel-update-download-btn" style="padding: 4px 10px; font-size: 0.82em;" data-i18n="settings.cancelDownload">取消</button>
+                            </div>
                         </div>
                     </div>
                     <!-- 下载完成提示 -->

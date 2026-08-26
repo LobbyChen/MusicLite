@@ -215,14 +215,49 @@ func (a *MusicService) GetUpdateDownloadProgress() updateDownloadProgress {
 		lastDownloaded = downloaded
 	}
 
+	// 活跃下载时：暂停态返回 paused，否则 downloading（下载中）
+	status := "downloading"
+	if dm.IsPaused() {
+		status = "paused"
+	}
 	return updateDownloadProgress{
 		Downloaded: downloaded,
 		Total:      total,
 		Progress:   progress,
 		Speed:      atomic.LoadInt64(&currentSpeed),
-		Status:     "downloading",
+		Status:     status,
 		FileName:   info.DownloadName,
 		LatestVer:  info.LatestVer,
+	}
+}
+
+// PauseAndResumeUpdateDownload 暂停或继续当前活跃下载
+func (a *MusicService) PauseAndResumeUpdateDownload() {
+	dmMu.Lock()
+	dm := currentDM
+	dmMu.Unlock()
+
+	if dm == nil {
+		// 没有活跃下载，但持久化有 downloading 状态，移除状态
+		s := a.LoadSettings()
+		if s.UpdateDownloadState != nil && s.UpdateDownloadState.Status == "downloading" {
+			s.UpdateDownloadState.Status = "idle"
+			_ = a.SaveSettings(s)
+		}
+		return
+	}
+	dm.PauseAndResume()
+	s := a.LoadSettings()
+	if dm.IsPaused() {
+		if s.UpdateDownloadState != nil {
+			s.UpdateDownloadState.Status = "paused"
+			_ = a.SaveSettings(s)
+		}
+	} else {
+		if s.UpdateDownloadState != nil {
+			s.UpdateDownloadState.Status = "downloading"
+			_ = a.SaveSettings(s)
+		}
 	}
 }
 

@@ -386,7 +386,7 @@ export function ImportSettings() {
 }
 
 /**
- * IsDefaultPlayer 检查 MusicLite 是否为 .mp3 的默认播放器
+ * IsDefaultPlayer 检查 MusicLite 是否为 .mp3 的默认播放器（Windows 实现）
  * @returns {$CancellablePromise<boolean>}
  */
 export function IsDefaultPlayer() {
@@ -464,6 +464,14 @@ export function OpenSettingsWindow() {
  */
 export function PackShare(id) {
     return $Call.ByID(988473870, id);
+}
+
+/**
+ * PauseAndResumeUpdateDownload 暂停或继续当前活跃下载
+ * @returns {$CancellablePromise<void>}
+ */
+export function PauseAndResumeUpdateDownload() {
+    return $Call.ByID(3095820555);
 }
 
 /**
@@ -872,6 +880,14 @@ export function TogglePlayPause() {
  */
 export function UnmuteSystemMasterVolume() {
     return $Call.ByID(3753703197);
+}
+
+/**
+ * UnsetAsDefaultPlayer 取消 MusicLite 的默认播放器关联（Windows 实现）
+ * @returns {$CancellablePromise<void>}
+ */
+export function UnsetAsDefaultPlayer() {
+    return $Call.ByID(2695357653);
 }
 
 /**

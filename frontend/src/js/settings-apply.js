@@ -409,63 +409,63 @@ html[data-aero="true"] body {
    用 box-shadow inset 模拟玻璃边缘的高光/暗角，让半透明容器不只是"透"，而是"玻璃"。
    深色主题 → 顶边 10% 白高光 + 底边 10% 黑暗角
    浅色主题 → 顶边 35% 白高光 + 底边 15% 黑暗角（浅色更需要边框高光区分边界）*/
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .media-card,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .media-list-item,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .settings-section,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .designer-sidebar,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .designer-toolbar,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .search-box,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .sort-control,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .view-toggle,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .tab-panel,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .save-bar,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .modal,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .context-menu,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .toast,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .lib-queue-sidebar,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .eq-panel,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .queue-panel {
+html[data-aero="true"]:not([data-has-bg="true"]) .media-card,
+html[data-aero="true"]:not([data-has-bg="true"]) .media-list-item,
+html[data-aero="true"]:not([data-has-bg="true"]) .settings-section,
+html[data-aero="true"]:not([data-has-bg="true"]) .designer-sidebar,
+html[data-aero="true"]:not([data-has-bg="true"]) .designer-toolbar,
+html[data-aero="true"]:not([data-has-bg="true"]) .search-box,
+html[data-aero="true"]:not([data-has-bg="true"]) .sort-control,
+html[data-aero="true"]:not([data-has-bg="true"]) .view-toggle,
+html[data-aero="true"]:not([data-has-bg="true"]) .tab-panel,
+html[data-aero="true"]:not([data-has-bg="true"]) .save-bar,
+html[data-aero="true"]:not([data-has-bg="true"]) .modal,
+html[data-aero="true"]:not([data-has-bg="true"]) .context-menu,
+html[data-aero="true"]:not([data-has-bg="true"]) .toast,
+html[data-aero="true"]:not([data-has-bg="true"]) .lib-queue-sidebar,
+html[data-aero="true"]:not([data-has-bg="true"]) .eq-panel,
+html[data-aero="true"]:not([data-has-bg="true"]) .queue-panel {
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, calc(var(--aero-border-alpha, 0.5) * 0.18)),
         inset 0 -1px 0 rgba(0, 0, 0, calc(var(--aero-border-alpha, 0.5) * 0.22)),
         0 4px 24px rgba(0, 0, 0, calc(var(--aero-border-alpha, 0.5) * 0.22)) !important;
 }
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .media-card,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .media-list-item,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .settings-section,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .designer-sidebar,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .designer-toolbar,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .search-box,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .sort-control,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .view-toggle,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .tab-panel,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .save-bar,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .modal,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .context-menu,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .toast,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .lib-queue-sidebar,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .eq-panel,
-html[data-aero="true"][data-theme="light"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .queue-panel {
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .media-card,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .media-list-item,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .settings-section,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .designer-sidebar,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .designer-toolbar,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .search-box,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .sort-control,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .view-toggle,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .tab-panel,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .save-bar,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .modal,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .context-menu,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .toast,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .lib-queue-sidebar,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .eq-panel,
+html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .queue-panel {
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, calc(var(--aero-border-alpha, 0.5) * 0.55)),
         inset 0 -1px 0 rgba(0, 0, 0, calc(var(--aero-border-alpha, 0.5) * 0.10)),
         0 4px 20px rgba(0, 0, 0, calc(var(--aero-border-alpha, 0.5) * 0.10)) !important;
 }
 /* 面板级（main / header / winui3-nav）玻璃边框：高光更柔 */
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .winui3-nav,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) main,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .library-sidebar,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) header,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .settings-tabs,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .player-overlay,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .fullscreen-lyrics {
+html[data-aero="true"]:not([data-has-bg="true"]) .winui3-nav,
+html[data-aero="true"]:not([data-has-bg="true"]) main,
+html[data-aero="true"]:not([data-has-bg="true"]) .library-sidebar,
+html[data-aero="true"]:not([data-has-bg="true"]) header,
+html[data-aero="true"]:not([data-has-bg="true"]) .settings-tabs,
+html[data-aero="true"]:not([data-has-bg="true"]) .player-overlay,
+html[data-aero="true"]:not([data-has-bg="true"]) .fullscreen-lyrics {
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, calc(var(--aero-border-alpha, 0.5) * 0.10)),
         inset 0 -1px 0 rgba(0, 0, 0, calc(var(--aero-border-alpha, 0.5) * 0.12)) !important;
 }
 /* 标题栏 + 迷你播放器：玻璃质感更强（作为"系统级"条带）*/
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .titlebar,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .mini-player {
+html[data-aero="true"]:not([data-has-bg="true"]) .titlebar,
+html[data-aero="true"]:not([data-has-bg="true"]) .mini-player {
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, calc(var(--aero-border-alpha, 0.5) * 0.22)),
         inset 0 -1px 0 rgba(0, 0, 0, calc(var(--aero-border-alpha, 0.5) * 0.28)),
@@ -505,84 +505,84 @@ html[data-glass-disabled="true"] .context-menu {
    注意：player-overlay / fullscreen-lyrics 不加 backdrop-filter！
    它们是全屏元素，backdrop-filter 会导致 GPU 每帧对全屏纹理做模糊，占用率飙升到 90%。
    它们已有 player-bg-layer（模糊封面背景）提供视觉深度，不需要额外 backdrop-filter。 */
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .media-card,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .media-list-item,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .save-bar,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .modal-dialog,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .modal-content,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .context-menu,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .settings-section,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .mini-player,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .toast,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .designer-sidebar,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .designer-toolbar,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .tab-panel,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .search-box,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .sort-control,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .view-toggle,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) main,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) header,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .winui3-nav,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .settings-main,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .library-sidebar,
-html[data-has-bg="true"]:not([data-glass-disabled="true"]) .settings-tabs,
+html[data-has-bg="true"] .media-card,
+html[data-has-bg="true"] .media-list-item,
+html[data-has-bg="true"] .save-bar,
+html[data-has-bg="true"] .modal-dialog,
+html[data-has-bg="true"] .modal-content,
+html[data-has-bg="true"] .context-menu,
+html[data-has-bg="true"] .settings-section,
+html[data-has-bg="true"] .mini-player,
+html[data-has-bg="true"] .toast,
+html[data-has-bg="true"] .designer-sidebar,
+html[data-has-bg="true"] .designer-toolbar,
+html[data-has-bg="true"] .tab-panel,
+html[data-has-bg="true"] .search-box,
+html[data-has-bg="true"] .sort-control,
+html[data-has-bg="true"] .view-toggle,
+html[data-has-bg="true"] main,
+html[data-has-bg="true"] header,
+html[data-has-bg="true"] .winui3-nav,
+html[data-has-bg="true"] .settings-main,
+html[data-has-bg="true"] .library-sidebar,
+html[data-has-bg="true"] .settings-tabs,
 /* ↓↓↓ Aero 透明模式下也启用毛玻璃，即使没有自定义背景 ↓↓↓ */
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .media-card,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .media-list-item,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .save-bar,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .modal-dialog,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .modal-content,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .context-menu,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .settings-section,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .mini-player,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .toast,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .designer-sidebar,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .designer-toolbar,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .tab-panel,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .search-box,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .sort-control,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .view-toggle,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) main,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) header,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .winui3-nav,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .settings-main,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .library-sidebar,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .settings-tabs,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .titlebar,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .modal,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .lib-queue-sidebar,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .eq-panel,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .queue-panel {
+html[data-aero="true"]:not([data-has-bg="true"]) .media-card,
+html[data-aero="true"]:not([data-has-bg="true"]) .media-list-item,
+html[data-aero="true"]:not([data-has-bg="true"]) .save-bar,
+html[data-aero="true"]:not([data-has-bg="true"]) .modal-dialog,
+html[data-aero="true"]:not([data-has-bg="true"]) .modal-content,
+html[data-aero="true"]:not([data-has-bg="true"]) .context-menu,
+html[data-aero="true"]:not([data-has-bg="true"]) .settings-section,
+html[data-aero="true"]:not([data-has-bg="true"]) .mini-player,
+html[data-aero="true"]:not([data-has-bg="true"]) .toast,
+html[data-aero="true"]:not([data-has-bg="true"]) .designer-sidebar,
+html[data-aero="true"]:not([data-has-bg="true"]) .designer-toolbar,
+html[data-aero="true"]:not([data-has-bg="true"]) .tab-panel,
+html[data-aero="true"]:not([data-has-bg="true"]) .search-box,
+html[data-aero="true"]:not([data-has-bg="true"]) .sort-control,
+html[data-aero="true"]:not([data-has-bg="true"]) .view-toggle,
+html[data-aero="true"]:not([data-has-bg="true"]) main,
+html[data-aero="true"]:not([data-has-bg="true"]) header,
+html[data-aero="true"]:not([data-has-bg="true"]) .winui3-nav,
+html[data-aero="true"]:not([data-has-bg="true"]) .settings-main,
+html[data-aero="true"]:not([data-has-bg="true"]) .library-sidebar,
+html[data-aero="true"]:not([data-has-bg="true"]) .settings-tabs,
+html[data-aero="true"]:not([data-has-bg="true"]) .titlebar,
+html[data-aero="true"]:not([data-has-bg="true"]) .modal,
+html[data-aero="true"]:not([data-has-bg="true"]) .lib-queue-sidebar,
+html[data-aero="true"]:not([data-has-bg="true"]) .eq-panel,
+html[data-aero="true"]:not([data-has-bg="true"]) .queue-panel {
     backdrop-filter: blur(var(--design-blur, 16px));
     -webkit-backdrop-filter: blur(var(--design-blur, 16px));
 }
 /* Aero 模式下：使用独立的 --aero-blur 覆盖 --design-blur */
-html[data-aero="true"]:not([data-glass-disabled="true"]) .media-card,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .media-list-item,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .save-bar,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .modal-dialog,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .modal-content,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .context-menu,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .settings-section,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .mini-player,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .toast,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .designer-sidebar,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .designer-toolbar,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .tab-panel,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .search-box,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .sort-control,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .view-toggle,
-html[data-aero="true"]:not([data-glass-disabled="true"]) main,
-html[data-aero="true"]:not([data-glass-disabled="true"]) header,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .winui3-nav,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .settings-main,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .library-sidebar,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .settings-tabs,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .titlebar,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .modal,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .lib-queue-sidebar,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .eq-panel,
-html[data-aero="true"]:not([data-glass-disabled="true"]) .queue-panel {
+html[data-aero="true"] .media-card,
+html[data-aero="true"] .media-list-item,
+html[data-aero="true"] .save-bar,
+html[data-aero="true"] .modal-dialog,
+html[data-aero="true"] .modal-content,
+html[data-aero="true"] .context-menu,
+html[data-aero="true"] .settings-section,
+html[data-aero="true"] .mini-player,
+html[data-aero="true"] .toast,
+html[data-aero="true"] .designer-sidebar,
+html[data-aero="true"] .designer-toolbar,
+html[data-aero="true"] .tab-panel,
+html[data-aero="true"] .search-box,
+html[data-aero="true"] .sort-control,
+html[data-aero="true"] .view-toggle,
+html[data-aero="true"] main,
+html[data-aero="true"] header,
+html[data-aero="true"] .winui3-nav,
+html[data-aero="true"] .settings-main,
+html[data-aero="true"] .library-sidebar,
+html[data-aero="true"] .settings-tabs,
+html[data-aero="true"] .titlebar,
+html[data-aero="true"] .modal,
+html[data-aero="true"] .lib-queue-sidebar,
+html[data-aero="true"] .eq-panel,
+html[data-aero="true"] .queue-panel {
     backdrop-filter: blur(var(--aero-blur, var(--design-blur, 16px)));
     -webkit-backdrop-filter: blur(var(--aero-blur, var(--design-blur, 16px)));
 }
@@ -880,8 +880,8 @@ html[data-aero="true"]:not([data-has-bg="true"]) .save-bar {
 }
 
 /* ========== Aero 增强 7：WinUI3 导航栏（tabs 栏）在 Aero 下毛玻璃 + 半透明 ========== */
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .settings-tabs,
-html[data-aero="true"]:not([data-glass-disabled="true"]):not([data-has-bg="true"]) .winui3-page-nav {
+html[data-aero="true"]:not([data-has-bg="true"]) .settings-tabs,
+html[data-aero="true"]:not([data-has-bg="true"]) .winui3-page-nav {
     backdrop-filter: blur(var(--design-blur, 16px)) saturate(145%) brightness(1.05);
     -webkit-backdrop-filter: blur(var(--design-blur, 16px)) saturate(145%) brightness(1.05);
 }
@@ -1220,7 +1220,7 @@ function applyBackground(opts) {
     root.setAttribute('data-has-bg', hasBg ? 'true' : 'false');
     root.setAttribute('data-bg-type', hasBg ? bgType : 'none');
     root.setAttribute('data-bg-fit', hasBg ? bgFit : 'cover');
-    // 毛玻璃关闭开关：与 hasBg 独立（避免「没加载背景时切换开关完全无效」）
+    // 毛玻璃关闭开关
     root.setAttribute('data-glass-disabled', glassDisabled ? 'true' : 'false');
     try {
         localStorage.setItem('musicLite.bgType', hasBg ? bgType : 'none');
