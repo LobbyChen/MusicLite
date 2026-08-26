@@ -85,6 +85,16 @@ func (s *MusicService) IsTrayQuitting() bool {
 	return s.trayQuitting.Load()
 }
 
+// IsOnlyModeSession 返回当前是否处于单向模式（OnlyMode）会话：
+// 当且仅当"以系统链接方式打开音乐（命令行参数文件）"且设置中开启了 OnlyMode 时为 true。
+// 供 main.go 窗口关闭钩子判断：OnlyMode 会话下关闭窗口应直接退出，而非最小化到托盘。
+func (s *MusicService) IsOnlyModeSession() bool {
+	if s.defaultFile == "" {
+		return false
+	}
+	return s.LoadSettings().OnlyMode
+}
+
 // ServiceStartup v3 服务启动回调（前端创建后、加载 index.html 前触发）
 func (s *MusicService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
 	if os.Getenv("devserver") != "" {
@@ -552,6 +562,12 @@ func (s *MusicService) readFileForEdit(path string) (PickedFile, error) {
 // DeleteTrack 删除曲目
 func (s *MusicService) DeleteTrack(id int64) error {
 	return s.database.DeleteTrack(id)
+}
+
+// Exit 退出
+func (s *MusicService) Exit(code int) {
+	s.ServiceShutdown()
+	os.Exit(code)
 }
 
 // encodeCoverBase64 将封面二进制编码为 data URI，用于无 HTTP 服务器时的回退方案

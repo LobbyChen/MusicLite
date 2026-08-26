@@ -105,6 +105,15 @@ export function EmitEvent(name, ...data) {
 }
 
 /**
+ * Exit 退出
+ * @param {number} code
+ * @returns {$CancellablePromise<void>}
+ */
+export function Exit(code) {
+    return $Call.ByID(2322295158, code);
+}
+
+/**
  * ExportSettings 导出当前设置为 .msclte.zip 文件
  * 包含 settings.json + 当前所用字体的 base64 编码数据
  * @returns {$CancellablePromise<string>}
@@ -377,11 +386,21 @@ export function ImportSettings() {
 }
 
 /**
- * IsDefaultPlayer 检查 MusicLite 是否为 .mp3 的默认播放器（Windows 实现）
+ * IsDefaultPlayer 检查 MusicLite 是否为 .mp3 的默认播放器
  * @returns {$CancellablePromise<boolean>}
  */
 export function IsDefaultPlayer() {
     return $Call.ByID(1169550414);
+}
+
+/**
+ * IsOnlyModeSession 返回当前是否处于单向模式（OnlyMode）会话：
+ * 当且仅当"以系统链接方式打开音乐（命令行参数文件）"且设置中开启了 OnlyMode 时为 true。
+ * 供 main.go 窗口关闭钩子判断：OnlyMode 会话下关闭窗口应直接退出，而非最小化到托盘。
+ * @returns {$CancellablePromise<boolean>}
+ */
+export function IsOnlyModeSession() {
+    return $Call.ByID(2382869905);
 }
 
 /**
@@ -813,6 +832,7 @@ export function SetSystemMasterVolume(vol) {
 
 /**
  * SetUpdateThreadCount 设置下载线程数（1-256）
+ * 当代理模式为 ghproxy 时，实际可保存的上限为 16（代理服务端限制）
  * @param {number} count
  * @returns {$CancellablePromise<void>}
  */

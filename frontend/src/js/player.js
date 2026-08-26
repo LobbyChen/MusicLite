@@ -2,7 +2,7 @@
 // 与库视图共享同一个 window.audioManager，切换视图时后端播放不中断，保持连续。
 // 音频解码与输出全部在 Go 后端完成，本视图只负责 UI 控制与状态展示，
 // 通过 audioManager（订阅后端 Wails Events）获取播放状态。
-import { GetTrack, GetNextTracks, GetPrevTracks, GetRandomTrack, QueueGetStatus, QueueGetNext, QueueGetPrev } from '@bindings/MusicLite/app/musicservice.js';
+import { GetTrack, DeleteTrack, GetNextTracks, GetPrevTracks, GetRandomTrack, QueueGetStatus, QueueGetNext, QueueGetPrev } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, t } from './i18n.js';
 import { EqualizerPanel } from './equalizer.js';
 import { QueuePanel } from './queue.js';
@@ -852,6 +852,11 @@ audioManager.on('error', (e) => {
 
 // ended：后端单曲循环已在 player.go 内处理，此处仅处理顺序/随机模式的下一首
 audioManager.on('ended', async () => {
+    // 单向模式：播放完成自动关闭播放器并清理临时曲目，不进入下一首
+    if (window.__onlyModeSession) {
+        await exitOnlyMode();
+        return;
+    }
     // 从后端确认最新模式，避免前端缓存滞后（单曲循环不应到达此处，但防御性检查）
     const mode = await audioManager.fetchPlayMode();
     if (mode === 'loopOne') {
@@ -910,6 +915,16 @@ document.addEventListener('keydown', (e) => {
         }
     }
     if (e.code === 'Escape') {
+        // 单向模式：无浮层打开时 Esc 中途退出（关闭播放器并清理临时曲目）
+        if (window.__onlyModeSession
+            && !EqualizerPanel.getIsOpen()
+            && !QueuePanel.getIsOpen()
+            && !fullscreenLyricsEl.classList.contains('active')
+            && !lyricsCardExpanded) {
+            e.preventDefault();
+            exitOnlyMode();
+            return;
+        }
         // 优先关闭浮层（均衡器/队列），其次全屏歌词/卡片歌词
         if (EqualizerPanel.getIsOpen()) { EqualizerPanel.close(); e.preventDefault(); return; }
         if (QueuePanel.getIsOpen()) { QueuePanel.close(); e.preventDefault(); return; }
@@ -964,6 +979,8 @@ async function openPlayer(trackId) {
     // 显示 overlay（带过渡动画）
     overlay.classList.add('active');
     document.body.classList.add('player-active');
+    // 单向模式（OnlyMode）：根据会话标记在 body 上加 class，CSS 据此隐藏循环/上下曲/列表/返回
+    applyOnlyMode();
     syncPlayModeState();
 
     // 初始化均衡器与队列面板（仅首次打开时初始化一次）
@@ -1009,6 +1026,40 @@ function closePlayer() {
     closeLyricsCard();
     EqualizerPanel.close();
     QueuePanel.close();
+}
+
+// ============ 单向模式（OnlyMode） ============
+// 仅当以系统链接方式打开音乐时由 libraries.js 启动逻辑置位：
+//   window.__onlyModeSession = true
+//   window.__onlyModeTrackId = <临时曲目 id>
+// 该模式下播放器隐藏循环/上下曲/播放列表/返回按钮，
+// 播放结束或按 Esc 自动关闭播放器并清理临时曲目，不影响原有音乐库。
+
+// 根据会话标记在 body 上切换 only-mode class（CSS 据此隐藏控件）
+function applyOnlyMode() {
+    const on = !!window.__onlyModeSession;
+    document.body.classList.toggle('only-mode', on);
+}
+
+// 退出单向模式：关闭播放器、删除临时曲目、清除当前曲目引用
+// 在 'ended'（播放完成）与 Esc 中途退出时调用
+async function exitOnlyMode() {
+    const tempId = window.__onlyModeTrackId;
+    // 先重置标记，再关闭 overlay，避免 closePlayer 过程中仍受 OnlyMode 影响
+    window.__onlyModeSession = false;
+    window.__onlyModeTrackId = null;
+    closePlayer();
+    applyOnlyMode(); // 移除 body.only-mode class
+    // 删除临时入库的曲目，保持原有音乐库不受影响（删除失败也不影响关闭流程）
+    try {
+        if (tempId !== undefined && tempId !== null) {
+            await DeleteTrack(Number(tempId));
+        }
+    } catch (e) {
+        console.warn('OnlyMode 临时曲目删除失败:', e);
+    }
+    // 清除当前曲目引用并停止后端播放，隐藏迷你播放器
+    try { window.audioManager.clearTrack(); } catch (e) {}
 }
 
 export { openPlayer, closePlayer };

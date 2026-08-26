@@ -67,6 +67,33 @@ type UpdateInfo struct {
 	Error        string `json:"error"` // 检查失败时的错误信息
 }
 
+// applyGhProxy 根据设置判断是否对 GitHub 下载 URL 应用 gh-proxy 前缀
+// DownloadURL 使用官方直连时原样返回；ghproxy 模式下拼为：GhProxyURL + rawURL
+// 仅对 `https://github.com/` 与 `https://objects.githubusercontent.com/` 等真实 GitHub
+// 下载地址做处理，避免对非 GitHub（如自定义镜像）误改写。
+func (a *MusicService) applyGhProxy(rawURL string) string {
+	if rawURL == "" {
+		return rawURL
+	}
+	s := a.LoadSettings()
+	if s.UpdateProxyMode != "ghproxy" {
+		return rawURL
+	}
+	prefix := strings.TrimRight(s.GhProxyURL, "/") + "/"
+	// GitHub 资产 URL 常见前缀：
+	//   https://github.com/<user>/<repo>/releases/download/... (BrowserDownloadURL 形式)
+	//   https://objects.githubusercontent.com/...              (LFS/大文件重定向后)
+	//   https://github-releases.githubusercontent.com/...     (旧 API)
+	lower := strings.ToLower(rawURL)
+	if strings.HasPrefix(lower, "https://github.com/") ||
+		strings.HasPrefix(lower, "https://objects.githubusercontent.com/") ||
+		strings.HasPrefix(lower, "https://github-releases.githubusercontent.com/") ||
+		strings.HasPrefix(lower, "https://") && strings.Contains(lower, ".githubusercontent.com/") {
+		return prefix + rawURL
+	}
+	return rawURL
+}
+
 // CheckForUpdate 拉取 GitHub 最新 Release 并与当前版本比较
 // 不抛出错误，错误信息放在 UpdateInfo.Error 中（前端可直接显示）
 func (a *MusicService) CheckForUpdate() UpdateInfo {
@@ -118,6 +145,8 @@ func (a *MusicService) CheckForUpdate() UpdateInfo {
 
 	// 选取当前平台的便携包资源
 	info.DownloadURL, info.DownloadName, info.DownloadSize = pickPlatformAsset(rel.Assets, runtime.GOOS)
+	// 根据设置在返回给前端前改写下载 URL（official 原样，ghproxy 拼接代理）
+	info.DownloadURL = a.applyGhProxy(info.DownloadURL)
 
 	// 版本比较：dev 版本（含 -dev. 后缀）默认不提示更新
 	// dev 构建是开发分支产物，版本号可能领先于正式 release，不应触发自动更新

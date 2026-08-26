@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 // Settings 应用设置结构体
@@ -51,6 +52,7 @@ type Settings struct {
 	SettingsLayout string `json:"settings_layout"` // 设置界面布局："scroll"（默认）| "columns" | "tabs"
 	NewUIEnabled   bool   `json:"new_ui_enabled"`  // 新风格 UI 开关
 	VoidMode       bool   `json:"void_mode"`       // 虚空模式：界面颠倒 + 全黑 + 鼠标手电筒（需自行寻找退出按钮）
+	OnlyMode       bool   `json:"only_mode"`       // 单向模式：以系统链接方式打开音乐时自动进入播放器单曲播放，结束后关闭且不影响音乐库
 	// i18n 自动合并：用户在弹窗中勾选"下次自动"后的选择
 	// "" / "skip" / "fill" / "overwrite"
 	// - ""         未设置（下次仍然弹窗）
@@ -65,6 +67,11 @@ type Settings struct {
 	// 更新下载状态持久化（用于重启后恢复进度条显示）
 	// 非空表示有未完成的下载任务
 	UpdateDownloadState *UpdateDownloadState `json:"update_download_state,omitempty"`
+	// 更新下载来源代理："" / "official"（默认）= 官方直连，"ghproxy" = gh-proxy 加速
+	UpdateProxyMode string `json:"update_proxy_mode"`
+	// gh-proxy 代理地址前缀（默认 https://v6.gh-proxy.org/）
+	// 开启 gh-proxy 时，GitHub 下载 URL 会被拼接为：GhProxyURL + 原始 URL
+	GhProxyURL string `json:"gh_proxy_url"`
 	// 全局快捷键（3 个）
 	HotkeyPlayPause HotkeyConfig `json:"hotkey_playpause"` // 播放 / 暂停切换
 	HotkeyNext      HotkeyConfig `json:"hotkey_next"`      // 下一曲
@@ -123,7 +130,10 @@ func DefaultSettings() Settings {
 		TitlebarText:      "MusicLite Cuckoo",
 		SettingsLayout:    "scroll",
 		NewUIEnabled:      false,
+		OnlyMode:          false,
 		UpdateThreadCount: 16,
+		UpdateProxyMode:   "official",
+		GhProxyURL:        "https://v6.gh-proxy.org/",
 		HotkeyPlayPause:   HotkeyConfig{Enabled: false, Keys: ""},
 		HotkeyNext:        HotkeyConfig{Enabled: false, Keys: ""},
 		HotkeyPrev:        HotkeyConfig{Enabled: false, Keys: ""},
@@ -266,6 +276,15 @@ func (a *MusicService) LoadSettings() Settings {
 		if !has4("void_mode") {
 			s.VoidMode = def.VoidMode
 		}
+		if !has4("only_mode") {
+			s.OnlyMode = def.OnlyMode
+		}
+		if !has4("update_proxy_mode") {
+			s.UpdateProxyMode = def.UpdateProxyMode
+		}
+		if !has4("gh_proxy_url") {
+			s.GhProxyURL = def.GhProxyURL
+		}
 	}
 	// 设计令牌：兼容旧版设置文件（缺失时用默认值补齐，越界时钳制到合法范围）
 	// 用 raw map 检测字段是否存在，避免把"用户主动设为 0"误判为缺失
@@ -360,6 +379,35 @@ func (a *MusicService) LoadSettings() Settings {
 			s.PlayerBgBlur = def.PlayerBgBlur
 		} else if s.PlayerBgBlur < 0 || s.PlayerBgBlur > 30 {
 			s.PlayerBgBlur = def.PlayerBgBlur
+		}
+	}
+
+	// 更新代理字段规范化：钳制到合法值
+	{
+		mode := strings.ToLower(strings.TrimSpace(s.UpdateProxyMode))
+		if mode != "official" && mode != "ghproxy" {
+			mode = def.UpdateProxyMode
+		}
+		s.UpdateProxyMode = mode
+
+		// gh-proxy URL 规范化：去空白，末尾补 "/"，缺失时回退默认
+		url := strings.TrimSpace(s.GhProxyURL)
+		if url == "" {
+			url = def.GhProxyURL
+		}
+		if !strings.HasSuffix(url, "/") {
+			url += "/"
+		}
+		s.GhProxyURL = url
+
+		// gh-proxy 模式下下载线程数上限为 16（代理服务端限制）
+		if s.UpdateProxyMode == "ghproxy" && s.UpdateThreadCount > 16 {
+			s.UpdateThreadCount = 16
+		}
+		if s.UpdateThreadCount < 1 {
+			s.UpdateThreadCount = 1
+		} else if s.UpdateThreadCount > 256 {
+			s.UpdateThreadCount = 256
 		}
 	}
 

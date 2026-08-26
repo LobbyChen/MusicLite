@@ -101,21 +101,30 @@
                 </div>
 
                 <div class="setting-item">
-                    <label data-i18n="settings.newUI">新风格 UI</label>
+                    <label data-i18n="settings.newUI" >新风格 UI</label>
                     <div class="anim-level-row" style="margin-top: 8px;">
-                        <button type="button" class="anim-level-btn" data-newui-mode="on" data-i18n="settings.newUIOn">启用</button>
-                        <button type="button" class="anim-level-btn" data-newui-mode="off" data-i18n="settings.newUIOff">关闭</button>
+                        <button type="button" class="anim-level-btn" data-newui-mode="on" data-i18n="settings.On">启用</button>
+                        <button type="button" class="anim-level-btn" data-newui-mode="off" data-i18n="settings.Off">关闭</button>
                     </div>
                     <span class="toggle-desc" data-i18n="settings.newUIDesc">为所有界面启用新风格视觉样式</span>
                 </div>
 
                 <div class="setting-item">
-                    <label>虚空模式</label>
+                    <label data-i18n="settings.voidMode">虚空模式</label>
                     <div class="anim-level-row" style="margin-top: 8px;">
-                        <button type="button" class="anim-level-btn" data-void-mode="on">启用</button>
-                        <button type="button" class="anim-level-btn" data-void-mode="off">关闭</button>
+                        <button type="button" class="anim-level-btn" data-void-mode="on" data-i18n="settings.On">启用</button>
+                        <button type="button" class="anim-level-btn" data-void-mode="off" data-i18n="settings.Off">关闭</button>
                     </div>
-                    <span class="toggle-desc">界面上下颠倒，文字与控件全部化为漆黑；鼠标即手电筒，照亮边缘，滚轮调节光圈（最大 30px）。开启后需自行寻找退出之处。</span>
+                    <span class="toggle-desc" data-i18n="settings.voidModeIntro">界面上下颠倒，文字与控件全部化为漆黑；鼠标即手电筒，照亮边缘，滚轮调节光圈（最大 30px）。开启后需自行寻找退出之处。</span>
+                </div>
+
+                <div class="setting-item">
+                    <label data-i18n="settings.onlyMode">单向模式</label>
+                    <div class="anim-level-row" style="margin-top: 8px;">
+                        <button type="button" class="anim-level-btn" data-onlymode-mode="on" data-i18n="settings.On">启用</button>
+                        <button type="button" class="anim-level-btn" data-onlymode-mode="off" data-i18n="settings.Off">关闭</button>
+                    </div>
+                    <span class="toggle-desc" data-i18n="settings.onlyModeIntro">以系统链接方式打开音乐时，自动进入播放器单曲播放，结束后关闭且不影响音乐库。</span>
                 </div>
             </section>
 
@@ -229,6 +238,23 @@
                     <label for="titlebar-text" data-i18n="settings.titlebarText">标题栏文字</label>
                     <input type="text" id="titlebar-text" class="text-input" maxlength="40" placeholder="MusicLite Cuckoo" />
                 </div>
+                <div class="setting-item">
+                    <label for="i18n-auto-action" data-i18n="settings.i18nAutoAction">翻译更新策略</label>
+                    <select id="i18n-auto-action" class="font-select">
+                        <option value="" data-i18n="settings.i18nAutoActionAsk">每次询问</option>
+                        <option value="skip" data-i18n="settings.i18nAutoActionSkip">跳过更新</option>
+                        <option value="fill" data-i18n="settings.i18nAutoActionFill">仅补全新键</option>
+                        <option value="overwrite" data-i18n="settings.i18nAutoActionOverwrite">覆盖变更值</option>
+                    </select>
+                    <span class="toggle-desc" data-i18n="settings.i18nAutoActionDesc">检测到内嵌翻译与本地文件存在差异时的处理方式（修改即时保存）</span>
+                </div>
+                <div class="setting-item">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="i18n-auto-clean" style="margin: 0;" />
+                        <span data-i18n="settings.i18nAutoClean">同时清理冗余键</span>
+                    </label>
+                    <span class="toggle-desc" data-i18n="settings.i18nAutoCleanDesc">合并时删除本地文件中内嵌已不存在的旧版残留键（修改即时保存）</span>
+                </div>
             </section>
 
             <section class="settings-section" data-section-id="about">
@@ -279,13 +305,33 @@
                         </div>
                     </div>
                 </div>
+                <!-- 更新下载来源代理 -->
+                <div class="setting-item" style="margin-top: 12px;">
+                    <label data-i18n="settings.updateProxy">更新下载来源</label>
+                    <p class="text-muted" style="margin: 4px 0 8px;" data-i18n="settings.updateProxyDesc">更新包与发布资源的下载来源选择</p>
+                    <div class="anim-level-row" style="margin-top: 8px;">
+                        <button type="button" class="anim-level-btn" data-update-proxy="official" data-i18n="settings.updateProxyOfficial">官方直连</button>
+                        <button type="button" class="anim-level-btn" data-update-proxy="ghproxy" data-i18n="settings.updateProxyGhProxy">gh-proxy 加速代理</button>
+                    </div>
+                    <p id="update-proxy-mode-desc" class="toggle-desc" style="margin-top: 6px;"></p>
+                    <div id="gh-proxy-url-wrap" class="setting-item" style="margin-top: 10px; padding: 0; display: none;">
+                        <label for="gh-proxy-url-input" data-i18n="settings.ghProxyURL">gh-proxy 代理地址</label>
+                        <input type="text" id="gh-proxy-url-input" class="text-input" maxlength="200" placeholder="https://v6.gh-proxy.org/" data-i18n-placeholder="settings.ghProxyURLPlaceholder" />
+                        <span class="toggle-desc" data-i18n="settings.ghProxyURLDesc">代理前缀，完整下载地址为「代理地址 + 官方 URL」，默认 https://v6.gh-proxy.org/</span>
+                    </div>
+                </div>
+
                 <!-- 下载线程数配置 -->
                 <div class="setting-item" style="margin-top: 12px;">
                     <label data-i18n="settings.downloadThreads">下载线程数</label>
-                    <p class="text-muted" style="margin: 4px 0 8px;" data-i18n="settings.downloadThreadsDesc">多线程下载更新包的线程数（1-16）</p>
-                    <div style="display: flex; gap: 10px; align-items: center;">
+                    <p class="text-muted" style="margin: 4px 0 8px;" data-i18n="settings.downloadThreadsDesc">多线程下载更新包的线程数（1-256；gh-proxy 模式最高 16）</p>
+                    <p id="ghproxy-thread-hint" class="text-muted" style="margin: 0 0 6px; color: var(--accent-color, #1DB954); display: none;" data-i18n="settings.downloadThreadsGhProxyHint">当前使用 gh-proxy 代理，线程数上限为 16</p>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
                         <input type="range" id="update-thread-count-slider" min="1" max="256" value="16" step="1" style="flex: 1; accent-color: var(--accent-color, #1DB954);" />
                         <span id="update-thread-count-value" class="toggle-desc" style="min-width: 30px; text-align: center; font-weight: 600;">16</span>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end;">
+                        <button type="button" class="btn btn-secondary" id="save-thread-count-btn" data-i18n="settings.downloadThreadsSave">保存线程数</button>
                     </div>
                 </div>
                 <div class="setting-item" style="margin-top: 16px;">

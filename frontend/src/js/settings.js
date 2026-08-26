@@ -1,4 +1,4 @@
-import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, OpenGitHubRepo, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, HotkeyApply, HotkeyGetActionList, GetVersionInfo, CheckForUpdate, PerformUpdate, QuitApp, StartUpdateDownload, GetUpdateDownloadProgress, CancelUpdateDownload, ApplyDownloadedUpdate, SetUpdateThreadCount } from '@bindings/MusicLite/app/musicservice.js';
+import { LoadSettings, SaveSettings, GetInstalledFonts, ExportSettings, ImportSettings, ResetSettings, OpenAppDataFolder, OpenGitHubRepo, SetApplicationVolume, GetApplicationVolume, SetSystemMasterVolume, GetSystemMasterVolume, SetAsDefaultPlayer, IsDefaultPlayer, HotkeyApply, HotkeyGetActionList, GetVersionInfo, CheckForUpdate, PerformUpdate, QuitApp, StartUpdateDownload, GetUpdateDownloadProgress, CancelUpdateDownload, ApplyDownloadedUpdate, SetUpdateThreadCount, SetI18nAutoAction } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, t, setLanguage, applyTranslations, getAvailableLanguages } from './i18n.js';
 import { Window } from '@wailsio/runtime';
 import { startTutorialFromSettings, resumeTutorialIfAny } from './tutorial.js';
@@ -55,6 +55,8 @@ const playerFontPreview = document.getElementById('player-font-preview');
 const lyricsFontPreview = document.getElementById('lyrics-font-preview');
 const languageSelect = document.getElementById('language-select');
 const titlebarTextInput = document.getElementById('titlebar-text');
+const i18nAutoActionSelect = document.getElementById('i18n-auto-action');
+const i18nAutoCleanCheckbox = document.getElementById('i18n-auto-clean');
 const exportBtn = document.getElementById('export-settings-btn');
 const importBtn = document.getElementById('import-settings-btn');
 const resetBtn = document.getElementById('reset-settings-btn');
@@ -79,6 +81,12 @@ const applyDownloadedUpdateBtn = document.getElementById('apply-downloaded-updat
 // 下载线程数配置
 const threadCountSlider = document.getElementById('update-thread-count-slider');
 const threadCountValue = document.getElementById('update-thread-count-value');
+const saveThreadCountBtn = document.getElementById('save-thread-count-btn');
+const ghproxyThreadHint = document.getElementById('ghproxy-thread-hint');
+const updateProxyBtns = document.querySelectorAll('.anim-level-btn[data-update-proxy]');
+const updateProxyModeDesc = document.getElementById('update-proxy-mode-desc');
+const ghProxyURLWrap = document.getElementById('gh-proxy-url-wrap');
+const ghProxyURLInput = document.getElementById('gh-proxy-url-input');
 
 // 下载轮询定时器
 let downloadPollTimer = null;
@@ -103,6 +111,7 @@ const presetColors = document.querySelectorAll('.preset-color');
 const animLevelBtns = document.querySelectorAll('.anim-level-btn[data-level]');
 const newUIModeBtns = document.querySelectorAll('.anim-level-btn[data-newui-mode]');
 const voidModeBtns = document.querySelectorAll('.anim-level-btn[data-void-mode]');
+const onlyModeBtns = document.querySelectorAll('.anim-level-btn[data-onlymode-mode]');
 
 // ============ 全局快捷键 ============
 const HOTKEY_ACTIONS = [
@@ -418,12 +427,8 @@ async function loadSettings() {
             // 读取系统音量失败，使用 settings 中的值兜底
         }
         // 检查默认播放器状态
-        try {
-            const isDefault = await IsDefaultPlayer();
-            updateDefaultPlayerStatus(isDefault);
-        } catch (e) {
-            // 忽略
-        }
+        const isDefault = await IsDefaultPlayer();
+        updateDefaultPlayerStatus(isDefault);
     } catch (err) {
         console.error('Failed to load settings:', err);
         currentSettings = {
@@ -499,6 +504,10 @@ function applySettingsToUI(s) {
     // 标题栏文字
     if (titlebarTextInput) titlebarTextInput.value = s.titlebar_text || '';
 
+    // 翻译更新策略（i18n 自动动作，可与弹窗中"下次自动"一致地调整）
+    if (i18nAutoActionSelect) i18nAutoActionSelect.value = s.i18n_auto_action || '';
+    if (i18nAutoCleanCheckbox) i18nAutoCleanCheckbox.checked = !!s.i18n_auto_clean_obsolete;
+
     // Scale
     const uiScale = (s.ui_scale && s.ui_scale >= 20 && s.ui_scale <= 500) ? s.ui_scale : 135;
     const lyricsScale = (s.lyrics_scale && s.lyrics_scale >= 20 && s.lyrics_scale <= 500) ? s.lyrics_scale : 135;
@@ -524,6 +533,20 @@ function applySettingsToUI(s) {
         btn.classList.toggle('active', (btn.dataset.voidMode === 'on') === voidOn);
     });
     if (window.MusicLiteSettings) window.MusicLiteSettings.applyVoidMode(voidOn);
+
+    // 单向模式开关（默认关闭：旧设置文件缺失该字段时后端返回 false）
+    const onlyOn = s.only_mode !== undefined ? !!s.only_mode : false;
+    onlyModeBtns.forEach(btn => {
+        btn.classList.toggle('active', (btn.dataset.onlymodeMode === 'on') === onlyOn);
+    });
+
+    // 更新下载来源代理
+    const proxyMode = s.update_proxy_mode || 'official';
+    updateProxyBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.updateProxy === proxyMode);
+    });
+    applyUpdateProxyModeUI(proxyMode, s);
+    if (ghProxyURLInput) ghProxyURLInput.value = s.gh_proxy_url || 'https://v6.gh-proxy.org/';
 
     // 设置界面布局模式（新UI开启时强制使用 WinUI3 NavigationView 布局）
     if (newUIOn) {
@@ -626,6 +649,36 @@ const WINUI3_ICONS = {
 
     more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.75" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.75" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.75" fill="currentColor" stroke="none"/></svg>'
 };
+
+// ============ 更新下载来源代理 UI 同步 ============
+// 根据当前 proxyMode 切换：说明文字 / gh-proxy 地址输入框可见性 / 线程滑块上限与提示
+// s 可选：传入 settings 时可避免再次 LoadSettings
+function applyUpdateProxyModeUI(proxyMode, s) {
+    const isGhProxy = proxyMode === 'ghproxy';
+    // gh-proxy 模式显示 URL 输入框，官方模式隐藏
+    if (ghProxyURLWrap) ghProxyURLWrap.style.display = isGhProxy ? '' : 'none';
+    // 模式说明文字
+    if (updateProxyModeDesc) {
+        const key = isGhProxy ? 'settings.ghProxyGhProxyDesc' : 'settings.ghProxyOfficialDesc';
+        try {
+            updateProxyModeDesc.textContent = t(key, '');
+        } catch (_) {
+            updateProxyModeDesc.textContent = '';
+        }
+    }
+    // ghproxy 模式下动态限制线程滑块上限为 16，并显示提示
+    if (ghproxyThreadHint) ghproxyThreadHint.style.display = isGhProxy ? '' : 'none';
+    if (threadCountSlider) {
+        const oldMax = parseInt(threadCountSlider.max, 10) || 256;
+        threadCountSlider.max = isGhProxy ? '16' : '256';
+        const curVal = parseInt(threadCountSlider.value, 10);
+        if (isGhProxy && curVal > 16) {
+            threadCountSlider.value = '16';
+            if (threadCountValue) threadCountValue.textContent = '16';
+        }
+    }
+}
+
 // 生成 WinUI3 NavigationView 左侧导航栏
 function applyWinUI3Layout() {
     document.body.setAttribute('data-settings-layout', 'winui3');
@@ -892,6 +945,44 @@ async function setupEventListeners() {
         });
     });
 
+    // 单向模式开关：仅影响以系统链接方式打开音乐时的行为，可随时切换，下次启动生效
+    onlyModeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const on = btn.dataset.onlymodeMode === 'on';
+            currentSettings.only_mode = on;
+            onlyModeBtns.forEach(b => b.classList.toggle('active', b === btn));
+            markChanged();
+        });
+    });
+
+    // 更新下载来源代理：切换模式时同步 UI；ghproxy 模式下对线程数做一次 clamp 保证合法
+    updateProxyBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const mode = btn.dataset.updateProxy;
+            currentSettings.update_proxy_mode = mode;
+            updateProxyBtns.forEach(b => b.classList.toggle('active', b === btn));
+            applyUpdateProxyModeUI(mode, currentSettings);
+            // ghproxy 模式下若当前线程数 > 16，需要钳制（同步到 settings 后后端 LoadSettings 也会再钳制一次）
+            if (mode === 'ghproxy') {
+                const cur = parseInt(threadCountSlider?.value || String(currentSettings.update_thread_count || 16), 10);
+                if (cur > 16) {
+                    currentSettings.update_thread_count = 16;
+                    if (threadCountSlider) threadCountSlider.value = '16';
+                    if (threadCountValue) threadCountValue.textContent = '16';
+                }
+            }
+            markChanged();
+        });
+    });
+    if (ghProxyURLInput) {
+        ghProxyURLInput.addEventListener('input', () => {
+            let url = (ghProxyURLInput.value || '').trim();
+            if (url && !url.endsWith('/')) url += '/';
+            currentSettings.gh_proxy_url = url;
+            markChanged();
+        });
+    }
+
     // Player font
     playerFontSelect.addEventListener('change', () => {
         currentSettings.player_font = playerFontSelect.value;
@@ -1036,6 +1127,24 @@ async function setupEventListeners() {
             setLanguage(lang);
             applyTranslations();
             markChanged();
+        });
+    }
+
+    // 翻译更新策略：修改即时持久化（与 i18n 弹窗"下次自动"同源，便于事后调整）
+    if (i18nAutoActionSelect) {
+        i18nAutoActionSelect.addEventListener('change', () => {
+            const action = i18nAutoActionSelect.value;
+            currentSettings.i18n_auto_action = action;
+            const clean = i18nAutoCleanCheckbox ? i18nAutoCleanCheckbox.checked : false;
+            SetI18nAutoAction(action, clean).catch(e => console.warn('[i18n] 设置自动动作失败:', e));
+        });
+    }
+    if (i18nAutoCleanCheckbox) {
+        i18nAutoCleanCheckbox.addEventListener('change', () => {
+            const clean = i18nAutoCleanCheckbox.checked;
+            currentSettings.i18n_auto_clean_obsolete = clean;
+            const action = i18nAutoActionSelect ? i18nAutoActionSelect.value : '';
+            SetI18nAutoAction(action, clean).catch(e => console.warn('[i18n] 设置清理冗余键失败:', e));
         });
     }
 
@@ -1237,19 +1346,22 @@ async function setupEventListeners() {
                 }
             });
         }
-        // 下载线程数滑块
+        // 下载线程数滑块：input 仅同步当前数字显示，实际保存交给"保存线程数"按钮
         if (threadCountSlider) {
-            threadCountSlider.addEventListener('change', async () => {
-                const count = parseInt(threadCountSlider.value, 10) || 4;
-                try {
-                    await SetUpdateThreadCount(count);
-                    if (threadCountValue) threadCountValue.textContent = String(count);
-                } catch (e) {
-                    showToast(t('settings.downloadThreadsSaveFailed'), 'error');
-                }
-            });
             threadCountSlider.addEventListener('input', () => {
                 if (threadCountValue) threadCountValue.textContent = threadCountSlider.value;
+            });
+        }
+        if (saveThreadCountBtn) {
+            saveThreadCountBtn.addEventListener('click', async () => {
+                const count = parseInt(threadCountSlider?.value, 10) || 16;
+                try {
+                    await SetUpdateThreadCount(count);
+                    currentSettings.update_thread_count = count;
+                    showToast(t('settings.downloadThreadsSavedOk'), 'success');
+                } catch (e) {
+                    showToast(t('settings.downloadThreadsSaveFailed', e?.message || String(e)), 'error');
+                }
             });
         }
     // 启动使用教程（全新开始，总是从设置页第 0 步开始）

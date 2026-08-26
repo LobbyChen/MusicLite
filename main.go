@@ -99,11 +99,19 @@ func main() {
 	})
 
 	// 窗口关闭钩子：非托盘退出时最小化到托盘而非关闭
+	// 单向模式（OnlyMode）会话例外：以系统链接方式打开的音乐播完即关，
+	// 关闭窗口应直接退出应用，而非最小化到托盘。
 	mainWindow.OnWindowEvent(events.Common.WindowClosing, func(event *application.WindowEvent) {
-		if !svc.IsTrayQuitting() {
-			event.Cancel()
-			mainWindow.Hide()
+		if svc.IsTrayQuitting() {
+			return
 		}
+		if svc.IsOnlyModeSession() {
+			// 直接退出（设置 trayQuitting 以便后续窗口关闭钩子放行）
+			go svc.QuitApp()
+			return
+		}
+		event.Cancel()
+		mainWindow.Hide()
 	})
 
 	// 启动应用

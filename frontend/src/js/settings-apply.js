@@ -1,5 +1,5 @@
 import { LoadSettings, SaveSettings } from '@bindings/MusicLite/app/musicservice.js';
-import { CheckI18nNewKeys, ConfirmI18nMerge, GetI18nAutoAction, SetI18nAutoAction, RestartApp } from '@bindings/MusicLite/app/musicservice.js';
+import { CheckI18nNewKeys, ConfirmI18nMerge, GetI18nAutoAction, SetI18nAutoAction } from '@bindings/MusicLite/app/musicservice.js';
 import { initI18n, setLanguage, applyTranslations, reloadI18n } from './i18n.js';
 
 const FONT_FALLBACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
@@ -2976,19 +2976,13 @@ async function checkAndPromptI18nUpdate() {
         return;
     }
 
-    // 合并成功 → 提示用户即将重启，然后调用后端重启应用
-    _i18nToast(_t('i18n.mergedOk', 'Translations have been synced. The app will restart automatically.'));
+    // 合并成功 → 就地刷新翻译（不再重启应用，避免与下次启动的 i18n 差异检测形成重启死循环）
+    _i18nToast(_t('i18n.mergedOk', 'Translations have been synced and applied.'));
     try {
-        await RestartApp();
-    } catch (e) {
-        // 重启失败兜底：尝试重新拉取 i18n 数据并刷新翻译（不重启）
-        console.warn('[i18n] RestartApp failed, fallback to reload:', e && e.message ? e.message : e);
-        try {
-            await reloadI18n();
-            applyTranslations();
-        } catch (e2) {
-            console.warn('[i18n] 合并后刷新翻译失败：', e2);
-        }
+        await reloadI18n();
+        applyTranslations();
+    } catch (e2) {
+        console.warn('[i18n] 合并后刷新翻译失败：', e2);
     }
 }
 

@@ -105,7 +105,6 @@ jobs:
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 
       # ============================ Windows ============================
-      # GitHub Windows runner 已预装 MinGW (gcc 14.2) 和 NSIS 3.10，仅在缺失时补装
       - name: "[Windows] Ensure NSIS available"
         if: matrix.platform == 'windows'
         shell: pwsh

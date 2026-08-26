@@ -2196,6 +2196,18 @@ h2 {
     height: 22px;
 }
 
+/* ============ 单向模式（OnlyMode） ============ */
+/* 以系统链接方式打开音乐时：隐藏循环、上一曲、下一曲、播放列表、返回等 */
+body.only-mode .player-overlay .btn-loop,
+body.only-mode .player-overlay .btn-next,
+body.only-mode .player-overlay .btn-queue,
+body.only-mode .player-overlay .btn-back ,
+body.only-mode .player-overlay .lyrics-area,
+body.only-mode .player-overlay .btn-eq,
+body.only-mode .player-overlay .artist-name{
+    display: none !important;
+}
+
 .player-overlay .volume-control {
     display: flex;
     align-items: center;

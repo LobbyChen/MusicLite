@@ -83,16 +83,16 @@ func (a *MusicService) SetAsDefaultPlayer() error {
 	return nil
 }
 
-// IsDefaultPlayer 检查 MusicLite 是否为 .mp3 的默认播放器（Windows 实现）
-func (a *MusicService) IsDefaultPlayer() (bool, error) {
+// IsDefaultPlayer 检查 MusicLite 是否为 .mp3 的默认播放器
+func (a *MusicService) IsDefaultPlayer() bool {
 	k, err := registry.OpenKey(registry.CURRENT_USER, `Software\Classes\.mp3`, registry.QUERY_VALUE)
 	if err != nil {
-		return false, nil
+		return false
 	}
 	defer k.Close()
 	val, _, err := k.GetStringValue("")
 	if err != nil {
-		return false, nil
+		return false
 	}
-	return val == progID, nil
+	return val == progID
 }

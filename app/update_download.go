@@ -66,7 +66,7 @@ func (a *MusicService) StartUpdateDownload(info UpdateInfo) error {
 		return fmt.Errorf("已有下载任务正在进行")
 	}
 
-	// 读取线程数配置
+	// 读取线程数配置 + gh-proxy 模式下额外线程数上限（代理服务端限制 16）
 	s := a.LoadSettings()
 	threads := s.UpdateThreadCount
 	if threads < 1 {
@@ -74,6 +74,15 @@ func (a *MusicService) StartUpdateDownload(info UpdateInfo) error {
 	}
 	if threads > 256 {
 		threads = 256
+	}
+	// gh-proxy 代理的单文件最高只允许 16 线程
+	if s.UpdateProxyMode == "ghproxy" && threads > 16 {
+		threads = 16
+	}
+	// 最终下载 URL：按设置应用 gh-proxy。CheckForUpdate 通常已改写过，但为安全起见
+	// 这里在实际下载前再应用一次，避免直接调用 StartUpdateDownload 或中途切换了设置。
+	if info.DownloadURL != "" {
+		info.DownloadURL = a.applyGhProxy(info.DownloadURL)
 	}
 
 	// 计算临时文件路径
@@ -280,11 +289,16 @@ func (a *MusicService) ClearUpdateDownloadState() {
 }
 
 // SetUpdateThreadCount 设置下载线程数（1-256）
+// 当代理模式为 ghproxy 时，实际可保存的上限为 16（代理服务端限制）
 func (a *MusicService) SetUpdateThreadCount(count int) error {
-	if count < 1 || count > 256 {
-		return fmt.Errorf("线程数必须在 1-256 之间")
-	}
 	s := a.LoadSettings()
+	maxThreads := 256
+	if s.UpdateProxyMode == "ghproxy" {
+		maxThreads = 16
+	}
+	if count < 1 || count > maxThreads {
+		return fmt.Errorf("线程数必须在 1-%d 之间", maxThreads)
+	}
 	s.UpdateThreadCount = count
 	return a.SaveSettings(s)
 }

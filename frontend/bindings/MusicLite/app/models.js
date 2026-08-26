@@ -851,6 +851,14 @@ export class Settings {
              */
             this["void_mode"] = false;
         }
+        if (!("only_mode" in $$source)) {
+            /**
+             * 单向模式：以系统链接方式打开音乐时自动进入播放器单曲播放，结束后关闭且不影响音乐库
+             * @member
+             * @type {boolean}
+             */
+            this["only_mode"] = false;
+        }
         if (!("i18n_auto_action" in $$source)) {
             /**
              * i18n 自动合并：用户在弹窗中勾选"下次自动"后的选择
@@ -889,6 +897,23 @@ export class Settings {
              */
             this["update_download_state"] = undefined;
         }
+        if (!("update_proxy_mode" in $$source)) {
+            /**
+             * 更新下载来源代理："" / "official"（默认）= 官方直连，"ghproxy" = gh-proxy 加速
+             * @member
+             * @type {string}
+             */
+            this["update_proxy_mode"] = "";
+        }
+        if (!("gh_proxy_url" in $$source)) {
+            /**
+             * gh-proxy 代理地址前缀（默认 https://v6.gh-proxy.org/）
+             * 开启 gh-proxy 时，GitHub 下载 URL 会被拼接为：GhProxyURL + 原始 URL
+             * @member
+             * @type {string}
+             */
+            this["gh_proxy_url"] = "";
+        }
         if (!("hotkey_playpause" in $$source)) {
             /**
              * 全局快捷键（3 个）
@@ -924,22 +949,22 @@ export class Settings {
      * @returns {Settings}
      */
     static createFrom($$source = {}) {
-        const $$createField41_0 = $$createType10;
-        const $$createField42_0 = $$createType11;
-        const $$createField43_0 = $$createType11;
-        const $$createField44_0 = $$createType11;
+        const $$createField42_0 = $$createType10;
+        const $$createField45_0 = $$createType11;
+        const $$createField46_0 = $$createType11;
+        const $$createField47_0 = $$createType11;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("update_download_state" in $$parsedSource) {
-            $$parsedSource["update_download_state"] = $$createField41_0($$parsedSource["update_download_state"]);
+            $$parsedSource["update_download_state"] = $$createField42_0($$parsedSource["update_download_state"]);
         }
         if ("hotkey_playpause" in $$parsedSource) {
-            $$parsedSource["hotkey_playpause"] = $$createField42_0($$parsedSource["hotkey_playpause"]);
+            $$parsedSource["hotkey_playpause"] = $$createField45_0($$parsedSource["hotkey_playpause"]);
         }
         if ("hotkey_next" in $$parsedSource) {
-            $$parsedSource["hotkey_next"] = $$createField43_0($$parsedSource["hotkey_next"]);
+            $$parsedSource["hotkey_next"] = $$createField46_0($$parsedSource["hotkey_next"]);
         }
         if ("hotkey_prev" in $$parsedSource) {
-            $$parsedSource["hotkey_prev"] = $$createField44_0($$parsedSource["hotkey_prev"]);
+            $$parsedSource["hotkey_prev"] = $$createField47_0($$parsedSource["hotkey_prev"]);
         }
         return new Settings(/** @type {Partial<Settings>} */($$parsedSource));
     }

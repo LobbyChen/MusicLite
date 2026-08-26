@@ -1,4 +1,4 @@
-import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack , GetFileInArgs, ImportFilesFromPaths, GetTotalListenTime, PickImageFile, PickLyricsFile, ReadFileForEdit, PackShare, GetNextTracks, GetPrevTracks, GetRandomTrack, QueueAddTrack, QueueAddAll, QueueClear, QueueGetStatus, QueueRemoveAt, QueueShuffle, QueueMove, QueueJumpTo } from '@bindings/MusicLite/app/musicservice.js';
+import { ImportFiles, GetAllTracks, UpdateTrack, UpdateTrackCover, DeleteTrack, GetFileInArgs, ImportFilesFromPaths, GetTotalListenTime, PickImageFile, PickLyricsFile, ReadFileForEdit, PackShare, GetNextTracks, GetPrevTracks, GetRandomTrack, QueueAddTrack, QueueAddAll, QueueClear, QueueGetStatus, QueueRemoveAt, QueueShuffle, QueueMove, QueueJumpTo, Exit} from '@bindings/MusicLite/app/musicservice.js';
 import { openPlayer } from './player.js';
 import { initI18n, t } from './i18n.js';
 import { Window } from '@wailsio/runtime';
@@ -50,9 +50,6 @@ function applyMarquee(el) {
 }
 window.applyMarquee = applyMarquee;
 
-// ============ 标题栏窗口控制 ============
-document.getElementById('minimizeBtn')?.addEventListener('click', () => Window.Minimise());
-document.getElementById('closeBtn')?.addEventListener('click', () => Window.Hide());
 
 // DOM Elements
 const fileBtn = document.getElementById("openFileBtn");
@@ -68,7 +65,10 @@ var currentTrack;
 let allTracks = [];       // 后端返回的全部曲目（未过滤、未排序）
 let currentQuery = '';    // 当前搜索关键词
 let currentSort = 'recent'; // 当前排序方式：recent | title | artist
-
+// OnlyMode状态
+let OnlyMode = false;
+// 全局track
+var DefaultFile
 // 正在播放的动态条指示器（纯 CSS 动画，无 emoji）
 const NP_BARS_HTML = '<span class="np-bars" aria-hidden="true"><i></i><i></i><i></i></span>';
 // ============ 拖放导入 ============
@@ -76,6 +76,18 @@ const NP_BARS_HTML = '<span class="np-bars" aria-hidden="true"><i></i><i></i><i>
 let dragDepth = 0;
 // 编辑弹窗内的拖放计数器（独立于全局）
 let editDragDepth = 0;
+
+
+// ============ 标题栏窗口控制 ============
+document.getElementById('minimizeBtn')?.addEventListener('click', () => Window.Minimise());
+document.getElementById('closeBtn')?.addEventListener('click', () => {
+    if (OnlyMode && DefaultFile) {
+        Exit(1);
+    } else {
+        Window.Hide();
+    }
+});
+
 
 function isEditModalActive() {
     const el = document.getElementById('modal-edit');
@@ -176,9 +188,9 @@ async function doImportPaths(paths) {
 // ============ Toast 通知 ============
 const TOAST_ICONS = {
     success: '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>',
-    error:   '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg>',
+    error: '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg>',
     warning: '<svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>',
-    info:    '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>'
+    info: '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>'
 };
 
 function showToast(message, type = 'info', duration = 3000) {
@@ -271,7 +283,7 @@ async function getListMode() {
             const s = JSON.parse(cached);
             if (s.list_mode === 'card' || s.list_mode === 'list') return s.list_mode;
         }
-    } catch (e) {}
+    } catch (e) { }
     try {
         const { LoadSettings } = await import('@bindings/MusicLite/app/musicservice.js');
         const s = await LoadSettings();
@@ -289,7 +301,7 @@ function getListModeSync() {
             const s = JSON.parse(cached);
             if (s.list_mode === 'card' || s.list_mode === 'list') return s.list_mode;
         }
-    } catch (e) {}
+    } catch (e) { }
     return 'card';
 }
 
@@ -303,7 +315,7 @@ async function getSortMode() {
                 return s.sort_mode;
             }
         }
-    } catch (e) {}
+    } catch (e) { }
     try {
         const { LoadSettings } = await import('@bindings/MusicLite/app/musicservice.js');
         const s = await LoadSettings();
@@ -345,7 +357,7 @@ async function setListMode(mode) {
         const obj = cached ? JSON.parse(cached) : {};
         obj.list_mode = mode;
         localStorage.setItem('cachedSettings', JSON.stringify(obj));
-    } catch (e) {}
+    } catch (e) { }
     // 异步保存到后端（不阻塞 UI）
     try {
         const { LoadSettings, SaveSettings } = await import('@bindings/MusicLite/app/musicservice.js');
@@ -370,7 +382,7 @@ async function setSortMode(mode) {
         const obj = cached ? JSON.parse(cached) : {};
         obj.sort_mode = mode;
         localStorage.setItem('cachedSettings', JSON.stringify(obj));
-    } catch (e) {}
+    } catch (e) { }
     try {
         const { LoadSettings, SaveSettings } = await import('@bindings/MusicLite/app/musicservice.js');
         const s = await LoadSettings();
@@ -865,7 +877,7 @@ function renderLibQueueList(status) {
                     ],
                     { duration: 250, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
                 );
-            } catch (_) {}
+            } catch (_) { }
         }
     });
 
@@ -894,7 +906,7 @@ function restartLibNpBars() {
     if (!libQueueList) return;
     libQueueList.querySelectorAll('.np-bars').forEach(barEl => {
         barEl.querySelectorAll('i').forEach(iEl => {
-            try { iEl.getAnimations().forEach(a => a.cancel()); } catch (_) {}
+            try { iEl.getAnimations().forEach(a => a.cancel()); } catch (_) { }
         });
         const item = barEl.closest('.queue-item');
         if (!item || !item.classList.contains('is-current')) return;
@@ -913,7 +925,7 @@ function restartLibNpBars() {
                         easing: 'ease-in-out'
                     }
                 );
-            } catch (_) {}
+            } catch (_) { }
         });
     });
 }
@@ -959,7 +971,7 @@ function bindLibQueueItemEvents() {
                 e.dataTransfer.effectAllowed = 'copyMove';
                 e.dataTransfer.setData('application/x-queue-index', String(idx));
                 e.dataTransfer.setData('text/plain', String(idx));
-            } catch (_) {}
+            } catch (_) { }
             // 延迟一帧加 .dragging，让浏览器先截好拖拽预览图
             requestAnimationFrame(() => el.classList.add('dragging'));
         });
@@ -975,12 +987,12 @@ function bindLibQueueItemEvents() {
             e.preventDefault();
             const isInternal = libQueueDragFromIndex >= 0;
             if (isInternal) {
-                try { e.dataTransfer.dropEffect = 'move'; } catch (_) {}
+                try { e.dataTransfer.dropEffect = 'move'; } catch (_) { }
                 if (libQueueDragFromIndex === idx) return;
                 libQueueList.querySelectorAll('.queue-item.drag-over').forEach(n => n.classList.remove('drag-over'));
                 el.classList.add('drag-over');
             } else {
-                try { e.dataTransfer.dropEffect = 'copy'; } catch (_) {}
+                try { e.dataTransfer.dropEffect = 'copy'; } catch (_) { }
                 el.classList.add('drag-over');
             }
         });
@@ -1009,7 +1021,7 @@ function bindLibQueueItemEvents() {
                         if (window.QueuePanel && typeof window.QueuePanel.refresh === 'function') {
                             window.QueuePanel.refresh();
                         }
-                    } catch (_) {}
+                    } catch (_) { }
                 }).catch(err => console.warn('QueueMove failed:', err));
             } else {
                 const trackId = e.dataTransfer.getData('application/x-track-id') || e.dataTransfer.getData('text/plain');
@@ -1052,7 +1064,7 @@ function makeTrackDraggable(el, track) {
             e.dataTransfer.effectAllowed = 'copyMove';
             e.dataTransfer.setData('application/x-track-id', String(track.id));
             e.dataTransfer.setData('text/plain', String(track.id));
-        } catch (_) {}
+        } catch (_) { }
     });
     el.addEventListener('dragend', () => {
         el.classList.remove('dragging-queue');
@@ -1108,10 +1120,10 @@ function initLibQueueSidebar() {
         const isInternal = libQueueDragFromIndex >= 0;
         if (isInternal) {
             // 内部排序：dropEffect = move（与 dragstart effectAllowed='copyMove' 匹配）
-            try { e.dataTransfer.dropEffect = 'move'; } catch (_) {}
+            try { e.dataTransfer.dropEffect = 'move'; } catch (_) { }
         } else {
             // 外部拖入：dropEffect = copy
-            try { e.dataTransfer.dropEffect = 'copy'; } catch (_) {}
+            try { e.dataTransfer.dropEffect = 'copy'; } catch (_) { }
         }
         if (e.target === libQueueList) {
             libQueueList.classList.add('drag-over');
@@ -1315,7 +1327,7 @@ async function saveEditModal() {
             try {
                 await UpdateTrackCover(currentEditTrack.id, [], '');
                 _coverBustTs = Date.now();
-            } catch (e) {}
+            } catch (e) { }
         } else if (editCoverData && editCoverData.length > 0) {
             await UpdateTrackCover(currentEditTrack.id, editCoverData, editCoverMIME);
             _coverBustTs = Date.now();
@@ -1637,18 +1649,48 @@ async function initLibrariesPage() {
         }
 
         // 恢复上次状态后，继续检查这次启动是否传入参数
-        var defaultFile = await GetFileInArgs();
-        if (defaultFile && defaultFile.src) {
+        DefaultFile = await GetFileInArgs();
+        if (DefaultFile && DefaultFile.src) {
             // 若有文件
             console.log("有文件");
-            console.log(defaultFile);
-            // 命令行参数文件已经入库，刷新一下列表显示
-            await refreshList();
-            window.audioManager.loadTrack(defaultFile);
-            window.audioManager.play();
-            currentTrack = defaultFile;
-            document.title = currentTrack.name || currentTrack.Name || 'MusicLite · 我的音乐库';
-        }else{
+            console.log(DefaultFile);
+            // 读取设置判断是否启用单向模式（OnlyMode）：
+            // 启用时，自动进入播放器单曲播放，结束后关闭且不影响音乐库；
+            // 关闭时走原有逻辑（刷新列表 + 后台播放 + 停留在音乐库）。
+            OnlyMode = false;
+            try {
+                const { LoadSettings: _loadSettings } = await import('@bindings/MusicLite/app/musicservice.js');
+                const _s = await _loadSettings();
+                OnlyMode = _s.only_mode !== undefined ? !!_s.only_mode : true;
+            } catch (e) {
+                console.warn('读取 OnlyMode 设置失败，按默认禁用处理:', e);
+            }
+
+            if (OnlyMode) {
+                // 单向模式：不刷新列表（保持原音乐库视图不受临时曲目影响）
+                // 标记 OnlyMode 会话，供 player.js 隐藏控件并在播放结束时自动清理
+                window.__onlyModeSession = true;
+                window.__onlyModeTrackId = DefaultFile.id;
+                currentTrack = DefaultFile;
+                document.title = currentTrack.name || currentTrack.Name || 'MusicLite · 我的音乐库';
+                window.audioManager.loadTrack(DefaultFile);
+                window.audioManager.play();
+                // 自动转到播放器页面开始播放（openPlayer 内部会再次 loadTrack，
+                // 同曲不重载，仅同步 UI；此处 play 已发起，pending 期间排队等待）
+                try {
+                    await openPlayer(DefaultFile.id);
+                } catch (err) {
+                    console.error('OnlyMode 打开播放器失败:', err);
+                }
+            } else {
+                // 常规逻辑：命令行参数文件已经入库，刷新一下列表显示
+                await refreshList();
+                window.audioManager.loadTrack(DefaultFile);
+                window.audioManager.play();
+                currentTrack = DefaultFile;
+                document.title = currentTrack.name || currentTrack.Name || 'MusicLite · 我的音乐库';
+            }
+        } else {
             console.log("无文件");
         }
         // 删除检查：若恢复的曲目已不存在，清理状态并隐藏迷你播放器

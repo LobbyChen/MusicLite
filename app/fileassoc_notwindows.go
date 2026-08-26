@@ -75,7 +75,7 @@ func (a *MusicService) SetAsDefaultPlayer() error {
 	}
 }
 
-// IsDefaultPlayer 检查 MusicLite 是否为默认播放器（非 Windows 实现）
+// IsDefaultPlayer 检查 MusicLite 是否为默认播放器
 func (a *MusicService) IsDefaultPlayer() (bool, error) {
 	switch runtime.GOOS {
 	case "darwin":
