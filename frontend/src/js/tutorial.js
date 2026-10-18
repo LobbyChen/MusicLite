@@ -31,14 +31,6 @@ const TUTORIAL_STEPS = {
         { selector: '#libQueueBtn',                  textKey: 'tutorial.librariesQueue',      position: 'left' },
         { selector: '#mini-player',                  textKey: 'tutorial.librariesMiniPlayer', position: 'top' },
         { selector: '.tracks-header',                textKey: 'tutorial.librariesTrackCard',  position: 'bottom' },
-        { selector: null,                            textKey: 'tutorial.toDesignerHint',      position: 'center', nextPage: 'designer' }
-    ],
-    designer: [
-        { selector: 'header',                         textKey: 'tutorial.designerIntro',       position: 'bottom' },
-        { selector: '[data-section-id="appearance"]', textKey: 'tutorial.designerAppearance',  position: 'left' },
-        { selector: '.designer-controls',             textKey: 'tutorial.designerTokens',      position: 'right' },
-        { selector: '.designer-preview-aside',        textKey: 'tutorial.designerPreview',     position: 'left' },
-        { selector: '.designer-bottom-actions',       textKey: 'tutorial.designerReset',       position: 'bottom' },
         { selector: null,                             textKey: 'tutorial.finish',              position: 'center', isFinish: true }
     ]
 };
@@ -46,8 +38,7 @@ const TUTORIAL_STEPS = {
 // 页面 URL 映射
 const PAGE_URLS = {
     libraries: '/src/html/libraries.html',
-    settings:  '/src/html/settings.html',
-    designer:  '/src/html/designer.html'
+    settings:  '/src/html/settings.html'
 };
 
 // ---------- 状态管理 ----------
@@ -207,8 +198,7 @@ class TutorialRunner {
         // 填文案
         const pageNameKey = {
             settings:  'tutorial.pageSettings',
-            libraries: 'tutorial.pageLibraries',
-            designer:  'tutorial.pageDesigner'
+            libraries: 'tutorial.pageLibraries'
         }[this.pageName] || 'info.productNameFull';
 
         this.$('.tutorial-page-name').textContent = tfmt(pageNameKey);

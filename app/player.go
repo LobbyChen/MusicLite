@@ -11,6 +11,7 @@ import (
 	"time"
 	"unsafe"
 
+	"MusicLite/app/equalizer"
 	"MusicLite/internal/format"
 	"MusicLite/internal/storage"
 
@@ -194,7 +195,7 @@ type Player struct {
 	queue    *PlayQueue
 
 	// 10 频段图形均衡器，作用于 PCMReader.Read 输出的 Float32LE 缓冲
-	eq *Equalizer
+	eq *equalizer.Equalizer
 
 	otoCtx    *oto.Context
 	otoPlayer *oto.Player
@@ -309,15 +310,15 @@ func NewPlayer(db *storage.Database, app *MusicService) *Player {
 		closed:   make(chan struct{}),
 		endCh:    make(chan struct{}, 1),
 		freeCh:   make(chan unsafe.Pointer, 16),
-		eq:       NewEqualizer(playerSampleRate),
+		eq:       equalizer.NewEqualizer(playerSampleRate),
 	}
 	p.queue = NewPlayQueue(db, app)
 	p.volume.Store(70)
 	return p
 }
 
-func (p *Player) Queue() *PlayQueue     { return p.queue }
-func (p *Player) Equalizer() *Equalizer { return p.eq }
+func (p *Player) Queue() *PlayQueue        { return p.queue }
+func (p *Player) Equalizer() *equalizer.Equalizer { return p.eq }
 
 func (p *Player) Start() {
 	op := &oto.NewContextOptions{}
@@ -448,10 +449,10 @@ func (a *MusicService) PlayerGetPlayMode() string {
 func (a *MusicService) PlayerRestart() error { return a.player.restart() }
 
 // 均衡器方法（转发到 Player.eq）
-func (a *MusicService) PlayerGetEqBandCount() int { return EqBandCount }
+func (a *MusicService) PlayerGetEqBandCount() int { return equalizer.EqBandCount }
 func (a *MusicService) PlayerGetEqFreqs() []float64 {
-	out := make([]float64, EqBandCount)
-	for i, f := range EqCenterFreqs {
+	out := make([]float64, equalizer.EqBandCount)
+	for i, f := range equalizer.EqCenterFreqs {
 		out[i] = f
 	}
 	return out
@@ -468,10 +469,10 @@ func (a *MusicService) PlayerSetEqGains(gains []float64) {
 }
 func (a *MusicService) PlayerGetEqGains() []float64 {
 	if a.player.eq == nil {
-		return make([]float64, EqBandCount)
+		return make([]float64, equalizer.EqBandCount)
 	}
 	g := a.player.eq.GetGains()
-	out := make([]float64, EqBandCount)
+	out := make([]float64, equalizer.EqBandCount)
 	for i, v := range g {
 		out[i] = v
 	}
@@ -490,7 +491,7 @@ func (a *MusicService) PlayerGetEqEnabled() bool {
 }
 func (a *MusicService) PlayerResetEq() {
 	if a.player.eq != nil {
-		a.player.eq.SetGains(make([]float64, EqBandCount))
+		a.player.eq.SetGains(make([]float64, equalizer.EqBandCount))
 	}
 }
 

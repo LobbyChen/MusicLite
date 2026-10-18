@@ -1,10 +1,9 @@
-package app
+package equalizer
 
 // ============ 10 频段图形均衡器（biquad peaking filter）============
 //
 // 设计目标：
-//   1. 真正作用于音频流：在新管线（FFmpeg → RAM PCM → PCMReader → oto）
-//      中由 PCMReader.Read 调用 ProcessFloat32LE 就地处理缓冲区
+//   1. 真正作用于音频流：由播放器 PCMReader 就地处理 Float32LE 缓冲区
 //      PCM → EQ → 音量 → oto
 //   2. 10 个频段：31 / 62 / 125 / 250 / 500 / 1k / 2k / 4k / 8k / 16k Hz
 //      每段增益 -12 ~ +12 dB，Q ≈ 1.41（约 1 octave 带宽）

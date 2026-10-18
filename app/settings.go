@@ -49,9 +49,7 @@ type Settings struct {
 	DesignTextGlow float64 `json:"design_text_glow"` // 字体晕影强度（0-1，默认 0）
 	TitlebarText   string  `json:"titlebar_text"`    // 自定义标题栏文字（空则使用默认 "MusicLite Cuckoo"）
 	// 设置界面布局与新 UI
-	SettingsLayout string `json:"settings_layout"` // 设置界面布局："scroll"（默认）| "columns" | "tabs"
 	NewUIEnabled   bool   `json:"new_ui_enabled"`  // 新风格 UI 开关
-	VoidMode       bool   `json:"void_mode"`       // 虚空模式：界面颠倒 + 全黑 + 鼠标手电筒（需自行寻找退出按钮）
 	OnlyMode       bool   `json:"only_mode"`       // 单向模式：以系统链接方式打开音乐时自动进入播放器单曲播放，结束后关闭且不影响音乐库
 	// i18n 自动合并：用户在弹窗中勾选"下次自动"后的选择
 	// "" / "skip" / "fill" / "overwrite"
@@ -128,7 +126,6 @@ func DefaultSettings() Settings {
 		DesignGlow:        0.35,
 		DesignTextGlow:    0,
 		TitlebarText:      "MusicLite Cuckoo",
-		SettingsLayout:    "scroll",
 		NewUIEnabled:      false,
 		OnlyMode:          false,
 		UpdateThreadCount: 16,
@@ -260,21 +257,13 @@ func (a *MusicService) LoadSettings() Settings {
 	if s.SortMode != "recent" && s.SortMode != "title" && s.SortMode != "artist" {
 		s.SortMode = def.SortMode
 	}
-	// SettingsLayout / NewUIEnabled 兼容旧版设置文件
+	// 新UI / OnlyMode 等兼容旧版设置文件
 	{
 		var raw4 map[string]json.RawMessage
 		_ = json.Unmarshal(data, &raw4)
 		has4 := func(key string) bool { _, ok := raw4[key]; return ok }
-		if !has4("settings_layout") {
-			s.SettingsLayout = def.SettingsLayout
-		} else if s.SettingsLayout != "scroll" && s.SettingsLayout != "columns" && s.SettingsLayout != "tabs" {
-			s.SettingsLayout = def.SettingsLayout
-		}
 		if !has4("new_ui_enabled") {
 			s.NewUIEnabled = def.NewUIEnabled
-		}
-		if !has4("void_mode") {
-			s.VoidMode = def.VoidMode
 		}
 		if !has4("only_mode") {
 			s.OnlyMode = def.OnlyMode

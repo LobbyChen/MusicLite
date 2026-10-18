@@ -161,10 +161,9 @@ function applyAnimationLevel(level) {
     return clamped;
 }
 
-// 应用设置界面布局模式（scroll / columns / tabs）—— 仅设置页生效
-function applySettingsLayout(mode) {
-    const valid = ['scroll', 'columns', 'tabs'];
-    const m = valid.includes(mode) ? mode : 'scroll';
+// 应用设置界面布局：强制 tabs 选项卡（已移除 scroll / columns 布局选择）—— 仅设置页生效
+function applySettingsLayout() {
+    const m = 'tabs';
     if (document.body) {
         // 只有设置页才应用布局模式，其他页面不设置 data-settings-layout
         if (document.body.getAttribute('data-page') === 'settings') {
@@ -180,183 +179,6 @@ function applyNewUI(enabled) {
         document.body.setAttribute('data-new-ui', enabled ? 'true' : 'false');
     }
     try { localStorage.setItem('musicLite.newUIEnabled', enabled ? '1' : '0'); } catch (e) {}
-}
-
-// ============ 虚空模式（Void Mode）============
-// 界面上下颠倒 + 文字/背景/控件全黑 + 鼠标即手电筒（照亮边缘）+ 滚轮调节光圈（最大 30px）
-// 退出按钮隐藏于黑暗之中，需自行寻找。
-let _voidCssInjected = false;
-let _voidModeActive = false;
-let _voidFlashlightRadius = 16; // 默认光圈半径（px）
-let _voidMaskEl = null;
-let _voidExitBtnEl = null;
-let _voidEventsBound = false;
-
-function injectVoidCSSOnce() {
-    if (_voidCssInjected) return;
-    _voidCssInjected = true;
-    const css = `
-/* ===== 虚空模式：颠倒 + 全黑 + 手电筒 ===== */
-html[data-void-mode="true"] {
-    transform: rotate(180deg) !important;
-    transform-origin: center center !important;
-}
-html[data-void-mode="true"] body {
-    background-color: #000 !important;
-}
-/* 所有元素主体强制全黑；以 inset 阴影描出 1px 亮灰"边缘"，
-   平时被全黑遮罩盖住，仅手电筒光圈内透出，呈现"照亮边缘"效果 */
-html[data-void-mode="true"] *:not(.void-flashlight-mask):not(.void-exit-btn) {
-    background-color: #000 !important;
-    background-image: none !important;
-    color: #000 !important;
-    text-shadow: none !important;
-    box-shadow: inset 0 0 0 1px #6a6a6a !important;
-}
-html[data-void-mode="true"] img,
-html[data-void-mode="true"] video {
-    filter: brightness(0) !important;
-}
-html[data-void-mode="true"] svg {
-    fill: #000 !important;
-    stroke: #000 !important;
-    color: #000 !important;
-}
-/* 手电筒遮罩：全黑覆盖层，用 mask 在鼠标位置挖一个柔和的洞，透出下层亮灰边缘 */
-.void-flashlight-mask {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    pointer-events: none;
-    z-index: 2147483646;
-    background: #000;
-    -webkit-mask-image: radial-gradient(circle var(--flashlight-radius, 16px) at var(--flashlight-x, 50%) var(--flashlight-y, 50%), transparent 0%, transparent 45%, rgba(0,0,0,0.55) 75%, #000 100%);
-    mask-image: radial-gradient(circle var(--flashlight-radius, 16px) at var(--flashlight-x, 50%) var(--flashlight-y, 50%), transparent 0%, transparent 45%, rgba(0,0,0,0.55) 75%, #000 100%);
-}
-/* 隐藏的退出按钮：极小、近乎隐形，置于角落；抵消页面旋转保持正向 */
-.void-exit-btn {
-    position: fixed;
-    bottom: 3px;
-    right: 3px;
-    width: 12px;
-    height: 12px;
-    padding: 0;
-    margin: 0;
-    background: #000 !important;
-    border: 1px solid #6a6a6a !important;
-    color: #000 !important;
-    cursor: pointer;
-    z-index: 2147483645;
-    transform: rotate(180deg);
-    border-radius: 0 !important;
-    box-shadow: none !important;
-}
-.void-exit-btn:hover {
-    border-color: #9a9a9a !important;
-}
-`;
-    const style = document.createElement('style');
-    style.id = 'ml-void-mode-css';
-    style.textContent = css;
-    (document.head || document.documentElement).appendChild(style);
-}
-
-function _voidBindEventsOnce() {
-    if (_voidEventsBound) return;
-    _voidEventsBound = true;
-
-    // 鼠标移动 → 手电筒跟随。
-    // 注意：html 旋转 180° 后，fixed 遮罩的坐标系也跟着反转，
-    // 视口 (clientX, clientY) 对应遮罩坐标 (innerWidth - clientX, innerHeight - clientY)。
-    document.addEventListener('mousemove', (e) => {
-        if (!_voidModeActive || !_voidMaskEl) return;
-        const x = window.innerWidth - e.clientX;
-        const y = window.innerHeight - e.clientY;
-        _voidMaskEl.style.setProperty('--flashlight-x', x + 'px');
-        _voidMaskEl.style.setProperty('--flashlight-y', y + 'px');
-    }, { passive: true });
-
-    // 滚轮 → 调节光圈半径，范围 4-30px
-    window.addEventListener('wheel', (e) => {
-        if (!_voidModeActive) return;
-        e.preventDefault();
-        const delta = e.deltaY < 0 ? 1 : -1;
-        let r = _voidFlashlightRadius + delta;
-        r = Math.max(4, Math.min(300, r));
-        if (r !== _voidFlashlightRadius) {
-            _voidFlashlightRadius = r;
-            if (_voidMaskEl) _voidMaskEl.style.setProperty('--flashlight-radius', r + 'px');
-        }
-    }, { passive: false });
-}
-
-function _voidEnsureElements() {
-    if (!_voidMaskEl || !_voidMaskEl.isConnected) {
-        if (_voidMaskEl && !_voidMaskEl.isConnected) _voidMaskEl = null;
-        _voidMaskEl = document.createElement('div');
-        _voidMaskEl.className = 'void-flashlight-mask';
-        _voidMaskEl.style.setProperty('--flashlight-radius', _voidFlashlightRadius + 'px');
-        _voidMaskEl.style.setProperty('--flashlight-x', (window.innerWidth / 2) + 'px');
-        _voidMaskEl.style.setProperty('--flashlight-y', (window.innerHeight / 2) + 'px');
-        (document.body || document.documentElement).appendChild(_voidMaskEl);
-    }
-    if (!_voidExitBtnEl || !_voidExitBtnEl.isConnected) {
-        if (_voidExitBtnEl && !_voidExitBtnEl.isConnected) _voidExitBtnEl = null;
-        _voidExitBtnEl = document.createElement('button');
-        _voidExitBtnEl.className = 'void-exit-btn';
-        _voidExitBtnEl.setAttribute('aria-label', '退出虚空模式');
-        _voidExitBtnEl.title = '';
-        _voidExitBtnEl.addEventListener('click', async () => {
-            // 退出虚空模式并持久化
-            applyVoidMode(false);
-            try {
-                let s = SettingsManager.cached;
-                if (!s) {
-                    try { s = await LoadSettings(); } catch (e) { s = {}; }
-                }
-                s.void_mode = false;
-                if (SettingsManager.cached) SettingsManager.cached.void_mode = false;
-                await SaveSettings(s);
-                // 通知其他页面同步
-                try {
-                    localStorage.setItem('settingsUpdated', Date.now().toString());
-                    localStorage.setItem('cachedSettings', JSON.stringify(s));
-                } catch (e) {}
-            } catch (e) {
-                console.warn('[void-mode] 退出保存失败：', e);
-            }
-        });
-        (document.body || document.documentElement).appendChild(_voidExitBtnEl);
-    }
-}
-
-function applyVoidMode(enabled) {
-    const root = document.documentElement;
-    // 托盘菜单窗口小且独立，颠倒后将无法操作，故跳过虚空模式
-    if (enabled && document.body && document.body.classList.contains('tray-menu-body')) {
-        try { localStorage.setItem('musicLite.voidMode', '0'); } catch (e) {}
-        return;
-    }
-    if (enabled) {
-        injectVoidCSSOnce();
-        _voidBindEventsOnce();
-        root.setAttribute('data-void-mode', 'true');
-        // 确保 DOM 就绪后再创建元素
-        if (document.body) {
-            _voidEnsureElements();
-        } else {
-            document.addEventListener('DOMContentLoaded', _voidEnsureElements, { once: true });
-        }
-        _voidModeActive = true;
-    } else {
-        root.removeAttribute('data-void-mode');
-        _voidModeActive = false;
-        if (_voidMaskEl) { _voidMaskEl.remove(); _voidMaskEl = null; }
-        if (_voidExitBtnEl) { _voidExitBtnEl.remove(); _voidExitBtnEl = null; }
-    }
-    try { localStorage.setItem('musicLite.voidMode', enabled ? '1' : '0'); } catch (e) {}
 }
 
 // BgFit 内部映射：友好标识 → object-fit 实际属性（UI 不暴露属性名）
@@ -1681,8 +1503,6 @@ const SettingsManager = {
         applySettingsLayout(s.settings_layout);
         // 新风格 UI 开关
         applyNewUI(s.new_ui_enabled);
-        // 虚空模式
-        applyVoidMode(s.void_mode);
 
         // 同一时间戳歌词行数（同步到 localStorage，供 player.js 读取）
         const maxLines = (typeof s.max_lyric_lines === 'number' && s.max_lyric_lines >= 1 && s.max_lyric_lines <= 10)
@@ -1771,8 +1591,6 @@ const SettingsManager = {
             applySettingsLayout(this.cached.settings_layout);
             // 新风格 UI 开关
             applyNewUI(this.cached.new_ui_enabled);
-            // 虚空模式
-            applyVoidMode(this.cached.void_mode);
 
             // 同一时间戳歌词行数（同步到 localStorage）
             const maxLines = (typeof this.cached.max_lyric_lines === 'number' && this.cached.max_lyric_lines >= 1 && this.cached.max_lyric_lines <= 10)
@@ -1832,11 +1650,6 @@ const SettingsManager = {
     // 暴露给设计器实时预览：新风格 UI 开关
     applyNewUI(enabled) {
         applyNewUI(enabled);
-    },
-
-    // 暴露给设置页：虚空模式开关
-    applyVoidMode(enabled) {
-        applyVoidMode(enabled);
     },
 
     // 暴露给设置页实时预览：背景（图片或视频）
@@ -1958,14 +1771,6 @@ if (document.readyState === 'loading') {
     } catch (e) {}
 })();
 
-// 同步应用虚空模式（在 DOMContentLoaded 之前应用，避免首屏先正常后颠倒的闪烁）
-(function syncApplyVoidMode() {
-    try {
-        const v = localStorage.getItem('musicLite.voidMode');
-        if (v === '1') applyVoidMode(true);
-    } catch (e) {}
-})();
-
 // 同步应用毛玻璃开关（在 DOMContentLoaded 之前应用，避免卡片首屏出现一次毛玻璃边界后再消失）
 (function syncApplyGlassDisabled() {
     try {
@@ -2059,7 +1864,6 @@ function applyLibrariesWinUI3() {
         { id: 'library',  labelKey: 'libraries.title',       fallback: '音乐库',     icon: W3_ICONS.library,  active: true },
         { id: 'queue',    labelKey: 'player.queue',          fallback: '播放队列',   icon: W3_ICONS.queue },
         { id: 'settings', labelKey: 'common.settings',       fallback: '设置',       icon: W3_ICONS.settings, url: '/src/html/settings.html' },
-        { id: 'designer', labelKey: 'common.designer',       fallback: '设计器',     icon: W3_ICONS.designer, url: '/src/html/designer.html' },
     ];
 
     // 收集 main 内原始的"音乐库"子内容（全部），后续用于切换显示
@@ -2175,112 +1979,6 @@ function applyLibrariesWinUI3() {
     }
 }
 
-// 为设计器页面生成 WinUI3 左侧导航并重组 DOM
-function applyDesignerWinUI3() {
-    if (document.querySelector('.winui3-page-nav')) return;
-
-    const main = document.querySelector('main.designer-main');
-    const controls = document.querySelector('.designer-controls');
-    if (!main || !controls) return;
-
-    // i18n 获取翻译（支持 fallback + 占位符参数传递）
-    // 用法：t(key, 'fallback文本', 'param0', 'param1') 或 t(key, 'fallback', { count: 5 })
-    const t = (key, ...args) => {
-        try {
-            if (window.i18n && typeof window.i18n.t === 'function') {
-                const v = window.i18n.t(key, ...args);
-                if (v !== undefined && v !== null) return v;
-            }
-            if (window.I18N && typeof window.I18N.t === 'function') {
-                const v = window.I18N.t(key, ...args);
-                if (v !== undefined && v !== null) return v;
-            }
-        } catch (e) {}
-        // 兜底：若 args[0] 是字符串（即 fallback），返回它；否则返回原始 key
-        if (args.length > 0 && typeof args[0] === 'string') return args[0];
-        return key;
-    };
-
-    // 创建左侧导航
-    const nav = document.createElement('nav');
-    nav.className = 'winui3-page-nav';
-
-    // 导航头部（返回键 + 标题）
-    const navHeader = document.createElement('div');
-    navHeader.className = 'winui3-nav-header';
-    const origBackBtn = document.querySelector('header .btn-back');
-    if (origBackBtn) {
-        const backClone = origBackBtn.cloneNode(true);
-        backClone.className = 'winui3-nav-back btn-back';
-        backClone.id = 'winui3BackBtn';
-        backClone.addEventListener('click', () => { window.history.back(); });
-        navHeader.appendChild(backClone);
-    }
-    const navTitle = document.createElement('span');
-    navTitle.className = 'winui3-nav-title';
-    navTitle.textContent = t('designer.title', '设计器');
-    // 挂 data-i18n，确保 i18n 数据就绪后 applyTranslations() 能重新翻译（与导航项同理）
-    navTitle.setAttribute('data-i18n', 'designer.title');
-    navHeader.appendChild(navTitle);
-    nav.appendChild(navHeader);
-
-    // 导航项（对应每个 section，按 data-section-id 映射 icon 和 i18n key）
-    const ICON_MAP = {
-        appearance: W3_ICONS.appearance,
-        shape:      W3_ICONS.shape,
-        light:      W3_ICONS.light,
-        animation:  W3_ICONS.animation,
-        reset:      W3_ICONS.layout,
-        layout:     W3_ICONS.layout,
-    };
-    const LABEL_KEY = {
-        appearance: 'designer.appearance',
-        shape:      'designer.shape',
-        light:      'designer.light',
-        animation:  'designer.animation',
-        reset:      'designer.resetSection',
-        layout:     'designer.settingsLayout',
-    };
-
-    const navList = document.createElement('div');
-    navList.className = 'winui3-nav-list';
-    const sections = controls.querySelectorAll('.settings-section');
-    sections.forEach((sec, i) => {
-        const secId = sec.getAttribute('data-section-id') || ('sec' + i);
-        const h2 = sec.querySelector('h2');
-        const dataI18n = h2 ? h2.getAttribute('data-i18n') : null;
-        const labelKey = LABEL_KEY[secId] || dataI18n;
-        const fallback = h2 ? h2.textContent : ('Section ' + (i + 1));
-        const label = t(labelKey, fallback);
-        const icon = ICON_MAP[secId] || W3_ICONS.layout;
-
-        const btn = document.createElement('button');
-        btn.className = 'winui3-nav-item' + (i === 0 ? ' active' : '');
-        btn.dataset.navSection = secId;
-        // 挂 data-i18n，确保 i18n 数据就绪后 applyTranslations() 能重新翻译（导航项在 DOMContentLoaded 阶段构建，可能早于 i18n 加载完成）
-        btn.innerHTML = '<span class="winui3-nav-icon">' + icon + '</span><span class="winui3-nav-label" data-i18n="' + labelKey + '">' + label + '</span>';
-        btn.addEventListener('click', () => {
-            sections.forEach(s => s.style.display = 'none');
-            sec.style.display = 'block';
-            sec.style.animation = 'sectionFadeIn 0.2s var(--ease-smooth) both';
-            navList.querySelectorAll('.winui3-nav-item').forEach(n => n.classList.remove('active'));
-            btn.classList.add('active');
-        });
-        navList.appendChild(btn);
-    });
-    nav.appendChild(navList);
-
-    // 只显示第一个 section
-    sections.forEach((sec, i) => { sec.style.display = i === 0 ? 'block' : 'none'; });
-
-    // 将 header 隐藏（导航栏已含返回键）
-    const header = document.querySelector('header');
-    if (header) header.style.display = 'none';
-
-    // 插入导航到 main 之前
-    main.parentNode.insertBefore(nav, main);
-}
-
 // 移除 WinUI3 页面布局
 function removeWinUI3PageLayout() {
     // 清理歌词行 MutationObserver
@@ -2304,14 +2002,6 @@ function removeWinUI3PageLayout() {
             wrapper.remove();
         }
         libNav.remove();
-    }
-    // 设计器：恢复 DOM
-    const designerNav = document.querySelector('.winui3-page-nav');
-    if (designerNav) {
-        const header = document.querySelector('header');
-        if (header) header.style.display = '';
-        document.querySelectorAll('.designer-controls .settings-section').forEach(sec => { sec.style.display = ''; });
-        designerNav.remove();
     }
 }
 
@@ -2997,8 +2687,6 @@ function applyWinUI3PageLayout() {
         applyLibrariesWinUI3();
         // Player 结构（在 libraries.html 内）需要在 DOM ready 后重组
         try { applyPlayerWinUI3(); } catch (e) { console.warn('applyPlayerWinUI3 failed:', e); }
-    } else if (page === 'designer') {
-        applyDesignerWinUI3();
     }
 }
 

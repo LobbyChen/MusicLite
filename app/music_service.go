@@ -1,6 +1,7 @@
 package app
 
 import (
+	"MusicLite/app/stats"
 	"MusicLite/internal/format"
 	"MusicLite/internal/storage"
 	"context"
@@ -28,6 +29,7 @@ type MusicService struct {
 	database        *storage.Database
 	player          *Player        // 后端音频播放器
 	hotkeyManager   *HotkeyManager // 全局快捷键管理器
+	listenStats     *stats.Tracker // 听歌时长跟踪器（委托 app/stats）
 	audioServerPort int            // 独立 HTTP 服务器端口，dev 模式下使用
 	audioServerLn   net.Listener
 	trayQuitting    atomic.Bool // 托盘"退出"时置 true，让窗口关闭钩子放行
@@ -70,6 +72,8 @@ func NewMusicService(wailsApp *application.App, sqlite3FilePath string, defaultF
 	svc := &MusicService{app: wailsApp, database: db, defaultFile: defaultFile}
 	// 创建后端播放器（实际初始化在 ServiceStartup 后进行）
 	svc.player = NewPlayer(db, svc)
+	// 创建听歌时长跟踪器（数据落在 MusicLite 用户数据目录）
+	svc.listenStats = stats.New(settingsDir())
 	return svc, nil
 }
 
@@ -132,8 +136,8 @@ func (s *MusicService) ServiceStartup(ctx context.Context, options application.S
 	s.hotkeyManager.UpdateConfig(settings)
 	s.hotkeyManager.Start()
 
-	// 启动听歌时长 heartbeat（定期提交 pending 到注册表）
-	StartListenTimeHeartbeat()
+	// 启动听歌时长 heartbeat（定期提交 pending 到 JSON 文件）
+	s.startListenTimeHeartbeat()
 
 	return nil
 }
@@ -148,10 +152,8 @@ func (s *MusicService) ServiceShutdown() error {
 	if s.player != nil {
 		s.player.Stop()
 	}
-	// 停止听歌时长 heartbeat goroutine
-	StopListenTimeHeartbeat()
-	// 持久化未写入的听歌时长到注册表
-	FlushListenTime()
+	// 停止听歌时长 heartbeat goroutine 并持久化未写入的听歌时长
+	s.stopListenTimeHeartbeat()
 	// 检查是否有命令行启动的文件
 	if s.defaultFile != "" && s.defaultTrackId > 0 {
 		// 从库里面剔除

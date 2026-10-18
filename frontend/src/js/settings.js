@@ -111,8 +111,46 @@ const accentColorText = document.getElementById('accent-color-text');
 const presetColors = document.querySelectorAll('.preset-color');
 const animLevelBtns = document.querySelectorAll('.anim-level-btn[data-level]');
 const newUIModeBtns = document.querySelectorAll('.anim-level-btn[data-newui-mode]');
-const voidModeBtns = document.querySelectorAll('.anim-level-btn[data-void-mode]');
 const onlyModeBtns = document.querySelectorAll('.anim-level-btn[data-onlymode-mode]');
+
+// ============ 设计令牌控件（原设计器并入外观区） ============
+const radiusSlider = document.getElementById('radius-slider');
+const radiusValue = document.getElementById('radius-value');
+const blurSlider = document.getElementById('blur-slider');
+const blurValue = document.getElementById('blur-value');
+const shadowSlider = document.getElementById('shadow-slider');
+const shadowValue = document.getElementById('shadow-value');
+const glowSlider = document.getElementById('glow-slider');
+const glowValue = document.getElementById('glow-value');
+const textGlowSlider = document.getElementById('text-glow-slider');
+const textGlowValue = document.getElementById('text-glow-value');
+const animSpeedSlider = document.getElementById('anim-speed-slider');
+const animSpeedValue = document.getElementById('anim-speed-value');
+const bgTypeBtns = document.querySelectorAll('.anim-level-btn[data-bg-type]');
+const bgFitBtns = document.querySelectorAll('.anim-level-btn[data-bg-fit]');
+const bgGlassBtns = document.querySelectorAll('.anim-level-btn[data-bg-glass]');
+const bgFileItem = document.getElementById('bg-file-item');
+const bgPickImageBtn = document.getElementById('bg-pick-image');
+const bgClearFileBtn = document.getElementById('bg-clear-file');
+const bgFileInputImage = document.getElementById('bg-file-input-image');
+const bgFileNameEl = document.getElementById('bg-file-name');
+const bgFitItem = document.getElementById('bg-fit-item');
+const bgOpacitySlider = document.getElementById('bg-opacity');
+const bgOpacityValue = document.getElementById('bg-opacity-value');
+const bgOpacityItem = document.getElementById('bg-opacity-item');
+const bgOverlaySlider = document.getElementById('bg-overlay');
+const bgOverlayValue = document.getElementById('bg-overlay-value');
+const bgOverlayItem = document.getElementById('bg-overlay-item');
+const bgBlurSlider = document.getElementById('bg-blur');
+const bgBlurValue = document.getElementById('bg-blur-value');
+const bgBlurItem = document.getElementById('bg-blur-item');
+const bgGlassItem = document.getElementById('bg-glass-item');
+const windowAlphaSlider = document.getElementById('window-alpha');
+const windowAlphaValue = document.getElementById('window-alpha-value');
+const aeroBlurSlider = document.getElementById('aero-blur-slider');
+const aeroBlurValue = document.getElementById('aero-blur-value');
+const playerBgBlurSlider = document.getElementById('player-bg-blur-slider');
+const playerBgBlurValue = document.getElementById('player-bg-blur-value');
 
 // ============ 全局快捷键 ============
 const HOTKEY_ACTIONS = [
@@ -528,12 +566,8 @@ function applySettingsToUI(s) {
     });
     if (window.MusicLiteSettings) window.MusicLiteSettings.applyNewUI(newUIOn);
 
-    // 虚空模式开关
-    const voidOn = s.void_mode || false;
-    voidModeBtns.forEach(btn => {
-        btn.classList.toggle('active', (btn.dataset.voidMode === 'on') === voidOn);
-    });
-    if (window.MusicLiteSettings) window.MusicLiteSettings.applyVoidMode(voidOn);
+    // 设计令牌 / 背景控件同步（原设计器并入外观区）
+    applyDesignerControlsToUI(s);
 
     // 单向模式开关（默认关闭：旧设置文件缺失该字段时后端返回 false）
     const onlyOn = s.only_mode !== undefined ? !!s.only_mode : false;
@@ -549,12 +583,12 @@ function applySettingsToUI(s) {
     applyUpdateProxyModeUI(proxyMode, s);
     if (ghProxyURLInput) ghProxyURLInput.value = s.gh_proxy_url || 'https://v6.gh-proxy.org/';
 
-    // 设置界面布局模式（新UI开启时强制使用 WinUI3 NavigationView 布局）
+    // 设置界面布局：新UI开启时强制使用 WinUI3 NavigationView；否则强制 tabs 选项卡布局
     if (newUIOn) {
         applyWinUI3Layout();
     } else {
         removeWinUI3Layout();
-        applySettingsLayoutMode(s.settings_layout || 'scroll');
+        applySettingsLayoutMode('tabs');
     }
 }
 
@@ -575,26 +609,19 @@ function setAnimationLevel(level) {
     return clamped;
 }
 
-// ============ 设置界面布局模式：scroll / columns / tabs ============
-function applySettingsLayoutMode(mode) {
-    const valid = ['scroll', 'columns', 'tabs'];
-    const m = valid.includes(mode) ? mode : 'scroll';
+// ============ 设置界面布局：强制 tabs 选项卡 ============
+function applySettingsLayoutMode() {
+    const m = 'tabs';
     document.body.setAttribute('data-settings-layout', m);
     if (window.MusicLiteSettings) window.MusicLiteSettings.applySettingsLayout(m);
-    // 生成或移除选项卡栏
+    // 始终生成选项卡栏
     const existingTabs = document.querySelector('.settings-tabs');
-    if (m === 'tabs') {
-        if (!existingTabs) {
-            generateTabBar();
-        }
-        // 默认激活第一个选项卡
-        const firstTab = document.querySelector('.settings-tab');
-        if (firstTab) switchTab(firstTab.dataset.tabTarget);
-    } else {
-        if (existingTabs) existingTabs.remove();
-        // 恢复所有 section 可见
-        document.querySelectorAll('.settings-section').forEach(sec => sec.classList.remove('active'));
+    if (!existingTabs) {
+        generateTabBar();
     }
+    // 默认激活第一个选项卡
+    const firstTab = document.querySelector('.settings-tab');
+    if (firstTab) switchTab(firstTab.dataset.tabTarget);
 }
 
 // 生成选项卡栏（tabs 模式）
@@ -631,6 +658,140 @@ function switchTab(sectionId) {
     document.querySelectorAll('.settings-section').forEach(sec => {
         sec.classList.toggle('active', sec.dataset.sectionId === sectionId);
     });
+}
+
+// ============ 设计令牌 / 背景控件（原设计器并入） ============
+function applyDesignTokensLive() {
+    if (!currentSettings) return;
+    if (window.MusicLiteSettings && window.MusicLiteSettings.applyDesignTokens) {
+        window.MusicLiteSettings.applyDesignTokens(
+            currentSettings.design_radius,
+            currentSettings.design_blur,
+            currentSettings.design_anim_mult,
+            currentSettings.design_shadow,
+            currentSettings.design_glow,
+            currentSettings.design_text_glow
+        );
+    }
+}
+
+function setBgUIForType(type) {
+    const showSubOptions = type === 'image';
+    if (bgFileItem) bgFileItem.style.display = showSubOptions ? '' : 'none';
+    if (bgPickImageBtn) bgPickImageBtn.style.display = type === 'image' ? '' : 'none';
+    if (bgFitItem) bgFitItem.style.display = showSubOptions ? '' : 'none';
+    if (bgOpacityItem) bgOpacityItem.style.display = showSubOptions ? '' : 'none';
+    if (bgOverlayItem) bgOverlayItem.style.display = showSubOptions ? '' : 'none';
+    if (bgBlurItem) bgBlurItem.style.display = showSubOptions ? '' : 'none';
+    if (bgGlassItem) bgGlassItem.style.display = showSubOptions ? '' : 'none';
+    if (bgClearFileBtn) bgClearFileBtn.style.display = (currentSettings && currentSettings.bg_url) ? '' : 'none';
+}
+
+function previewBackgroundNow() {
+    if (!window.MusicLiteSettings || !currentSettings) return;
+    window.MusicLiteSettings.applyBackground({
+        bg_type: currentSettings.bg_type,
+        bg_url: currentSettings.bg_url,
+        bg_fit: currentSettings.bg_fit,
+        bg_opacity: currentSettings.bg_opacity,
+        bg_overlay: currentSettings.bg_overlay,
+        bg_blur: currentSettings.bg_blur,
+        bg_loop: currentSettings.bg_loop,
+        bg_muted: currentSettings.bg_muted,
+        bg_glass_disabled: currentSettings.bg_glass_disabled,
+        theme: currentSettings.theme || 'dark',
+    });
+}
+
+function previewWindowAlphaNow() {
+    if (!window.MusicLiteSettings || !currentSettings) return;
+    window.MusicLiteSettings.applyWindowAlpha(currentSettings.window_alpha);
+    if (window.MusicLiteSettings.applyAeroBlur) {
+        window.MusicLiteSettings.applyAeroBlur(currentSettings.aero_blur);
+    }
+}
+
+function previewPlayerBgBlurNow() {
+    if (!window.MusicLiteSettings || !currentSettings) return;
+    if (window.MusicLiteSettings.applyPlayerBgBlur) {
+        window.MusicLiteSettings.applyPlayerBgBlur(currentSettings.player_bg_blur);
+    }
+}
+
+// 把后端设置同步到设计令牌 / 背景控件
+function applyDesignerControlsToUI(s) {
+    if (!s) return;
+    if (radiusSlider) {
+        radiusSlider.value = s.design_radius ?? 10;
+        if (radiusValue) radiusValue.textContent = (s.design_radius ?? 10) + 'px';
+    }
+    if (blurSlider) {
+        blurSlider.value = s.design_blur ?? 16;
+        if (blurValue) blurValue.textContent = (s.design_blur ?? 16) + 'px';
+    }
+    if (shadowSlider) {
+        shadowSlider.value = s.design_shadow ?? 0.45;
+        if (shadowValue) shadowValue.textContent = Math.round((s.design_shadow ?? 0.45) * 100) + '%';
+    }
+    if (glowSlider) {
+        glowSlider.value = s.design_glow ?? 0.35;
+        if (glowValue) glowValue.textContent = Math.round((s.design_glow ?? 0.35) * 100) + '%';
+    }
+    if (textGlowSlider) {
+        textGlowSlider.value = s.design_text_glow ?? 0;
+        if (textGlowValue) textGlowValue.textContent = Math.round((s.design_text_glow ?? 0) * 100) + '%';
+    }
+    if (animSpeedSlider) {
+        animSpeedSlider.value = s.design_anim_mult ?? 1;
+        if (animSpeedValue) animSpeedValue.textContent = (s.design_anim_mult ?? 1).toFixed(1) + '×';
+    }
+
+    // 背景
+    const bgType = (s.bg_type === 'image') ? s.bg_type : 'none';
+    bgTypeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.bgType === bgType));
+    const bgFit = (['cover', 'contain', 'fill', 'none', 'scaledown'].includes(s.bg_fit)) ? s.bg_fit : 'cover';
+    bgFitBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.bgFit === bgFit));
+    const bgGlassOff = Boolean(s.bg_glass_disabled);
+    bgGlassBtns.forEach(btn => btn.classList.toggle('active', (btn.dataset.bgGlass === 'on') === bgGlassOff));
+
+    const bgOp = typeof s.bg_opacity === 'number' ? Math.max(0, Math.min(1, s.bg_opacity)) : 0.9;
+    if (bgOpacitySlider) { bgOpacitySlider.value = Math.round(bgOp * 100); }
+    if (bgOpacityValue) { bgOpacityValue.textContent = Math.round(bgOp * 100) + '%'; }
+
+    const bgOv = typeof s.bg_overlay === 'number' ? Math.max(0, Math.min(1, s.bg_overlay)) : 0.2;
+    if (bgOverlaySlider) { bgOverlaySlider.value = Math.round(bgOv * 100); }
+    if (bgOverlayValue) { bgOverlayValue.textContent = Math.round(bgOv * 100) + '%'; }
+
+    const bgBl = typeof s.bg_blur === 'number' ? Math.max(0, Math.min(30, s.bg_blur)) : 0;
+    if (bgBlurSlider) { bgBlurSlider.value = bgBl; }
+    if (bgBlurValue) { bgBlurValue.textContent = bgBl + ' px'; }
+
+    const wa = typeof s.window_alpha === 'number' ? Math.max(0.2, Math.min(1, s.window_alpha)) : 1;
+    if (windowAlphaSlider) { windowAlphaSlider.value = Math.round(wa * 100); }
+    if (windowAlphaValue) { windowAlphaValue.textContent = Math.round(wa * 100) + '%'; }
+
+    const ab = typeof s.aero_blur === 'number' ? Math.max(0, Math.min(40, s.aero_blur)) : 0;
+    if (aeroBlurSlider) { aeroBlurSlider.value = ab; }
+    if (aeroBlurValue) { aeroBlurValue.textContent = ab + 'px'; }
+
+    const pbb = typeof s.player_bg_blur === 'number' ? Math.max(0, Math.min(30, s.player_bg_blur)) : 20;
+    if (playerBgBlurSlider) { playerBgBlurSlider.value = pbb; }
+    if (playerBgBlurValue) { playerBgBlurValue.textContent = pbb + 'px'; }
+
+    if (bgFileNameEl) {
+        if (s.bg_url) {
+            let name = s.bg_url;
+            if (name.startsWith('data:')) {
+                name = '已加载图片（已保存）';
+            } else {
+                try { name = name.split(/[\\/]/).pop() || name; } catch (e) {}
+            }
+            bgFileNameEl.textContent = name;
+        } else {
+            bgFileNameEl.textContent = '';
+        }
+    }
+    setBgUIForType(bgType);
 }
 
 // ============ WinUI3 NavigationView 布局（新UI专属） ============
@@ -916,34 +1077,171 @@ async function setupEventListeners() {
             currentSettings.new_ui_enabled = on;
             newUIModeBtns.forEach(b => b.classList.toggle('active', b === btn));
             if (window.MusicLiteSettings) window.MusicLiteSettings.applyNewUI(on);
-            // 新UI 开启时切换为 WinUI3 NavigationView 布局；关闭时恢复原布局模式
+            // 新UI 开启时切换为 WinUI3 NavigationView 布局；关闭时强制 tabs 选项卡布局
             if (on) {
                 applyWinUI3Layout();
             } else {
                 removeWinUI3Layout();
-                applySettingsLayoutMode(currentSettings.settings_layout || 'scroll');
+                applySettingsLayoutMode();
             }
             markChanged();
         });
     });
 
-    // 虚空模式开关：开启后界面将颠倒全黑，无法正常操作，故立即保存持久化；
-    // 退出需在虚空模式下自行寻找隐藏的退出按钮。
-    voidModeBtns.forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const on = btn.dataset.voidMode === 'on';
-            currentSettings.void_mode = on;
-            voidModeBtns.forEach(b => b.classList.toggle('active', b === btn));
-            if (on) {
-                // 启用：先持久化保存，再进入虚空（确保即便程序异常关闭也已保存）
-                await saveSettings();
-                if (window.MusicLiteSettings) window.MusicLiteSettings.applyVoidMode(true);
-            } else {
-                // 关闭：先退出虚空恢复正常界面，再保存
-                if (window.MusicLiteSettings) window.MusicLiteSettings.applyVoidMode(false);
-                await saveSettings();
-            }
+    // ============ 设计令牌 / 背景控件（原设计器并入） ============
+    // 圆角
+    if (radiusSlider) radiusSlider.addEventListener('input', () => {
+        const v = parseFloat(radiusSlider.value) || 0;
+        currentSettings.design_radius = v;
+        radiusValue.textContent = v + 'px';
+        applyDesignTokensLive();
+        markChanged();
+    });
+    // 模糊
+    if (blurSlider) blurSlider.addEventListener('input', () => {
+        const v = parseInt(blurSlider.value, 10) || 0;
+        currentSettings.design_blur = v;
+        blurValue.textContent = v + 'px';
+        applyDesignTokensLive();
+        markChanged();
+    });
+    // 阴影
+    if (shadowSlider) shadowSlider.addEventListener('input', () => {
+        const v = parseFloat(shadowSlider.value) || 0;
+        currentSettings.design_shadow = v;
+        shadowValue.textContent = Math.round(v * 100) + '%';
+        applyDesignTokensLive();
+        markChanged();
+    });
+    // 辉光
+    if (glowSlider) glowSlider.addEventListener('input', () => {
+        const v = parseFloat(glowSlider.value) || 0;
+        currentSettings.design_glow = v;
+        glowValue.textContent = Math.round(v * 100) + '%';
+        applyDesignTokensLive();
+        markChanged();
+    });
+    // 字体晕影
+    if (textGlowSlider) textGlowSlider.addEventListener('input', () => {
+        const v = parseFloat(textGlowSlider.value) || 0;
+        currentSettings.design_text_glow = v;
+        textGlowValue.textContent = Math.round(v * 100) + '%';
+        applyDesignTokensLive();
+        markChanged();
+    });
+    // 动画速度
+    if (animSpeedSlider) animSpeedSlider.addEventListener('input', () => {
+        const v = parseFloat(animSpeedSlider.value) || 1;
+        currentSettings.design_anim_mult = v;
+        animSpeedValue.textContent = v.toFixed(1) + '×';
+        applyDesignTokensLive();
+        markChanged();
+    });
+    // 背景类型
+    bgTypeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            bgTypeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSettings.bg_type = btn.dataset.bgType;
+            setBgUIForType(currentSettings.bg_type);
+            previewBackgroundNow();
+            markChanged();
         });
+    });
+    // 背景适配方式
+    bgFitBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            bgFitBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSettings.bg_fit = btn.dataset.bgFit;
+            previewBackgroundNow();
+            markChanged();
+        });
+    });
+    // 容器毛玻璃开关
+    bgGlassBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            bgGlassBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSettings.bg_glass_disabled = (btn.dataset.bgGlass === 'on');
+            previewBackgroundNow();
+            markChanged();
+        });
+    });
+    // 选择图片
+    if (bgPickImageBtn) bgPickImageBtn.addEventListener('click', () => {
+        if (bgFileInputImage) bgFileInputImage.click();
+    });
+    // 清除背景文件
+    if (bgClearFileBtn) bgClearFileBtn.addEventListener('click', () => {
+        currentSettings.bg_url = '';
+        if (bgFileNameEl) bgFileNameEl.textContent = '';
+        bgClearFileBtn.style.display = 'none';
+        previewBackgroundNow();
+        markChanged();
+    });
+    // 图片文件选择
+    if (bgFileInputImage) bgFileInputImage.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            currentSettings.bg_url = reader.result;
+            if (bgFileNameEl) bgFileNameEl.textContent = '已加载图片（已保存）';
+            if (bgClearFileBtn) bgClearFileBtn.style.display = '';
+            previewBackgroundNow();
+            markChanged();
+        };
+        reader.readAsDataURL(file);
+        bgFileInputImage.value = '';
+    });
+    // 背景透明度
+    if (bgOpacitySlider) bgOpacitySlider.addEventListener('input', () => {
+        const v = parseInt(bgOpacitySlider.value, 10) || 0;
+        currentSettings.bg_opacity = v / 100;
+        if (bgOpacityValue) bgOpacityValue.textContent = v + '%';
+        previewBackgroundNow();
+        markChanged();
+    });
+    // 前景遮罩
+    if (bgOverlaySlider) bgOverlaySlider.addEventListener('input', () => {
+        const v = parseInt(bgOverlaySlider.value, 10) || 0;
+        currentSettings.bg_overlay = v / 100;
+        if (bgOverlayValue) bgOverlayValue.textContent = v + '%';
+        previewBackgroundNow();
+        markChanged();
+    });
+    // 背景虚化
+    if (bgBlurSlider) bgBlurSlider.addEventListener('input', () => {
+        const v = parseInt(bgBlurSlider.value, 10) || 0;
+        currentSettings.bg_blur = v;
+        if (bgBlurValue) bgBlurValue.textContent = v + ' px';
+        previewBackgroundNow();
+        markChanged();
+    });
+    // 窗口透明度（滑块 1-100% → 实际 0.01-1.0）
+    if (windowAlphaSlider) windowAlphaSlider.addEventListener('input', () => {
+        const v = Math.max(1, parseInt(windowAlphaSlider.value, 10) || 100);
+        currentSettings.window_alpha = v / 100;
+        if (windowAlphaValue) windowAlphaValue.textContent = v + '%';
+        previewWindowAlphaNow();
+        markChanged();
+    });
+    // Aero 模糊
+    if (aeroBlurSlider) aeroBlurSlider.addEventListener('input', () => {
+        const v = parseInt(aeroBlurSlider.value, 10) || 0;
+        currentSettings.aero_blur = v;
+        if (aeroBlurValue) aeroBlurValue.textContent = v + 'px';
+        previewWindowAlphaNow();
+        markChanged();
+    });
+    // 播放器封面背景模糊
+    if (playerBgBlurSlider) playerBgBlurSlider.addEventListener('input', () => {
+        const v = parseInt(playerBgBlurSlider.value, 10) || 0;
+        currentSettings.player_bg_blur = v;
+        if (playerBgBlurValue) playerBgBlurValue.textContent = v + 'px';
+        previewPlayerBgBlurNow();
+        markChanged();
     });
 
     // 单向模式开关：仅影响以系统链接方式打开音乐时的行为，可随时切换，下次启动生效

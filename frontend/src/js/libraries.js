@@ -1562,14 +1562,6 @@ async function initLibrariesPage() {
         });
     }
 
-    // 设计器按钮
-    const designerBtn = document.getElementById('designerBtn');
-    if (designerBtn) {
-        designerBtn.addEventListener('click', () => {
-            window.location.href = '/src/html/designer.html';
-        });
-    }
-
     // 听歌统计按钮
     const statsBtn = document.getElementById('statsBtn');
     if (statsBtn) {
