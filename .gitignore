@@ -59,4 +59,5 @@ desktop.ini
 # ===== Misc =====
 *.hintrc
 *.py
+*.md5
 frontend/dist/
