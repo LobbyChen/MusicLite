@@ -307,10 +307,27 @@ jobs:
           chmod +x release-assets/macOS-Installer.sh
           ls -la release-assets/
 
+      # 优先使用仓库内提交的版本 Release Note（releases/<tag>.md），缺失则回退到 GitHub 自动 notes
+      - name: Load release note
+        id: notes
+        run: |
+          note="releases/${GITHUB_REF_NAME}.md"
+          if [ -f "$note" ]; then
+            echo "body<<MUSICLITE_NOTES_EOF" >> "$GITHUB_OUTPUT"
+            cat "$note" >> "$GITHUB_OUTPUT"
+            echo "MUSICLITE_NOTES_EOF" >> "$GITHUB_OUTPUT"
+            echo "auto=false" >> "$GITHUB_OUTPUT"
+            echo "[release-note] using committed note: $note"
+          else
+            echo "auto=true" >> "$GITHUB_OUTPUT"
+            echo "[release-note] no committed note found ($note), falling back to auto notes"
+          fi
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*
-          generate_release_notes: true
+          body: ${{ steps.notes.outputs.body }}
+          generate_release_notes: ${{ steps.notes.outputs.auto == 'true' }}
           draft: false
           prerelease: false
