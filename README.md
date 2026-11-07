@@ -1,4 +1,5 @@
 # <div align="center"> MusicLite Cuckoo </div>
+## <div align="center"> 本项目即将完整重构！ </div>
 <br>
 <div align="center">
   <img src=".\appicon.png" alt="icon" height="100px" width="100px">
