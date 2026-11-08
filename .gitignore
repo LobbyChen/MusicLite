@@ -14,6 +14,7 @@ build/ios/xcode/gen/
 build/android/overlay.json
 build/android/gen/
 internal/platform/version.txt
+
 # ===== Build Outputs =====
 build/
 *.exe
@@ -24,6 +25,9 @@ build/
 *.msi
 .task/
 
+scripts\tag-manager.cmd
+
+scripts\tag-manager.ps1
 # Build outputs
 /bin/
 *.exe
