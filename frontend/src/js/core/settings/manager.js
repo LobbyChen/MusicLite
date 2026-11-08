@@ -4,6 +4,7 @@ import { initI18n, setLanguage, applyTranslations } from '../i18n.js';
 import { DEFAULT_ACCENT, applyAccentColor } from './theme.js';
 import { applyLyricAnimation, applyDesignTokens, applyAnimationLevel, applySettingsLayout, applyNewUI } from './design-tokens.js';
 import { applyBackground, applyWindowAlpha, applyAeroBlur, applyPlayerBgBlur, injectBgCSSOnce } from './background.js';
+import { AutoContrast } from './auto-contrast.js';
 import { checkAndPromptI18nUpdate } from './i18n-update.js';
 
 const FONT_FALLBACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
@@ -145,6 +146,9 @@ export const SettingsManager = {
         // 播放器封面背景模糊（新/旧 UI 共用 .player-bg-layer）
         applyPlayerBgBlur(s.player_bg_blur);
 
+        // 页面切换/启动：按当前背景亮度自动决定文字与图标深浅
+        AutoContrast.applyPage();
+
         // i18n 新键检查：检测到内嵌翻译有更新时提示用户确认覆盖。
         // 放在 apply() 末尾：i18n 已初始化 + UI 已渲染，
         // 翻译查找能命中中文/英文本地文案，弹窗才能本地化显示。
@@ -232,6 +236,9 @@ export const SettingsManager = {
             applyAeroBlur(this.cached.aero_blur);
             // 播放器封面背景模糊（新/旧 UI 共用 .player-bg-layer）
             applyPlayerBgBlur(this.cached.player_bg_blur);
+
+            // 设置变更后重新检测背景亮度
+            AutoContrast.applyPage();
         }
     },
 

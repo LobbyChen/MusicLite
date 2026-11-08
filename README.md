@@ -1,5 +1,4 @@
 # <div align="center"> MusicLite Cuckoo </div>
-## <div align="center"> 本项目即将完整重构！ </div>
 <br>
 <div align="center">
   <img src=".\appicon.png" alt="icon" height="100px" width="100px">
@@ -24,7 +23,7 @@
 
 ## 核心特性
 
-- **🎨 高度可定制 UI**：内置设计器，实时调整圆角、模糊、阴影、辉光、动画级别等视觉令牌，支持透明模式和自定义背景图片/视频
+- **🎨 高度可定制 UI**：可实时调整圆角、模糊、阴影、辉光、动画级别等视觉令牌，支持透明模式和自定义背景图片/视频
 - **📝 歌词系统**：支持 LRC 格式，提供卡片/全屏双模式，多种切换动画
 - **🗂️ 播放队列管理**：拖拽排序、洗牌、从媒体库批量添加，支持队列内直接拖放
 - **⌨️ 全局快捷键**：可自定义播放/暂停、上一曲、下一曲的全局热键
@@ -42,19 +41,16 @@
 
 ## 演示
 ### 传统UI中文主界面
-<img src=".\example\main_old_cn.png" alt="中文主界面">
+<img src=".\example\default-zh_cn.png" alt="中文主界面">
 
-### 新UI中文主界面
+### 新UI自定义颜色界面
 
-<img src=".\example\main_new_cn.png" alt="中文主界面">
+<img src=".\example\new-colored-zh_cn.png" alt="中文主界面">
 
-### 传统UI设计器
-
-<img src=".\example\designer_old.png" alt="中文主界面">
 
 ### 新UI 半透明背景
 
-<img src=".\example\main_translucent.png" alt="半透明新UI">
+<img src=".\example\new-blur-zh_cn.png" alt="半透明新UI">
 
 ## 快速开始
 

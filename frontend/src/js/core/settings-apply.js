@@ -1,20 +1,20 @@
 // settings-apply.js — 设置应用入口
 // 具体能力已拆分到 ./settings/*：
-//   theme / design-tokens / background / player-contrast / manager / winui3 / i18n-update
+//   theme / design-tokens / background / auto-contrast / manager / winui3 / i18n-update
 // 本文件只负责：
 //   1. 暴露 window.MusicLiteSettings 兼容全局
 //   2. DOMContentLoaded 后应用后端设置
 //   3. 首屏前用 localStorage 同步关键视觉状态，避免闪烁
 //   4. WinUI3 页面布局的启动钩子
 import { SettingsManager } from './settings/manager.js';
-import { PlayerContrast } from './settings/player-contrast.js';
+import { AutoContrast } from './settings/auto-contrast.js';
 import { applyDesignTokens, applySettingsLayout, applyNewUI } from './settings/design-tokens.js';
 import { applyWindowAlpha, applyPlayerBgBlur, injectBgCSSOnce } from './settings/background.js';
 import { applyWinUI3PageLayout } from './settings/winui3.js';
 
 window.MusicLiteSettings = SettingsManager;
-// 暴露对比度调整器，供 player.js 在 loadTrack 时调用
-window.MusicLiteSettings.PlayerContrast = PlayerContrast;
+// 暴露自动对比度调整器，供 player.js 在 loadTrack 时调用
+window.MusicLiteSettings.AutoContrast = AutoContrast;
 
 // 页面加载时自动应用
 if (document.readyState === 'loading') {

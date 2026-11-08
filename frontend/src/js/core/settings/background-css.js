@@ -750,11 +750,6 @@ html[data-aero="true"][data-theme="light"]:not([data-has-bg="true"]) .winui3-pag
 html[data-aero="true"][data-theme="accent"]:not([data-has-bg="true"]) .winui3-page-nav {
     background-color: color-mix(in srgb, var(--bg-color, #0a1f0a) calc(var(--aero-panel-alpha, 0.5) * 100%), transparent) !important;
 }
-html[data-aero="true"]:not([data-has-bg="true"]) .w3-lyrics-card {
-    background-color: color-mix(in srgb, var(--card-bg, #1e1e1e) calc(var(--aero-card-alpha, 0.7) * 100%), transparent) !important;
-    border-color: color-mix(in srgb, var(--border-color, #333) calc(var(--aero-border-alpha, 0.5) * 100%), transparent) !important;
-}
-/* 有自定义背景图时：新 UI 左侧导航改为统一半透明条，避免实色块截断背景 */
 html[data-has-bg="true"] body[data-new-ui="true"] .winui3-page-nav,
 html[data-has-bg="true"] body[data-new-ui="true"] .winui3-nav {
     background-color: rgba(18, 18, 18, 0.35) !important;
@@ -799,8 +794,7 @@ html[data-aero="true"]:not([data-has-bg="true"]) .eq-panel,
 html[data-aero="true"]:not([data-has-bg="true"]) .queue-panel,
 html[data-aero="true"]:not([data-has-bg="true"]) .hotkey-item,
 html[data-aero="true"]:not([data-has-bg="true"]) .theme-btn,
-html[data-aero="true"]:not([data-has-bg="true"]) .anim-level-btn,
-html[data-aero="true"]:not([data-has-bg="true"]) .w3-lyrics-card {
+html[data-aero="true"]:not([data-has-bg="true"]) .anim-level-btn{
     background-color: color-mix(in srgb, var(--card-bg, #1e1e1e) calc((0.50 + var(--aero-card-alpha, 0) * 0.35) * 100%), transparent) !important;
     border-color: color-mix(in srgb, var(--border-color, #333) calc(var(--aero-border-alpha, 0.5) * 100%), transparent) !important;
 }

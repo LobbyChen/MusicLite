@@ -1,5 +1,5 @@
 // 主题与配色：内置主题调色板、hex/HSL 工具、主题色应用与保存栏对比度
-import { PlayerContrast } from './player-contrast.js';
+import { AutoContrast } from './auto-contrast.js';
 
 export const DEFAULT_ACCENT = '#1db954';
 
@@ -138,9 +138,9 @@ export function applyAccentColor(color, theme, customMode) {
         root.style.setProperty(k, v);
         if (body) body.style.setProperty(k, v);
     }
-    // 主题色变化后，如果当前有封面，需要重新评估播放器对比度
-    // （因为 --text-primary/--text-secondary 可能变了，但 player-overlay 上的覆盖还在）
-    PlayerContrast.reapply();
+    // 主题色变化后重新评估页面与播放器对比度
+    // （主题会重写 --text-* 等变量，需要重新判断前景是否仍清晰）
+    AutoContrast.reapply();
     // 同时调整设置页 save-bar 的文字对比度（save-bar 背景是 accent-color）
     const accentForContrast = palette['--accent-color'] || DEFAULT_ACCENT;
     adjustSaveBarContrast(accentForContrast);

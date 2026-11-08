@@ -67,6 +67,8 @@ func NewMusicService(wailsApp *application.App, dbPath string, defaultFile strin
 	}
 
 	store := settings.NewStore()
+	// 首次启动：按系统语言决定界面语言（中文 → zh-CN，其余 → en-US）
+	store.InitLanguageForFirstRun()
 	svc := &MusicService{
 		app:         wailsApp,
 		defaultFile: defaultFile,

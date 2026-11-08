@@ -283,9 +283,9 @@ function applyTrackMeta(data) {
     coverImgEl.style.display = 'flex';
     bgLayerEl.style.backgroundImage = displayUrl ? `url('${displayUrl}')` : 'none';
 
-    // 根据封面亮度自动调整播放器文字对比度（避免封面背景导致控件看不清）
-    const pc = window.MusicLiteSettings?.PlayerContrast;
-    if (pc) pc.adjustFromCover(displayUrl);
+    // 根据封面与背景层实际透明度自动调整播放器文字/图标对比度
+    const ac = window.MusicLiteSettings?.AutoContrast;
+    if (ac) ac.applyPlayer(displayUrl);
 }
 
 function loadTrack(data) {

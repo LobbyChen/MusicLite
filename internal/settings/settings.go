@@ -145,6 +145,17 @@ func (s *Store) Dir() string {
 	return filepath.Dir(s.path)
 }
 
+// InitLanguageForFirstRun 首次启动（settings.json 尚不存在）时，
+// 按系统语言写入默认界面语言：zh-* 使用简体中文，其余语言使用英文。
+func (s *Store) InitLanguageForFirstRun() {
+	if _, err := os.Stat(s.path); err == nil {
+		return
+	}
+	cfg := DefaultSettings()
+	cfg.Language = platform.SystemLanguage()
+	_ = s.Save(cfg)
+}
+
 // Load 加载设置；文件缺失或损坏时返回默认设置，并做旧字段迁移。
 func (s *Store) Load() Settings {
 	data, err := os.ReadFile(s.path)

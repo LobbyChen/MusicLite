@@ -1,5 +1,6 @@
 // 全页面背景层、Aero 透明与模糊：注入公共 CSS 并按设置重建背景层
 import { BG_CSS } from './background-css.js';
+import { AutoContrast } from './auto-contrast.js';
 
 // BgFit 内部映射：友好标识 → object-fit 实际属性（UI 不暴露属性名）
 const BG_FIT_TO_OBJECT_FIT = {
@@ -29,6 +30,8 @@ export function injectBgCSSOnce() {
 export function applyWindowAlpha(val) {
     const root = document.documentElement;
     const v = isFinite(val) ? Math.max(0.01, Math.min(1, val)) : 1;
+    // Aero 开关会改变页面可透视程度，稍后重新评估对比度
+    AutoContrast.schedulePage();
     if (v >= 0.999) {
         // 关闭 Aero：清除所有标记与变量
         root.removeAttribute('data-aero');
@@ -143,7 +146,10 @@ export function applyBackground(opts) {
     if (oldLayer) oldLayer.remove();
     if (oldOverlay) oldOverlay.remove();
 
-    if (!hasBg || !body) return;
+    if (!hasBg || !body) {
+        AutoContrast.schedulePage();
+        return;
+    }
 
     // === 背景层（img/video）===
     const layer = document.createElement('div');
@@ -217,4 +223,6 @@ export function applyBackground(opts) {
     // 插入到 body 的最前面（z-index 最低）
     body.prepend(overlay);
     body.prepend(layer);
+    // 背景图片变化后重新检测亮度（图片加载完成后再分析）
+    AutoContrast.schedulePage();
 }

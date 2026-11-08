@@ -17,7 +17,7 @@
 
 ## Core Features
 
-- **🎨 Highly Customizable UI**: Built-in designer for real-time adjustment of visual tokens such as rounded corners, blur, shadows, glow, animation levels, supports transparent mode and custom background images/videos
+- **🎨 Highly Customizable UI**: Settings for real-time adjustment of visual tokens such as rounded corners, blur, shadows, glow, animation levels, supports transparent mode and custom background images/videos
 - **📝 Lyrics System**: LRC format support with card/fullscreen dual modes and multiple transition animations
 - **🗂️ Play Queue Management**: Drag-and-drop sorting, shuffle, bulk add from library, supports direct drag-and-drop within the queue
 - **⌨️ Global Shortcuts**: Customizable global hotkeys for play/pause, previous track, next track
@@ -28,22 +28,6 @@
 - **📦 Package & Share**: Embed tracks, covers, lyrics into ID3v2 tags and copy to clipboard
 - **⏱️ Listening Statistics**: Records cumulative playback duration for each song
 - **🪟 Two UI Options**: Optional two UI configurations
-
-## Demo
-### Legacy UI Chinese Main Interface
-<img src=".\example\main_old_cn.png" alt="Legacy UI Main Interface">
-
-### New UI Chinese Main Interface
-
-<img src=".\example\main_new_cn.png" alt="New UI Main Interface">
-
-### Legacy UI Designer
-
-<img src=".\example\designer_old.png" alt="Legacy UI Designer">
-
-### New UI With Translucent Background
-
-<img src=".\example\main_translucent.png" alt="New UI With Translucent Background">
 
 ## Quick Start
 
