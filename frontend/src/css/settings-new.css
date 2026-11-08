@@ -1,0 +1,4 @@
+/* 设置页新主题样式入口：旧主题基础 + WinUI3 页面/播放器样式。 */
+@import url("./settings.css");
+@import url("./pages/settings/winui3.css");
+@import url("./pages/settings/new-player.css");

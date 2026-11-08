@@ -1,0 +1,57 @@
+﻿/* Context Menu */
+.context-menu {
+    position: fixed;
+    z-index: 500;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--design-radius);
+    padding: 4px 0;
+    min-width: 160px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    font-size: 0.9rem;
+    transform-origin: top left;
+    animation: ctxMenuIn 0.18s var(--ease-out-expo) both;
+}
+
+.context-menu.closing {
+    animation: ctxMenuOut 0.14s var(--ease-smooth) both;
+}
+
+.context-menu .context-item {
+    animation: ctxItemIn 0.2s var(--ease-out-expo) both;
+    animation-delay: calc(var(--ctx-i, 0) * 0.025s);
+}
+
+.context-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background var(--dur-fast), padding-left var(--dur-fast);
+}
+
+.context-item:hover {
+    background: var(--hover-color);
+    padding-left: 20px;
+}
+
+.context-item.danger {
+    color: #e74c3c;
+}
+
+.context-item.danger:hover {
+    background: rgba(231, 76, 60, 0.15);
+}
+
+.context-icon {
+    width: 20px;
+    text-align: center;
+}
+
+.context-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 4px 0;
+}
+

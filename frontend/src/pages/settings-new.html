@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <link rel="stylesheet" type="text/css" href="/src/css/settings-new.css" />
+        <link rel="stylesheet" type="text/css" href="/src/css/libraries.css" />
+        <script src="/src/js/core/settings-apply.js" type="module"></script>
+        <script src="/src/js/pages/settings/index.js" type="module"></script>
+        <title>设置 · MusicLite</title>
+    </head>
+    <body data-page="settings" data-new-ui="true">
+
+        <div id="app-titlebar"></div>
+
+        <header>
+            <button class="btn-back" id="backBtn" title="返回" data-i18n-title="common.back">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+  <path d="M17.41 5.41L16 4l-8 8 8 8 1.41-1.41L10.83 12z"/>
+</svg>
+            </button>
+            <h1 data-i18n="settings.title">设置</h1>
+        </header>
+        <main>
+            <section class="settings-section" data-section-id="appearance">
+                <h2 data-i18n="settings.appearance">外观</h2>
+
+                <div class="setting-item">
+                    <label data-i18n="settings.themeMode">主题模式</label>
+                    <div class="theme-selector">
+                        <button class="theme-btn active" data-theme="dark">
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                                <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
+                            </svg>
+                            <span data-i18n="settings.themeDark">深色</span>
+                        </button>
+                        <button class="theme-btn" data-theme="light">
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                                <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0a.996.996 0 0 0 0-1.41l-1.06-1.06zm1.06-10.96a.996.996 0 0 0 0-1.41.996.996 0 0 0-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36a.996.996 0 0 0 0-1.41.996.996 0 0 0-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/>
+                            </svg>
+                            <span data-i18n="settings.themeLight">浅色</span>
+                        </button>
+                        <button class="theme-btn" data-theme="accent">
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                                <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
+                            </svg>
+                            <span data-i18n="settings.themeAccent">墨绿</span>
+                        </button>
+                        <button class="theme-btn" data-theme="custom">
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                                <path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-4.96-4.49-9-10-9zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 8 6.5 8 8 8.67 8 9.5 7.33 11 6.5 11zm3-4C8.67 7 8 6.33 8 5.5S8.67 4 9.5 4s1.5.67 1.5 1.5S10.33 7 9.5 7zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 4 14.5 4s1.5.67 1.5 1.5S15.33 7 14.5 7zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 8 17.5 8s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                            </svg>
+                            <span data-i18n="settings.themeCustom">主题色</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="setting-item" id="accent-color-item" style="display: none;">
+                    <label for="accent-color" data-i18n="settings.customAccent">自定义主题色</label>
+                    <div class="color-picker-row">
+                        <input type="color" id="accent-color" class="color-picker" value="#1DB954" />
+                        <input type="text" id="accent-color-text" class="color-text" value="#1DB954" maxlength="7" />
+                        <span class="preset-color active" data-color="#1DB954" title="默认墨绿"></span>
+                    </div>
+                </div>
+
+                <div class="setting-item" id="custom-theme-mode-item" style="display: none;">
+                    <label data-i18n="settings.customThemeMode">自定义配色基调</label>
+                    <div class="anim-level-row" style="margin-top: 8px;">
+                        <button type="button" class="anim-level-btn" data-custom-theme-mode="dark" data-i18n="settings.customThemeDark">深色 + 自定义色</button>
+                        <button type="button" class="anim-level-btn" data-custom-theme-mode="light" data-i18n="settings.customThemeLight">浅色 + 自定义色</button>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <label for="animations-toggle" data-i18n="settings.animations">界面动画</label>
+                    <div class="anim-level-row">
+                        <button type="button" class="anim-level-btn" data-level="0" data-i18n="settings.animNone">无动画</button>
+                        <button type="button" class="anim-level-btn" data-level="1" data-i18n="settings.animBasic">基础</button>
+                        <button type="button" class="anim-level-btn" data-level="2" data-i18n="settings.animEnhanced">增强</button>
+                        <button type="button" class="anim-level-btn" data-level="3" data-i18n="settings.animEpic">华丽</button>
+                    </div>
+                    <span class="toggle-desc anim-level-desc" data-i18n="settings.animationsDesc">启用过渡、入场与交互动画</span>
+                </div>
+
+                <div class="setting-item">
+                    <label data-i18n="settings.newUI" >新风格 UI</label>
+                    <div class="anim-level-row" style="margin-top: 8px;">
+                        <button type="button" class="anim-level-btn" data-newui-mode="on" data-i18n="settings.On">启用</button>
+                        <button type="button" class="anim-level-btn" data-newui-mode="off" data-i18n="settings.Off">关闭</button>
+                    </div>
+                    <span class="toggle-desc" data-i18n="settings.newUIDesc">为所有界面启用新风格视觉样式</span>
+                </div>
+
+                <div class="setting-item">
+                    <label data-i18n="settings.onlyMode">单向模式</label>
+                    <div class="anim-level-row" style="margin-top: 8px;">
+                        <button type="button" class="anim-level-btn" data-onlymode-mode="on" data-i18n="settings.On">启用</button>
+                        <button type="button" class="anim-level-btn" data-onlymode-mode="off" data-i18n="settings.Off">关闭</button>
+                    </div>
+                    <span class="toggle-desc" data-i18n="settings.onlyModeIntro">以系统链接方式打开音乐时，自动进入播放器单曲播放，结束后关闭且不影响音乐库。</span>
+                </div>
+
+                <!-- ============ 设计令牌（原设计器并入外观区） ============ -->
+                <div class="setting-item">
+                    <label for="radius-slider" data-i18n="designer.radius">界面圆角</label>
+                    <div class="slider-row">
+                        <input type="range" id="radius-slider" min="0.5" max="50" value="10" step="0.25" class="setting-slider" />
+                        <span id="radius-value" class="slider-value">10px</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.radiusDesc">卡片、按钮、面板的圆角大小</span>
+                </div>
+
+                <div class="setting-item">
+                    <label for="blur-slider" data-i18n="designer.blur">毛玻璃模糊</label>
+                    <div class="slider-row">
+                        <input type="range" id="blur-slider" min="0" max="40" value="16" step="1" class="setting-slider" />
+                        <span id="blur-value" class="slider-value">16px</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.blurDesc">浮层背景的毛玻璃模糊量</span>
+                </div>
+
+                <div class="setting-item">
+                    <label for="shadow-slider" data-i18n="designer.shadow">浮层阴影</label>
+                    <div class="slider-row">
+                        <input type="range" id="shadow-slider" min="0" max="1" value="0.45" step="0.05" class="setting-slider" />
+                        <span id="shadow-value" class="slider-value">45%</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.shadowDesc">弹窗与浮层的阴影强度</span>
+                </div>
+
+                <div class="setting-item">
+                    <label for="glow-slider" data-i18n="designer.glow">主题色辉光</label>
+                    <div class="slider-row">
+                        <input type="range" id="glow-slider" min="0" max="1" value="0.35" step="0.05" class="setting-slider" />
+                        <span id="glow-value" class="slider-value">35%</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.glowDesc">强调色周围的辉光范围</span>
+                </div>
+
+                <div class="setting-item">
+                    <label for="text-glow-slider" data-i18n="designer.textGlow">字体晕影</label>
+                    <div class="slider-row">
+                        <input type="range" id="text-glow-slider" min="0" max="1" value="0" step="0.05" class="setting-slider" />
+                        <span id="text-glow-value" class="slider-value">0%</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.textGlowDesc">标题文字的主题色晕影</span>
+                </div>
+
+                <div class="setting-item">
+                    <label for="anim-speed-slider" data-i18n="designer.animSpeed">动画速度</label>
+                    <div class="slider-row">
+                        <input type="range" id="anim-speed-slider" min="0.3" max="2.5" value="1" step="0.1" class="setting-slider" />
+                        <span id="anim-speed-value" class="slider-value">1.0×</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.animSpeedDesc">全局动画速度倍率（影响过渡与入场动画）</span>
+                </div>
+
+                <!-- 背景与透明 -->
+                <div class="setting-item">
+                    <label data-i18n="designer.bgType">桌面背景</label>
+                    <div class="anim-level-row" style="margin-top: 8px;">
+                        <button type="button" class="anim-level-btn" data-bg-type="none" data-i18n="designer.bgTypeNone">无</button>
+                        <button type="button" class="anim-level-btn" data-bg-type="image" data-i18n="designer.bgTypeImage">图片</button>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.bgTypeDesc">选择图片作为所有界面的背景</span>
+                </div>
+
+                <div class="setting-item" id="bg-file-item" style="display:none;">
+                    <label data-i18n="designer.bgFile">选择文件</label>
+                    <div class="color-picker-row" style="flex-wrap: wrap; gap: 8px;">
+                        <button type="button" class="btn btn-secondary" id="bg-pick-image" style="display:none;" data-i18n="designer.bgPickImage">选择图片…</button>
+                        <button type="button" class="btn btn-secondary" id="bg-clear-file" style="display:none;" data-i18n="designer.bgClearFile">清除</button>
+                        <input type="file" id="bg-file-input-image" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" style="display:none;" />
+                        <span id="bg-file-name" class="slider-value" style="width:100%;color:var(--text-secondary);font-size:0.8rem;"></span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.bgFileDesc">图片保存到设置文件</span>
+                </div>
+
+                <div class="setting-item" id="bg-fit-item" style="display:none;">
+                    <label data-i18n="designer.bgFit">适配方式</label>
+                    <div class="anim-level-row" style="margin-top: 8px; flex-wrap: wrap; gap: 6px;">
+                        <button type="button" class="anim-level-btn" data-bg-fit="cover" data-i18n="designer.bgFitCover">铺满全屏</button>
+                        <button type="button" class="anim-level-btn" data-bg-fit="contain" data-i18n="designer.bgFitContain">完整显示</button>
+                        <button type="button" class="anim-level-btn" data-bg-fit="fill" data-i18n="designer.bgFitFill">拉伸填满</button>
+                        <button type="button" class="anim-level-btn" data-bg-fit="none" data-i18n="designer.bgFitNone">原尺寸居中</button>
+                        <button type="button" class="anim-level-btn" data-bg-fit="scaledown" data-i18n="designer.bgFitScaleDown">智能缩放</button>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.bgFitDesc">决定背景超出窗口时的裁切/缩放行为</span>
+                </div>
+
+                <div class="setting-item" id="bg-opacity-item" style="display:none;">
+                    <label for="bg-opacity" data-i18n="designer.bgOpacity">背景透明度</label>
+                    <div class="slider-row">
+                        <input type="range" id="bg-opacity" min="0" max="100" value="90" step="1" class="setting-slider" />
+                        <span id="bg-opacity-value" class="slider-value">90%</span>
+                    </div>
+                </div>
+
+                <div class="setting-item" id="bg-overlay-item" style="display:none;">
+                    <label for="bg-overlay" data-i18n="designer.bgOverlay">前景遮罩</label>
+                    <div class="slider-row">
+                        <input type="range" id="bg-overlay" min="0" max="100" value="20" step="1" class="setting-slider" />
+                        <span id="bg-overlay-value" class="slider-value">20%</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.bgOverlayDesc">在背景上方叠一层半透明的主题色，保证文字可读</span>
+                </div>
+
+                <div class="setting-item" id="bg-blur-item" style="display:none;">
+                    <label for="bg-blur" data-i18n="designer.bgBlur">背景虚化</label>
+                    <div class="slider-row">
+                        <input type="range" id="bg-blur" min="0" max="30" value="0" step="1" class="setting-slider" />
+                        <span id="bg-blur-value" class="slider-value">0 px</span>
+                    </div>
+                </div>
+
+                <div class="setting-item" id="bg-glass-item" style="display:none;">
+                    <label data-i18n="designer.bgglassDisableToggle">容器毛玻璃效果</label>
+                    <div class="anim-level-row" style="margin-top: 8px;">
+                        <button type="button" class="anim-level-btn" data-bg-glass="off" data-i18n="designer.bgglassOn">开启</button>
+                        <button type="button" class="anim-level-btn" data-bg-glass="on" data-i18n="designer.bgglassOff">关闭</button>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.bgglassDesc">关闭后可避免卡片边缘的毛玻璃阴影 / 光晕边界，也能解决新UI下部分纯色块造成的撕裂感</span>
+                </div>
+
+                <div class="setting-item">
+                    <label for="window-alpha" data-i18n="designer.windowAlpha">窗口透明度</label>
+                    <div class="slider-row">
+                        <input type="range" id="window-alpha" min="1" max="100" value="100" step="1" class="setting-slider" />
+                        <span id="window-alpha-value" class="slider-value">100%</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.windowAlphaDesc">对整个窗口启用半透明</span>
+                </div>
+
+                <div class="setting-item">
+                    <label for="aero-blur-slider" data-i18n="designer.aeroBlur">透明模式模糊</label>
+                    <div class="slider-row">
+                        <input type="range" id="aero-blur-slider" min="0" max="400" value="0" step="1" class="setting-slider" />
+                        <span id="aero-blur-value" class="slider-value">0px</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.aeroBlurDesc">透明模式下背景的毛玻璃模糊量；默认关闭，开启后会极大增强GPU占用!</span>
+                </div>
+
+                <div class="setting-item">
+                    <label for="player-bg-blur-slider" data-i18n="designer.playerBgBlur">播放器背景模糊</label>
+                    <div class="slider-row">
+                        <input type="range" id="player-bg-blur-slider" min="0" max="30" value="20" step="1" class="setting-slider" />
+                        <span id="player-bg-blur-value" class="slider-value">20px</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="designer.playerBgBlurDesc">播放器封面背景的模糊量，同时作用于新 UI 与旧 UI</span>
+                </div>
+            </section>
+
+            <section class="settings-section" data-section-id="font">
+                <h2 data-i18n="settings.fontSection">字体</h2>
+
+                <div class="setting-item">
+                    <label for="player-font" data-i18n="settings.playerFont">播放器界面字体</label>
+                    <select id="player-font" class="font-select">
+                        <option value="system-ui">系统默认</option>
+                        <option value="'Microsoft YaHei', sans-serif">微软雅黑</option>
+                        <option value="'PingFang SC', sans-serif">苹方</option>
+                        <option value="'Segoe UI', sans-serif">Segoe UI</option>
+                        <option value="sans-serif">无衬线体</option>
+                        <option value="serif">衬线体</option>
+                    </select>
+                    <div class="font-preview" id="player-font-preview" data-i18n="settings.fontPreviewPlayer">音乐是心灵的呼吸 MusicLite 0123456789</div>
+                </div>
+
+                <div class="setting-item">
+                    <label for="lyrics-font" data-i18n="settings.lyricsFont">歌词字体</label>
+                    <select id="lyrics-font" class="font-select">
+                        <option value="'Consolas', 'Monaco', monospace">等宽字体 (推荐)</option>
+                        <option value="system-ui">系统默认</option>
+                        <option value="'Microsoft YaHei', sans-serif">微软雅黑</option>
+                        <option value="'PingFang SC', sans-serif">苹方</option>
+                        <option value="sans-serif">无衬线体</option>
+                        <option value="serif">衬线体</option>
+                    </select>
+                    <div class="font-preview" id="lyrics-font-preview" data-i18n="settings.fontPreviewLyrics">天空的云啊 你要去哪里 ABCabc123</div>
+                </div>
+
+                <div class="setting-item">
+                    <label for="ui-scale" data-i18n="settings.uiScale">界面缩放</label>
+                    <div class="slider-row">
+                        <input type="range" id="ui-scale" min="20" max="500" value="135" step="5" class="setting-slider" />
+                        <span id="ui-scale-value" class="slider-value">135%</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <label for="lyrics-scale" data-i18n="settings.lyricsScale">歌词缩放</label>
+                    <div class="slider-row">
+                        <input type="range" id="lyrics-scale" min="20" max="500" value="135" step="5" class="setting-slider" />
+                        <span id="lyrics-scale-value" class="slider-value">135%</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-section" data-section-id="playback">
+                <h2 data-i18n="settings.playback">播放</h2>
+
+                <div class="setting-item">
+                    <label for="volume-slider" data-i18n="settings.defaultVolume">默认音量</label>
+                    <div class="slider-row">
+                        <input type="range" id="volume-slider" min="0" max="100" value="70" class="setting-slider" />
+                        <span id="volume-value" class="slider-value">70%</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <label data-i18n="settings.volumeMode">音量关联</label>
+                    <div class="anim-level-row">
+                        <button type="button" class="anim-level-btn" data-vol-mode="synth" data-i18n="settings.volumeModeSynth">合成器</button>
+                        <button type="button" class="anim-level-btn" data-vol-mode="master" data-i18n="settings.volumeModeMaster">主音量</button>
+                    </div>
+                    <span class="toggle-desc" data-i18n="settings.volumeModeDesc">控制本程序音量（合成器）或控制系统总音量（主音量）</span>
+                </div>
+
+                <div class="setting-item">
+                    <label for="lyric-animation-select" data-i18n="settings.lyricAnimation">歌词行切换动画</label>
+                    <select id="lyric-animation-select" class="font-select">
+                        <option value="fade" data-i18n="settings.lyricAnimFade">淡入淡出</option>
+                        <option value="slide-up" data-i18n="settings.lyricAnimSlideUp">向上滑动</option>
+                        <option value="slide-left" data-i18n="settings.lyricAnimSlideLeft">向左滑动</option>
+                        <option value="zoom" data-i18n="settings.lyricAnimZoom">缩放</option>
+                        <option value="bounce" data-i18n="settings.lyricAnimBounce">弹跳</option>
+                        <option value="spring" data-i18n="settings.lyricAnimSpring">弹动</option>
+                        <option value="flip" data-i18n="settings.lyricAnimFlip">翻转</option>
+                        <option value="rotate" data-i18n="settings.lyricAnimRotate">旋转</option>
+                        <option value="none" data-i18n="settings.lyricAnimNone">无动画</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <label for="max-lyric-lines" data-i18n="settings.maxLyricLines">同一时间戳歌词行数</label>
+                    <div class="slider-row">
+                        <input type="range" id="max-lyric-lines" min="1" max="10" value="1" step="1" class="setting-slider" />
+                        <span id="max-lyric-lines-value" class="slider-value">1</span>
+                    </div>
+                    <span class="toggle-desc" data-i18n="settings.maxLyricLinesDesc">同一时间戳最多允许同时高亮显示的歌词行数</span>
+                </div>
+
+            </section>
+
+            <section class="settings-section" data-section-id="hotkeys">
+                <h2 data-i18n="settings.hotkeys">全局快捷键</h2>
+                <div id="hotkey-list" class="hotkey-list">
+                    <!-- 由 settings.js 动态生成 -->
+                </div>
+            </section>
+
+            <section class="settings-section" data-section-id="language">
+                <h2 data-i18n="settings.language">语言</h2>
+                <div class="setting-item">
+                    <label for="language-select" data-i18n="settings.language">界面语言</label>
+                    <select id="language-select" class="font-select">
+                        <!-- 动态填充，由 settings.js 根据 i18n.getAvailableLanguages() 生成 -->
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label for="titlebar-text" data-i18n="settings.titlebarText">标题栏文字</label>
+                    <input type="text" id="titlebar-text" class="text-input" maxlength="40" placeholder="MusicLite Cuckoo" />
+                </div>
+                <div class="setting-item">
+                    <label for="i18n-auto-action" data-i18n="settings.i18nAutoAction">翻译更新策略</label>
+                    <select id="i18n-auto-action" class="font-select">
+                        <option value="" data-i18n="settings.i18nAutoActionAsk">每次询问</option>
+                        <option value="skip" data-i18n="settings.i18nAutoActionSkip">跳过更新</option>
+                        <option value="fill" data-i18n="settings.i18nAutoActionFill">仅补全新键</option>
+                        <option value="overwrite" data-i18n="settings.i18nAutoActionOverwrite">覆盖变更值</option>
+                    </select>
+                    <span class="toggle-desc" data-i18n="settings.i18nAutoActionDesc">检测到内嵌翻译与本地文件存在差异时的处理方式（修改即时保存）</span>
+                </div>
+                <div class="setting-item">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="i18n-auto-clean" style="margin: 0;" />
+                        <span data-i18n="settings.i18nAutoClean">同时清理冗余键</span>
+                    </label>
+                    <span class="toggle-desc" data-i18n="settings.i18nAutoCleanDesc">合并时删除本地文件中内嵌已不存在的旧版残留键（修改即时保存）</span>
+                </div>
+            </section>
+
+            <section class="settings-section" data-section-id="about">
+                <h2 data-i18n="settings.about">关于</h2>
+                <div class="about-info">
+                    <p><strong>MusicLite Cuckoo</strong> <span id="app-version">...</span></p>
+                    <p class="text-muted" data-i18n="settings.aboutDesc">轻量级离线音乐播放器</p>
+                    <p class="text-muted" data-i18n="settings.builtWith">基于 Wails v3 构建</p>
+                    <p class="text-muted" data-i18n="settings.ExperienmentWarnMsg">实验性分支构建</p>
+                </div>
+                <div class="setting-item" style="margin-top: 16px;">
+                    <label data-i18n="settings.githubRepo">GitHub 仓库</label>
+                    <p class="text-muted" style="margin: 4px 0 8px;" data-i18n="settings.githubRepoDesc">查看源代码、提交问题与贡献</p>
+                    <div class="button-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" id="open-github-btn" data-i18n="settings.openGitHub">在 GitHub 上查看</button>
+                    </div>
+                </div>
+                <div class="setting-item" style="margin-top: 16px;">
+                    <label data-i18n="settings.checkUpdate">检查更新</label>
+                    <p class="text-muted" style="margin: 4px 0 8px;" data-i18n="settings.checkUpdateDesc">检查 GitHub 上是否有新版本</p>
+                    <div class="button-row" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <button class="btn btn-primary" id="check-update-btn" data-i18n="settings.checkUpdateBtn">检查更新</button>
+                        <span id="update-status" class="toggle-desc" style="align-self: center;"></span>
+                    </div>
+                    <div id="update-actions" class="button-row" style="display: none; margin-top: 10px; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" id="perform-update-btn" data-i18n="settings.performUpdate">下载并应用更新</button>
+                        <button class="btn btn-secondary" id="open-release-page-btn" data-i18n="settings.openReleasePage">打开发布页</button>
+                    </div>
+                    <!-- 下载进度条 -->
+                    <div id="update-download-progress" style="display: none; margin-top: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span id="update-progress-label" class="toggle-desc" style="font-size: 0.88em;"></span>
+                            <span id="update-progress-percent" class="toggle-desc" style="font-size: 0.88em; font-weight: 600;"></span>
+                        </div>
+                        <div style="position: relative; height: 8px; border-radius: 4px; background: var(--hover-color, rgba(255,255,255,0.08)); overflow: hidden;">
+                            <div id="update-progress-bar" style="position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: var(--accent-color, #1DB954); border-radius: 4px; transition: width 0.3s ease;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
+                            <span id="update-progress-detail" class="toggle-desc" style="font-size: 0.82em; opacity: 0.7;"></span>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <button class="btn btn-secondary" id="pause-resume-download-btn" style="padding: 4px 10px; font-size: 0.82em;" data-i18n="settings.pauseDownload">暂停</button>
+                                <button class="btn btn-secondary" id="cancel-update-download-btn" style="padding: 4px 10px; font-size: 0.82em;" data-i18n="settings.cancelDownload">取消</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 下载完成提示 -->
+                    <div id="update-download-complete" style="display: none; margin-top: 12px; padding: 12px; border-radius: 8px; background: color-mix(in srgb, var(--accent-color, #1DB954) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent-color, #1DB954) 30%, transparent);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <span id="update-complete-text" class="toggle-desc" style="color: var(--accent-color, #1DB954); font-size: 0.9em;"></span>
+                            <button class="btn btn-primary" id="apply-downloaded-update-btn" data-i18n="settings.restartToUpdate">重启更新</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- 更新下载来源代理 -->
+                <div class="setting-item" style="margin-top: 12px;">
+                    <label data-i18n="settings.updateProxy">更新下载来源</label>
+                    <p class="text-muted" style="margin: 4px 0 8px;" data-i18n="settings.updateProxyDesc">更新包与发布资源的下载来源选择</p>
+                    <div class="anim-level-row" style="margin-top: 8px;">
+                        <button type="button" class="anim-level-btn" data-update-proxy="official" data-i18n="settings.updateProxyOfficial">官方直连</button>
+                        <button type="button" class="anim-level-btn" data-update-proxy="ghproxy" data-i18n="settings.updateProxyGhProxy">gh-proxy 加速代理</button>
+                    </div>
+                    <p id="update-proxy-mode-desc" class="toggle-desc" style="margin-top: 6px;"></p>
+                    <div id="gh-proxy-url-wrap" class="setting-item" style="margin-top: 10px; padding: 0; display: none;">
+                        <label for="gh-proxy-url-input" data-i18n="settings.ghProxyURL">gh-proxy 代理地址</label>
+                        <input type="text" id="gh-proxy-url-input" class="text-input" maxlength="200" placeholder="https://v6.gh-proxy.org/" data-i18n-placeholder="settings.ghProxyURLPlaceholder" />
+                        <span class="toggle-desc" data-i18n="settings.ghProxyURLDesc">代理前缀，完整下载地址为「代理地址 + 官方 URL」，默认 https://v6.gh-proxy.org/</span>
+                    </div>
+                </div>
+
+                <!-- 下载线程数配置 -->
+                <div class="setting-item" style="margin-top: 12px;">
+                    <label data-i18n="settings.downloadThreads">下载线程数</label>
+                    <p class="text-muted" style="margin: 4px 0 8px;" data-i18n="settings.downloadThreadsDesc">多线程下载更新包的线程数（1-256；gh-proxy 模式最高 16）</p>
+                    <p id="ghproxy-thread-hint" class="text-muted" style="margin: 0 0 6px; color: var(--accent-color, #1DB954); display: none;" data-i18n="settings.downloadThreadsGhProxyHint">当前使用 gh-proxy 代理，线程数上限为 16</p>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+                        <input type="range" id="update-thread-count-slider" min="1" max="256" value="16" step="1" style="flex: 1; accent-color: var(--accent-color, #1DB954);" />
+                        <span id="update-thread-count-value" class="toggle-desc" style="min-width: 30px; text-align: center; font-weight: 600;">16</span>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end;">
+                        <button type="button" class="btn btn-secondary" id="save-thread-count-btn" data-i18n="settings.downloadThreadsSave">保存线程数</button>
+                    </div>
+                </div>
+                <div class="setting-item" style="margin-top: 16px;">
+                    <label data-i18n="settings.exportSettings">设置导入/导出</label>
+                    <div class="button-row" style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" id="export-settings-btn" data-i18n="settings.exportSettings">导出设置</button>
+                        <button class="btn btn-secondary" id="import-settings-btn" data-i18n="settings.importSettings">导入设置</button>
+                        <button class="btn btn-danger" id="reset-settings-btn" data-i18n="settings.resetSettings">重置为默认</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-section" data-section-id="more">
+                <h2 data-i18n="settings.more">更多</h2>
+                <div class="setting-item">
+                    <label data-i18n="settings.defaultPlayer">默认播放器</label>
+                    <div class="button-row" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
+                        <button class="btn btn-secondary" id="set-default-player-btn" data-i18n="settings.setAsDefault">设为默认播放器</button>
+                        <span id="default-player-status" class="toggle-desc" style="align-self: center;"></span>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <div class="button-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" id="open-data-folder-btn" data-i18n="settings.openDataFolder">打开数据文件夹</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <div class="save-bar" id="saveBar" style="display: none;">
+            <span data-i18n="settings.settingsChanged">设置已更改</span>
+            <button class="btn btn-primary" id="saveBtn" data-i18n="common.save">保存</button>
+        </div>
+
+        <!-- Mini Player Bar（让设置页也能控制播放） -->
+        <div id="mini-player" class="mini-player" style="display: none;">
+            <div class="mini-player-left">
+                <div id="mini-cover" class="mini-cover"></div>
+                <div class="mini-info">
+                    <div id="mini-title" class="mini-title">未播放</div>
+                    <div id="mini-artist" class="mini-artist">--</div>
+                </div>
+            </div>
+            <div class="mini-player-center">
+                <button class="mini-btn mini-play-btn" id="mini-play" title="播放" data-i18n-title="common.play">
+                    <svg viewBox="0 0 24 24" width="24" height="24" id="mini-play-icon">
+                        <path d="M8 5v14l11-7z" />
+                    </svg>
+                    <svg viewBox="0 0 24 24" width="24" height="24" id="mini-pause-icon" style="display:none;">
+                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                    </svg>
+                </button>
+            </div>
+            <div class="mini-player-right">
+                <button class="mini-btn" id="mini-expand" title="打开播放器" data-i18n-title="libraries.openPlayer">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="toast-container" id="toastContainer"></div>
+
+        <div class="modal-backdrop" id="confirmModal">
+            <div class="modal modal-confirm">
+                <div class="confirm-icon">
+                    <svg viewBox="0 0 24 24" width="28" height="28">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                </div>
+                <h3 id="confirmTitle">确认操作</h3>
+                <p id="confirmMessage">确定要执行此操作吗？</p>
+                <div class="modal-buttons">
+                    <button class="btn btn-secondary" id="confirmCancel">取消</button>
+                    <button class="btn btn-danger" id="confirmOk">确定</button>
+                </div>
+            </div>
+        </div>
+
+    </body>
+</html>
+

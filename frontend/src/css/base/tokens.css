@@ -1,0 +1,170 @@
+/* Dark theme (default) */
+:root {
+    --bg-color: #121212;
+    --card-bg: #1e1e1e;
+    --text-primary: #ffffff;
+    --text-secondary: #b3b3b3;
+    --text-muted: #7a7a7a;
+    --accent-color: #1db954;
+    --border-color: #333;
+    --hover-color: #2a2a2a;
+    --base-font-size: 14px;
+    --lyrics-font-size: 16px;
+    --lyrics-font: "Consolas", "Monaco", monospace;
+    /* 动画设计令牌 */
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    /* 动画速度倍率：设计器可调（0.3~2.5），影响所有 --dur-* 令牌 */
+    /* 注意：anim-mult 是"速度"倍率，高值 = 更快 = 更短持续时间，故用除法 */
+    --design-anim-mult: 1;
+    --dur-fast: calc(0.15s / var(--design-anim-mult));
+    --dur-normal: calc(0.25s / var(--design-anim-mult));
+    --dur-slow: calc(0.35s / var(--design-anim-mult));
+    /* 视觉设计令牌：设计器可实时调整 */
+    --design-radius: 10px;          /* 卡片/面板圆角 */
+    --design-radius-sm: 6px;        /* 小元件圆角 */
+    --design-radius-lg: 16px;       /* 大面板圆角 */
+    --design-glow: 0 0 24px var(--accent-glow, rgba(29, 185, 84, 0.35)); /* 主题色辉光 */
+    --design-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);    /* 浮层阴影 */
+    --design-shadow-strong: 0 16px 48px rgba(0, 0, 0, 0.6);
+    --design-blur: 16px;            /* 毛玻璃模糊量 */
+    --design-border: 1px solid var(--border-color);
+    --design-border-glass: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 字体晕影：设计器 --design-text-glow 控制（默认 none，由 settings-apply.js 覆盖）
+ * 仅作用于标题/曲名等强调文字，避免影响正文可读性 */
+h1, h2, h3,
+.card-title,
+.track-name,
+.mini-title,
+.list-item-title,
+.lyric-line.active {
+    text-shadow: var(--design-text-glow, none);
+}
+
+/* Light theme */
+[data-theme="light"] {
+    --bg-color: #fafafa;
+    --card-bg: #ffffff;
+    --text-primary: #121212;
+    --text-secondary: #666666;
+    --text-muted: #8e8e8e;
+    --accent-color: #1db954;
+    --border-color: #e0e0e0;
+    --hover-color: #f5f5f5;
+}
+
+/* Accent theme (green) */
+[data-theme="accent"] {
+    --bg-color: #0a1f0a;
+    --card-bg: #142814;
+    --text-primary: #e0ffe0;
+    --text-secondary: #a0d0a0;
+    --text-muted: #669966;
+    --accent-color: #2ecc71;
+    --border-color: #1a3a1a;
+    --hover-color: #1a3a1a;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* ============ 动画级别：4 档控制（0-3） ============
+ * 0 = None      : body.no-anim / [data-anim="0"] → 所有动画与过渡全部禁用
+ * 1 = Basic     : [data-anim="1"] → 仅保留 hover 颜色 / 按钮点按等最基础的 transition，禁用 @keyframes 入场 / 交错 / 光泽 / 弹性
+ * 2 = Enhanced  : [data-anim="2"] → 完整的新动画（默认）
+ * 3 = Epic      : [data-anim="3"] → Enhanced + 更夸张的弹性 / 3D 倾斜 / 旋转等加强效果
+ */
+
+/* 级别 0 — 完全禁用 */
+body[data-anim="0"],
+body[data-anim="0"] *,
+body[data-anim="0"] *::before,
+body[data-anim="0"] *::after,
+body.no-anim,
+body.no-anim *,
+body.no-anim *::before,
+body.no-anim *::after {
+    animation: none !important;
+    animation-delay: 0s !important;
+    animation-duration: 0s !important;
+    transition: none !important;
+    transition-delay: 0s !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+}
+
+/* 级别 1 — Basic：禁用 @keyframes 动画（保留基础 transition）*/
+body[data-anim="1"] *,
+body[data-anim="1"] *::before,
+body[data-anim="1"] *::after {
+    animation: none !important;
+    animation-delay: 0s !important;
+    animation-duration: 0s !important;
+}
+
+/* Basic 级别：将 transition 时长统一缩短为 100ms 的快节奏，仅保留颜色/透明度/基础 transform（去掉弹性与过度效果） */
+body[data-anim="1"] * {
+    transition-duration: 100ms !important;
+    transition-timing-function: linear !important;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    font-size: var(--base-font-size);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-top: 36px;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+img {
+    -webkit-user-drag: none;
+    user-drag: none;
+}
+/* 可拖拽容器内的图片：设置 pointer-events:none 让鼠标事件穿透到父元素，
+   父元素 draggable="true" 才能正常捕获 dragstart。
+   同时保留 user-select 防止文本选择干扰。*/
+.media-card[draggable="true"] img,
+.media-list-item[draggable="true"] img,
+.queue-item[draggable="true"] img,
+.lib-queue-dropzone .queue-item img {
+    -webkit-user-drag: none;
+    user-drag: none;
+    pointer-events: none;
+}
+body::-webkit-scrollbar {
+    display: none;
+}
+
+/* ============ 触屏支持 ============
+   统一消除 300ms 点击延迟与双击缩放；range 保留纵向滚动，
+   自定义拖拽手柄禁用浏览器手势以便接管触摸拖动。 */
+body,
+button,
+input,
+select,
+textarea,
+a,
+[role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+input[type="range"] {
+    touch-action: pan-y;
+}
+.eq-band-slider,
+.queue-item-drag {
+    touch-action: none;
+}
+
+

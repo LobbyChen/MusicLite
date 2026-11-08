@@ -15,11 +15,9 @@ package app
 static int setClipboardFiles(const char* filePath) {
     if (!filePath || filePath[0] == '\0') return 1;
 
-    // 转换为宽字符
     int wlen = MultiByteToWideChar(CP_UTF8, 0, filePath, -1, NULL, 0);
     if (wlen <= 0) return 2;
 
-    // DROPFILES 结构 + 宽字符路径（双终止符）
     size_t dropSize = sizeof(DROPFILES) + (wlen + 1) * sizeof(wchar_t);
 
     HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, dropSize);
@@ -56,7 +54,7 @@ import (
 	"unsafe"
 )
 
-// setClipboardFilesGo 封装 CGO 调用，将文件路径写入剪贴板（Windows 实现）
+// setClipboardFilesGo 将文件路径写入剪贴板（Windows CF_HDROP 实现）。
 func setClipboardFilesGo(filePath string) error {
 	cPath := C.CString(filePath)
 	defer C.free(unsafe.Pointer(cPath))

@@ -1,0 +1,26 @@
+/* 托盘菜单新主题样式：直接覆盖元素样式，不依赖 data-* 选择器。 */
+.tray-menu-body {
+    background: color-mix(in srgb, var(--card-bg, #1e1f22) 82%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-color, #1db954) 24%, transparent);
+    box-shadow:
+        0 12px 48px rgba(0, 0, 0, 0.5),
+        0 0 0 1px color-mix(in srgb, var(--accent-color, #1db954) 16%, transparent);
+}
+
+.tray-nowplaying {
+    background: color-mix(in srgb, var(--accent-color, #1db954) 8%, transparent);
+    border-color: color-mix(in srgb, var(--accent-color, #1db954) 18%, transparent);
+    border-radius: 12px;
+}
+
+.tray-btn {
+    border-radius: 10px;
+}
+
+.tray-divider {
+    background: color-mix(in srgb, var(--accent-color, #1db954) 18%, transparent);
+}
+
+.tray-item {
+    border-radius: 10px;
+}

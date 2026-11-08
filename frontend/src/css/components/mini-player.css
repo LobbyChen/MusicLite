@@ -1,0 +1,119 @@
+﻿/* Mini Player */
+.mini-player {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 72px;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 100;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+    animation: miniSlideIn 0.3s var(--ease-out-expo) both;
+}
+
+.mini-player-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.mini-cover {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--design-radius-sm);
+    object-fit: cover;
+    background: color-mix(in srgb, var(--card-bg, #1e1e1e) 88%, #000 12%);
+    overflow: hidden;
+}
+
+/* 迷你播放器中的默认封面（覆盖 .card-icon 的默认样式以适配小尺寸容器） */
+.mini-cover .card-icon {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    margin-bottom: 0;
+    border-radius: inherit;
+}
+
+.mini-cover .card-icon svg {
+    width: 60%;
+    height: 60%;
+}
+
+.mini-info {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.mini-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    /* 必须约束宽度，否则 block + nowrap 的 clientWidth 会等于内容宽度 */
+    max-width: 100%;
+}
+
+.mini-artist {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mini-player-center {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mini-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s, background-color 0.2s;
+}
+
+.mini-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.mini-btn svg {
+    fill: currentColor;
+}
+
+.mini-play-btn {
+    width: 40px;
+    height: 40px;
+    background: var(--accent-color);
+    /* 图标颜色用 bg-color 而非硬编码 white，保证与主题背景反相可见 */
+    color: var(--bg-color);
+}
+
+.mini-play-btn:hover {
+    background: var(--accent-hover, var(--accent-color));
+    color: var(--bg-color);
+}
+
+.mini-player-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+

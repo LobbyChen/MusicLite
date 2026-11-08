@@ -1,0 +1,222 @@
+﻿/* ============================================================
+   WinUI3 全页面布局 —— 设计器页面（data-page="designer"）
+   左侧 NavigationView 导航栏 + 右侧内容区 + 预览面板
+   ============================================================ */
+body[data-page="designer"][data-new-ui="true"] {
+    flex-direction: row;
+    padding-top: 32px;
+    overflow: hidden;
+}
+
+/* 左侧导航栏 */
+body[data-page="designer"][data-new-ui="true"] .winui3-page-nav {
+    flex-shrink: 0;
+    width: 256px;
+    height: calc(100vh - 32px);
+    overflow-y: auto;
+    background: var(--bg-color);
+    border-right: 1px solid var(--w3-stroke);
+    padding: 12px 8px;
+    position: sticky;
+    top: 32px;
+}
+
+/* 导航头部 */
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-header {
+    padding: 8px 12px 16px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-back {
+    background: transparent;
+    border: none;
+    border-radius: var(--w3-radius);
+    padding: 6px;
+    cursor: pointer;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--w3-transition);
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-back:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-back svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* 导航列表和项（复用音乐库样式） */
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    border-radius: var(--w3-radius);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--w3-transition);
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-item:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-item.active {
+    background: var(--w3-accent-soft);
+    color: var(--w3-accent);
+    font-weight: 600;
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-icon svg {
+    width: 18px;
+    height: 18px;
+}
+body[data-page="designer"][data-new-ui="true"] .winui3-nav-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 设计器主区域：调整为导航栏右侧的内容区 */
+body[data-page="designer"][data-new-ui="true"] .designer-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    gap: 24px;
+    padding: 16px 40px 120px 24px;
+    align-items: flex-start;
+    overflow-y: auto;
+    height: calc(100vh - 32px);
+    animation: none !important;
+    transform: none !important;
+}
+
+/* 控件区 */
+body[data-page="designer"][data-new-ui="true"] .designer-controls {
+    flex: 1;
+    min-width: 0;
+    max-width: 520px;
+}
+
+/* 预览区 */
+body[data-page="designer"][data-new-ui="true"] .designer-preview-aside {
+    flex-shrink: 0;
+    width: 280px;
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+}
+
+/* 标题栏 WinUI3 风格 */
+body[data-page="designer"][data-new-ui="true"] .titlebar {
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--w3-stroke);
+    height: 32px;
+}
+
+/* 保存栏 WinUI3 风格 */
+body[data-page="designer"][data-new-ui="true"] .save-bar {
+    left: 256px;
+    background: var(--w3-accent);
+    color: #fff;
+    border: none;
+}
+
+/* ============================================================
+   检查更新按钮旋转动画
+   ============================================================ */
+/* 按钮内联旋转图标：::before 生成一个spinner，文字保持不变 */
+.btn-checking {
+    position: relative;
+    opacity: 0.8;
+    cursor: wait;
+}
+.btn-checking::before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+    vertical-align: middle;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: btn-spin 0.8s linear infinite;
+}
+@keyframes btn-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 迷你播放器 WinUI3 风格（Designer 页面）—— 与 save-bar 对齐，避免被侧边栏遮挡 */
+body[data-page="designer"][data-new-ui="true"] .mini-player {
+    left: 256px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: color-mix(in srgb, var(--card-bg, #1e1e1e) 90%, rgba(255,255,255,0.02));
+    border-top: 1px solid var(--w3-stroke);
+}
+body[data-page="designer"][data-new-ui="true"][data-theme="light"] .mini-player {
+    background: color-mix(in srgb, var(--card-bg, #ffffff) 90%, rgba(0,0,0,0.02));
+}
+body[data-page="designer"][data-new-ui="true"][data-theme="accent"] .mini-player {
+    background: color-mix(in srgb, var(--card-bg, #142814) 88%, rgba(255,255,255,0.03));
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+    body[data-page="designer"][data-new-ui="true"] .winui3-page-nav {
+        width: 48px;
+        padding: 12px 4px;
+    }
+    body[data-page="designer"][data-new-ui="true"] .winui3-nav-title,
+    body[data-page="designer"][data-new-ui="true"] .winui3-nav-label {
+        display: none;
+    }
+    body[data-page="designer"][data-new-ui="true"] .winui3-nav-item {
+        justify-content: center;
+        padding: 10px 8px;
+    }
+    body[data-page="designer"][data-new-ui="true"] .save-bar {
+        left: 48px;
+    }
+    body[data-page="designer"][data-new-ui="true"] .mini-player {
+        left: 48px;
+    }
+    body[data-page="designer"][data-new-ui="true"] .designer-main {
+        flex-direction: column;
+        padding: 16px 20px 120px;
+    }
+    body[data-page="designer"][data-new-ui="true"] .designer-preview-aside {
+        position: static;
+        width: auto;
+        max-height: none;
+    }
+}
+

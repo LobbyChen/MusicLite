@@ -2,16 +2,17 @@
   "name": "frontend",
   "private": true,
   "version": "0.0.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development --minify false --sourcemap",
+    "build:dev": "vite build --minify false --mode development",
+    "build": "vite build --mode production",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@wailsio/runtime": "3.0.0-beta.8"
+    "@wailsio/runtime": "3.0.0"
   },
   "devDependencies": {
-    "vite": "^3.0.7"
+    "vite": "^8.2.4"
   }
 }

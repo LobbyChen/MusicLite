@@ -1,0 +1,366 @@
+/* ============================================================ */
+/* ============ 播放器视图（SPA overlay） ===================== */
+/* ============================================================ */
+/* overlay 覆盖标题栏以下的整个区域，与库视图共享同一 audio 元素，
+   切换视图时 audio 不销毁，播放保持连续。 */
+
+.player-overlay {
+    position: fixed;
+    top: 36px;            /* 避开标题栏 */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* 允许内容溢出时垂直滚动，避免大字号裁剪 */
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 500;
+    /* 视图切换过渡 */
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(1.02);
+    transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 0.28s;
+}
+
+.player-overlay.active {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+    transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s;
+}
+
+
+/* 背景层 */
+.player-bg-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.80;
+    /* 封面背景模糊：由 --player-bg-blur 驱动（设计器“播放器背景模糊”控制，新/旧 UI 共用） */
+    filter: blur(var(--player-bg-blur, 0px));
+    z-index: -1;
+}
+
+.player-container {
+    width: 900px;
+    max-width: 95%;
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    padding: 20px;
+}
+
+.album-art-wrapper {
+    width: 240px;
+    height: 240px;
+    flex-shrink: 0;
+    background-color: var(--card-bg);
+    border-radius: var(--design-radius-sm);
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.album-art {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* 默认封面（无 cover 时显示的音符图标） */
+.album-art .card-icon {
+    width: 100%;
+    height: 100%;
+    background-color: color-mix(in srgb, var(--card-bg, #1e1e1e) 88%, #000 12%);
+    border-radius: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+}
+
+.album-art .card-icon svg {
+    width: 50%;
+    height: 50%;
+    fill: currentColor;
+}
+
+.info-and-controls {
+    flex-grow: 1;
+    min-width: 0;
+    /* 注意：不能用 overflow:hidden，否则会裁剪 .btn-play 的 hover scale 和阴影 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* 移除固定 height，改为 min-height 与封面图等高，允许内容撑高避免裁剪 */
+    min-height: 240px;
+    align-self: stretch;
+}
+
+.track-info {
+    margin-bottom: 12px;
+    /* flex 列子项默认 min-width:auto 会被内容撑开，强制 0 让宽度受父级约束 */
+    min-width: 0;
+    overflow: hidden;
+}
+
+.track-name {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    /* 必须约束宽度，否则 block + nowrap 的 clientWidth 会等于内容宽度 */
+    max-width: 100%;
+}
+
+.artist-name {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+    /* 防止长艺术家名换行撑高容器 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* ============ 歌词区域 ============ */
+.lyrics-area {
+    margin-bottom: 12px;
+    position: relative;
+}
+
+.lyrics-collapsed {
+    height: 2vh;
+    min-height: 32px;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    padding: 0 40px;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.1s;
+    gap: 10px;
+    border-radius: var(--design-radius-sm);
+}
+
+.lyrics-collapsed:hover {
+    background: var(--overlay-ctrl-btn-bg-hover, rgba(255, 255, 255, 0.05));
+}
+
+.lyrics-collapsed:active {
+    transform: scale(0.995);
+}
+
+.lyrics-preview {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-style: italic;
+}
+
+.lyrics-preview.active {
+    color: var(--text-primary);
+    font-style: normal;
+}
+
+.lyrics-card {
+    margin-top: 8px;
+    background: var(--overlay-card-bg, rgba(30, 30, 30, 0.95));
+    border: 1px solid var(--overlay-card-border, rgba(255, 255, 255, 0.1));
+    border-radius: var(--design-radius);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.25s ease,
+        transform 0.25s ease;
+    pointer-events: none;
+    position: relative;
+}
+
+.lyrics-area.expanded .lyrics-card {
+    max-height: 170px;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* 歌词模式切换按钮（卡片内的"全屏"和全屏内的"卡片"） */
+.lyrics-mode-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: var(--design-radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    z-index: 5;
+}
+
+.lyrics-mode-btn:hover {
+    background: var(--overlay-ctrl-btn-bg-hover, rgba(255, 255, 255, 0.1));
+    color: var(--text-primary);
+}
+
+.lyrics-mode-btn svg {
+    fill: currentColor;
+}
+
+/* 歌词翻找按钮组（上一句 / 模式切换 / 下一句） */
+.lyrics-nav-group {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    z-index: 5;
+}
+
+.lyrics-nav-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: var(--design-radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+
+.lyrics-nav-btn:hover {
+    background: var(--overlay-ctrl-btn-bg-hover, rgba(255, 255, 255, 0.1));
+    color: var(--text-primary);
+}
+
+.lyrics-nav-btn:active {
+    transform: scale(0.92);
+}
+
+.lyrics-nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.lyrics-nav-btn svg {
+    fill: currentColor;
+}
+
+/* 全屏模式下的按钮组定位（与原 fullscreen-mode-btn 一致） */
+.fullscreen-nav-group {
+    top: 16px;
+    right: 16px;
+    gap: 4px;
+}
+
+.fullscreen-nav-group .lyrics-nav-btn {
+    width: 32px;
+    height: 32px;
+}
+
+/* 当 nav-group 存在时，隐藏原来的独立 mode-btn 定位（mode-btn 在 group 内不再绝对定位） */
+.lyrics-nav-group .lyrics-mode-btn {
+    position: static;
+}
+
+/* 全屏模式下的切换按钮定位 */
+.fullscreen-mode-btn {
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+}
+
+.lyrics-wrapper {
+    height: 130px;
+    overflow: auto;
+    position: relative;
+    touch-action: none; /* 触摸拖拽由歌词弹簧滚动接管 */
+}
+.lyrics-wrapper::-webkit-scrollbar {
+    display: none;
+}
+
+.lyrics-content {
+    position: absolute;
+    width: 100%;
+    transition: transform 0.3s ease-out;
+    padding: 6px 14px;
+}
+
+.lyric-line {
+    padding: 5px 0;
+    font-family: var(--lyrics-font);
+    font-size: var(--lyrics-font-size);
+    color: var(--text-secondary);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: var(--design-radius-sm);
+    user-select: none;
+}
+
+.lyric-line:hover {
+    color: var(--text-primary);
+    background: var(--overlay-ctrl-btn-bg, rgba(255, 255, 255, 0.04));
+}
+
+.lyric-line.active {
+    color: var(--accent-color);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-shadow: 0 0 10px color-mix(in srgb, var(--accent-color) 40%, transparent);
+    background: color-mix(in srgb, var(--accent-color) 8%, transparent);
+}
+
+.lyric-line.empty {
+    height: 30px;
+}
+
+.no-lyrics {
+    padding: 20px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+/* 透明背景（Aero）下，player-overlay 半透明时会把底层库页面控件透出来。
+   打开播放器时隐藏底层内容（标题栏与播放器 overlay 保留），只让桌面透出。 */
+body.player-active > header,
+body.player-active > main,
+body.player-active > aside,
+body.player-active > .winui3-page-nav,
+body.player-active > .winui3-content-wrapper,
+body.player-active > #mini-player {
+    visibility: hidden;
+}
+

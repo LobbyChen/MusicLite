@@ -8,27 +8,27 @@
         AllowPromptForPassword="false">
     </Settings>
     <Installer
-        Path="musiclitetemplate.exe"
+        Path="musiclite.exe"
         Arguments=""
-        InstallLocation="C:\Program Files\My Company\My Product">
+        InstallLocation="C:\Program Files\My Company\MusicLite">
     </Installer>
     <PackageInformation
-        PackageName="My Product"
-        PackageDisplayName="My Product"
+        PackageName="MusicLite"
+        PackageDisplayName="MusicLite"
         PublisherName="CN=My Company"
         PublisherDisplayName="My Company"
         Version="0.1.0.0"
-        PackageDescription="A MusicLiteTemplate application">
+        PackageDescription="MusicLite music player">
         <Capabilities>
             <Capability Name="runFullTrust" />
             
         </Capabilities>
         <Applications>
             <Application
-                Id="com.example.musiclitetemplate"
-                Description="A MusicLiteTemplate application"
-                DisplayName="My Product"
-                ExecutableName="musiclitetemplate.exe"
+                Id="com.example.musiclite"
+                Description="MusicLite music player"
+                DisplayName="MusicLite"
+                ExecutableName="musiclite.exe"
                 EntryPoint="Windows.FullTrustApplication">
                 
             </Application>
@@ -41,13 +41,13 @@
         </Dependencies>
         <Properties>
             <Framework>false</Framework>
-            <DisplayName>My Product</DisplayName>
+            <DisplayName>MusicLite</DisplayName>
             <PublisherDisplayName>My Company</PublisherDisplayName>
-            <Description>A MusicLiteTemplate application</Description>
+            <Description>MusicLite music player</Description>
             <Logo>Assets\AppIcon.png</Logo>
         </Properties>
     </PackageInformation>
-    <SaveLocation PackagePath="musiclitetemplate.msix" />
+    <SaveLocation PackagePath="musiclite.msix" />
     <PackageIntegrity>
         <CertificatePath></CertificatePath>
     </PackageIntegrity>

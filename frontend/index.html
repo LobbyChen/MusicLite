@@ -1,21 +1,11 @@
 <!doctype html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
-        <title>MusicLite 播放器</title>
-    </head>
-
-    <body></body>
-    <script type="module">
-        function load_start() {
-            window.location.href = "/src/html/libraries.html";
-        }
-        function on_index_load() {
-            setTimeout(load_start, 100);
-        }
-        document.addEventListener("DOMContentLoaded", async function () {
-            on_index_load();
-        });
-    </script>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>MusicLite</title>
+</head>
+<body>
+<script type="module" src="/src/router.js"></script>
+</body>
 </html>

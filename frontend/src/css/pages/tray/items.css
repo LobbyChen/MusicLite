@@ -1,0 +1,87 @@
+/* 托盘菜单曲目信息、按钮与菜单项 */
+.tray-cover {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--surface-2, rgba(255,255,255,0.03));
+    border: 1px solid var(--border, rgba(255,255,255,0.05));
+}
+
+.tray-nowplaying {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface-2, rgba(255,255,255,0.03));
+    border-radius: 10px;
+    border: 1px solid var(--border, rgba(255,255,255,0.05));
+}
+.tray-nowplaying-info {
+    flex: 1;
+    min-width: 0;
+}
+.tray-track-name {
+    font-weight: 600;
+    color: var(--text, #e6e6e6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.4;
+}
+.tray-artist-name {
+    margin-top: 2px;
+    font-size: 0.85em;
+    color: var(--text-secondary, #a7a9ad);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tray-btn {
+    border: 1px solid var(--border, rgba(255,255,255,0.08));
+    background: var(--accent-soft, rgba(29,185,84,0.14));
+    color: var(--accent, #1db954);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: transform 0.12s ease, background 0.15s ease;
+    flex-shrink: 0;
+}
+.tray-btn:hover {
+    background: var(--accent, #1db954);
+    color: #fff;
+}
+.tray-btn:active { transform: scale(0.94); }
+
+.tray-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text, #e6e6e6);
+    font-size: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+.tray-item:hover {
+    background: var(--accent-soft, rgba(29,185,84,0.14));
+    color: var(--accent, #1db954);
+}
+.tray-item svg { flex-shrink: 0; opacity: 0.85; }
+.tray-item:hover svg { opacity: 1; }
+
+.tray-item-danger { color: var(--danger, #ff5f57); }
+.tray-item-danger:hover {
+    background: rgba(255, 95, 87, 0.14);
+    color: var(--danger, #ff5f57);
+}

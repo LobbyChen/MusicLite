@@ -1,0 +1,89 @@
+﻿/* ============================================================
+   设置界面布局模式：多栏（columns）
+   ============================================================ */
+body[data-page="settings"][data-settings-layout="columns"] main {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 28px;
+    max-width: 1200px;
+    padding: 0 40px 180px;
+    align-items: start;
+}
+body[data-page="settings"][data-settings-layout="columns"].has-mini-player main {
+    padding-bottom: 252px;
+}
+body[data-page="settings"][data-settings-layout="columns"] .settings-section {
+    margin-bottom: 0;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--design-radius-lg);
+    padding: 24px;
+}
+body[data-page="settings"][data-settings-layout="columns"] .settings-section h2 {
+    margin-bottom: 16px;
+}
+/* 关于和更多 section 跨两列 */
+body[data-page="settings"][data-settings-layout="columns"] .settings-section[data-section-id="about"],
+body[data-page="settings"][data-settings-layout="columns"] .settings-section[data-section-id="more"] {
+    grid-column: span 1;
+}
+@media (min-width: 820px) {
+    body[data-page="settings"][data-settings-layout="columns"] main {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (min-width: 1200px) {
+    body[data-page="settings"][data-settings-layout="columns"] main {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* ============================================================
+   设置界面布局模式：选项卡（tabs）
+   ============================================================ */
+body[data-page="settings"][data-settings-layout="tabs"] .settings-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 40px;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 36px;
+    z-index: 50;
+    background: var(--bg-color);
+    overflow-x: auto;
+}
+body[data-page="settings"][data-settings-layout="tabs"] .settings-tabs::-webkit-scrollbar {
+    display: none;
+}
+body[data-page="settings"][data-settings-layout="tabs"] .settings-tab {
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color var(--dur-fast) var(--ease-smooth), border-color var(--dur-fast) var(--ease-smooth);
+    flex-shrink: 0;
+}
+body[data-page="settings"][data-settings-layout="tabs"] .settings-tab:hover {
+    color: var(--text-primary);
+}
+body[data-page="settings"][data-settings-layout="tabs"] .settings-tab.active {
+    color: var(--accent-color);
+    border-bottom-color: var(--accent-color);
+}
+body[data-page="settings"][data-settings-layout="tabs"] main .settings-section {
+    display: none;
+    margin-bottom: 40px;
+}
+body[data-page="settings"][data-settings-layout="tabs"] main .settings-section.active {
+    display: block;
+    animation: sectionFadeIn 0.3s var(--ease-out-expo) both;
+}
+body[data-page="settings"][data-settings-layout="tabs"] main {
+    max-width: 760px;
+}
+

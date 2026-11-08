@@ -1,0 +1,151 @@
+/* ============ 歌词行切换动画（由 body 上的 .lyric-anim-* class 控制） ============ */
+/* 此动画作用于一行行歌词之间的切换，而非播放器界面与全屏歌词界面之间的过渡 */
+/* slide-up/slide-left/zoom 的进入动画由 player.js 用 Web Animations API 触发，更可靠 */
+
+/* fade（默认）：淡入淡出，通过 color/opacity 的 transition 实现 */
+body.lyric-anim-fade .lyric-line,
+body.lyric-anim-fade .fs-lyric-line {
+    transition: color 0.35s ease, opacity 0.35s ease, font-size 0.35s ease, font-weight 0.35s ease, text-shadow 0.35s ease, background 0.35s ease;
+}
+
+/* slide-up / slide-left / zoom：保留 color 的 transition，transform/opacity 由 JS animate 处理 */
+body.lyric-anim-slide-up .lyric-line,
+body.lyric-anim-slide-up .fs-lyric-line,
+body.lyric-anim-slide-left .lyric-line,
+body.lyric-anim-slide-left .fs-lyric-line,
+body.lyric-anim-zoom .lyric-line,
+body.lyric-anim-zoom .fs-lyric-line {
+    transition: color 0.35s ease, font-size 0.35s ease, font-weight 0.35s ease, text-shadow 0.35s ease, background 0.35s ease;
+}
+
+/* none：无动画 */
+body.lyric-anim-none .lyric-line,
+body.lyric-anim-none .fs-lyric-line {
+    transition: none !important;
+}
+
+/* 模糊背景层 */
+.fullscreen-lyrics-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.25;
+    /* 复用播放器封面背景模糊变量（全屏歌词是播放器子视图，保持一致） */
+    filter: blur(var(--player-bg-blur, 20px));
+    z-index: -1;
+}
+
+/* 顶部曲目信息 */
+.fullscreen-lyrics-header {
+    text-align: center;
+    padding: 40px 20px 20px;
+}
+
+.fullscreen-track-name {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    /* max-width:600px 约束了宽度，但还需 max-width:100% 避免父容器收缩时溢出 */
+    max-width: 600px;
+}
+
+.fullscreen-artist-name {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+
+/* 歌词滚动区域 */
+.fullscreen-lyrics-wrapper {
+    flex: 1;
+    width: 100%;
+    max-width: 700px;
+    overflow: auto;
+    position: relative;
+    touch-action: none; /* 触摸拖拽由歌词弹簧滚动接管 */
+    margin: 0 auto;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+}
+.fullscreen-lyrics-wrapper::-webkit-scrollbar{
+    display: none;
+}
+
+.fullscreen-lyrics-content {
+    position: absolute;
+    width: 100%;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 20px 20px;
+}
+
+/* 全屏歌词行 */
+.fs-lyric-line {
+    padding: 10px 20px;
+    font-family: var(--lyrics-font);
+    font-size: var(--lyrics-font-size);
+    color: var(--text-secondary);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    line-height: 1.5;
+    user-select: none;
+    opacity: 0.4;
+}
+
+.fs-lyric-line:hover {
+    color: var(--text-primary);
+    opacity: 0.7;
+}
+
+.fs-lyric-line.active {
+    color: var(--accent-color);
+    font-weight: 700;
+    font-size: calc(var(--lyrics-font-size) * 1.15);
+    opacity: 1;
+    text-shadow: 0 0 20px var(--accent-glow);
+    transform: scale(1.02);
+}
+
+.fs-lyric-line.empty {
+    height: 56px;
+}
+
+.fullscreen-lyrics-content .no-lyrics {
+    padding: 60px 20px;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+/* 底部提示 */
+.fullscreen-lyrics-hint {
+    padding: 20px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    opacity: 0.5;
+}
+
+/* 随机播放激活状态 */
+.player-overlay .btn-loop.active-random {
+    opacity: 1;
+    color: var(--accent-color);
+    animation: spin-slow 3s linear infinite; 
+}
+.player-overlay .btn-loop.active-loop-one {
+    opacity: 1;
+    color: var(--accent-color);
+}
+
+
+
+@keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+

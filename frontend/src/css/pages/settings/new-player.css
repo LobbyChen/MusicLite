@@ -1,0 +1,539 @@
+﻿/* ============================================================
+   WinUI3 风格播放器（player-overlay）—— 重构版
+   三行网格：Header（返回）+ Content（封面+信息 | 歌词）+ Bottom（进度+控件）
+   设计原则：
+   - 歌词无边框卡片，浮于模糊背景之上，仅保留淡入淡出遮罩
+   - 所有辉光/阴影由 --accent-color 派生（--w3-accent-glow），无硬编码色
+   - 底部控制条极简，不用粗描边；进度条平滑过渡
+   - 不使用 !important，旧壳由 JS inline display:none + 选择器联动隐藏
+   ============================================================ */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay {
+    top: 0;
+    padding-top: 32px; /* 避开自定义标题栏 */
+    /* 不使用 backdrop-filter：背景（library 页面）在播放期间静态，
+       backdrop-filter 仍会让合成器每帧重采样 backdrop 纹理（Chromium 已知行为）。
+       player-bg-layer 已提供封面模糊背景，叠加半透明底色即可达到视觉等效。 */
+    background-color: var(--bg-color);
+    display: block;
+    /* 隔离合成边界：内部重绘不扩散到外部，外部也不污染本层 */
+    contain: layout paint;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .player-bg-layer {
+    opacity: 0.7;
+    /* 封面背景模糊：由 --player-bg-blur 驱动（设计器“播放器背景模糊”控制，与旧 UI 共用同一变量） */
+    filter: blur(var(--player-bg-blur, 20px));
+}
+
+/* player-container：三行网格 header / content / bottom */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay > .player-container {
+    width: 100%;
+    max-width: 1400px;
+    height: 100%;
+    margin: 0 auto;
+    padding: 0;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 0;
+}
+
+/* ===== Header：返回按钮 ===== */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-player-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 24px;
+    min-height: 44px;
+    flex-shrink: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-back-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--w3-radius);
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background var(--w3-transition), color var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-back-btn:hover {
+    background: var(--w3-layer-1-hover);
+    color: var(--w3-accent);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-back-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
+/* ===== Content Area：Cover + Info | Lyrics ===== */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-player-content {
+    display: grid;
+    grid-template-columns: minmax(300px, 1fr) 1.35fr;
+    gap: 48px;
+    padding: 8px 48px 24px;
+    overflow: hidden;
+    align-items: center;
+    min-height: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-pc-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+    min-height: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cover-wrap {
+    width: 100%;
+    max-width: 340px;
+    aspect-ratio: 1 / 1;
+    flex-shrink: 0;
+    position: relative;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cover {
+    width: 100%;
+    height: 100%;
+    border-radius: var(--w3-radius-lg);
+    overflow: hidden;
+    background: var(--w3-layer-2);
+    border: 1px solid var(--w3-stroke);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+body[data-page="libraries"][data-new-ui="true"][data-anim="3"] .player-overlay.active .w3-cover {
+    animation: w3-cover-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes w3-cover-pop {
+    from { transform: scale(0.92) translateY(16px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cover .card-icon {
+    width: 50%;
+    height: 50%;
+    color: var(--text-secondary);
+    opacity: 0.5;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cover .card-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-track-info {
+    width: 100%;
+    max-width: 340px;
+    text-align: center;
+    min-width: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-track-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 6px;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-track-artist {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ===== Lyrics（无边框浮动，仅淡入淡出遮罩） ===== */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-pc-right {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyrics-card {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyrics-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 4px;
+    padding: 0 0 8px;
+    flex-shrink: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyrics-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--w3-radius);
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--w3-transition), color var(--w3-transition);
+    padding: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyrics-btn:hover {
+    background: var(--w3-layer-1-hover);
+    color: var(--text-primary);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyrics-btn svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
+
+/* lyricsWrapper 整体搬入，覆盖旧 height:130px / overflow:auto */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyrics-wrapper {
+    flex: 1;
+    height: auto;
+    overflow: hidden;
+    position: relative;
+    padding: 8px 8px 8px 0;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+/* lyricsContent 由 player.js translateY 驱动滚动，CSS 过渡使行切换更顺滑 */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyrics-wrapper .lyrics-content {
+    padding: 6px 14px;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyric-line {
+    padding: 7px 14px;
+    font-family: var(--lyrics-font, inherit);
+    font-size: var(--lyrics-font-size, 0.98rem);
+    line-height: 1.55;
+    color: var(--text-secondary);
+    text-align: left;
+    cursor: pointer;
+    border-radius: var(--w3-radius);
+    opacity: 0.45;
+    transition: color var(--w3-transition), opacity var(--w3-transition), background var(--w3-transition);
+    margin-bottom: 2px;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyric-line:hover {
+    background: var(--w3-layer-1-hover);
+    opacity: 0.85;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-lyric-line.active {
+    color: var(--w3-accent);
+    font-weight: 700;
+    opacity: 1;
+    background: var(--w3-accent-soft);
+    text-shadow: 0 0 14px var(--w3-accent-glow);
+}
+
+/* ===== Playback Controls (底部) ===== */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-player-bottom {
+    padding: 10px 48px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-progress-row {
+    display: grid;
+    grid-template-columns: 44px 1fr 44px;
+    align-items: center;
+    gap: 12px;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-time {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    opacity: 0.85;
+}
+
+/* 滑块容器：复用旧 .track-bg / .progress-fill 元素，不用 ::after 伪填充 */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider {
+    position: relative;
+    height: 22px;
+    display: flex;
+    align-items: center;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider .track-bg {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    height: 3px;
+    border-radius: 999px;
+    background: var(--w3-layer-2);
+    z-index: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider .progress-fill {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 3px;
+    border-radius: 999px;
+    background: var(--w3-accent);
+    z-index: 1;
+    pointer-events: none;
+    /* 不设 width transition：rAF 每帧写入 width，transition 会陷入无限重排。
+       用 will-change 提示合成器，使 width 变化在合成线程处理。 */
+    will-change: width;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 22px;
+    background: transparent;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    z-index: 2;
+    cursor: pointer;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 3px;
+    background: transparent;
+    border: none;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--w3-accent);
+    margin-top: -4.5px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transition: transform 0.12s, opacity 0.12s;
+    opacity: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider:hover input[type=range]::-webkit-slider-thumb,
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-slider input[type=range]:active::-webkit-slider-thumb {
+    opacity: 1;
+    transform: scale(1.15);
+}
+
+/* Controls row */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-controls-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cr-left {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    justify-content: flex-start;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cr-center {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cr-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: flex-end;
+}
+
+/* 按钮基础：高优先级选择器覆盖旧 .btn*，无需 !important */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--w3-radius);
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--w3-transition), color var(--w3-transition), transform 0.1s;
+    position: relative;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn:hover {
+    background: var(--w3-layer-1-hover);
+    color: var(--text-primary);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn:active {
+    background: var(--w3-layer-2);
+    transform: scale(0.96);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+    pointer-events: none;
+    display: block;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.active,
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.active-loop-one,
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.active-random {
+    color: var(--w3-accent);
+    background: var(--w3-accent-soft);
+}
+/* 隐藏旧 .btn-loop.active::after 的小圆点 */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.active::after,
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.active-loop-one::after,
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.active-random::after {
+    display: none;
+}
+
+/* Play 按钮：强调色填充 + 由 accent 派生的辉光 */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.w3-play-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--w3-accent);
+    color: #fff;
+    box-shadow: 0 4px 16px var(--w3-accent-glow);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.w3-play-btn:hover {
+    transform: scale(1.06);
+    box-shadow: 0 6px 22px var(--w3-accent-glow);
+    color: #fff;
+    background: var(--w3-accent);
+    filter: brightness(1.08);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.w3-play-btn:active {
+    transform: scale(0.98);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.w3-play-btn svg {
+    width: 20px;
+    height: 20px;
+    margin-left: 2px;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.w3-play-btn.btn-pause svg {
+    margin-left: 0;
+}
+
+/* Tool buttons（EQ / Queue）小徽章 */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-ctrl-btn.w3-tool-btn .queue-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    background: var(--w3-accent);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 14px;
+    text-align: center;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+/* Volume */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-volume {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 150px;
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-volume-icon {
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    transition: color var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-volume-icon:hover {
+    color: var(--text-primary);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-volume-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
+/* 旧播放器壳隐藏：JS 已设 inline display:none，选择器含 [data-new-ui="true"] 自动联动，无需 !important */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay > .player-container > .info-and-controls,
+body[data-page="libraries"][data-new-ui="true"] .player-overlay > .player-container > .album-art-wrapper {
+    display: none;
+}
+
+/* 全屏歌词：避开标题栏（overlay 在 New UI 下 top:0，需向下偏移） */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .fullscreen-lyrics {
+    top: 32px;
+}
+
+/* WinUI3 浮层面板（EQ / Queue） */
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .eq-panel,
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .queue-panel {
+    background: var(--bg-color);
+    border: 1px solid var(--w3-stroke);
+    border-radius: var(--w3-radius-lg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .eq-panel {
+    max-width: 680px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+body[data-page="libraries"][data-new-ui="true"] .player-overlay .queue-panel {
+    right: 16px;
+    top: calc(32px + 60px);
+    bottom: 20px;
+    width: 360px;
+    left: auto;
+    transform: none;
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+    body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-player-content {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+        gap: 20px;
+        padding: 12px 24px 16px;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-cover-wrap {
+        max-width: 200px;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-track-info {
+        text-align: center;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-pc-left {
+        gap: 14px;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-player-bottom {
+        padding: 8px 16px 14px;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .player-overlay .w3-volume {
+        width: 100px;
+    }
+}
+
+

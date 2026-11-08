@@ -1,0 +1,103 @@
+﻿/* 全局：移除所有按钮 hover/focus 时的浏览器默认浅色轮廓 */
+button:hover,
+button:focus,
+button:focus-visible,
+[role="button"]:hover,
+[role="button"]:focus,
+[role="button"]:focus-visible,
+input[type="checkbox"]:hover,
+input[type="checkbox"]:focus,
+input[type="radio"]:hover,
+input[type="radio"]:focus {
+    outline: none;
+    outline-offset: 0;
+}
+
+/* Base styles - will be overridden by theme */
+:root {
+    --bg-color: #121212;
+    --card-bg: #1e1e1e;
+    --text-primary: #ffffff;
+    --text-secondary: #b3b3b3;
+    --accent-color: #1db954;
+    --border-color: #333;
+    --hover-color: #2a2a2a;
+    --base-font-size: 14px;
+    --lyrics-font-size: 16px;
+    --lyrics-font: "Consolas", "Monaco", monospace;
+    /* 动画设计令牌 */
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    /* anim-mult 是速度倍率，高值 = 更快 = 更短持续时间，故用除法 */
+    --design-anim-mult: 1;
+    --dur-fast: calc(0.15s / var(--design-anim-mult));
+    --dur-normal: calc(0.25s / var(--design-anim-mult));
+    --dur-slow: calc(0.35s / var(--design-anim-mult));
+    /* 视觉设计令牌默认值（与 libraries.css :root 保持一致） */
+    --design-radius: 10px;
+    --design-radius-sm: 6px;
+    --design-radius-lg: 16px;
+}
+
+/* Light theme */
+[data-theme="light"] {
+    --bg-color: #fafafa;
+    --card-bg: #ffffff;
+    --text-primary: #121212;
+    --text-secondary: #666666;
+    --accent-color: #1db954;
+    --border-color: #e0e0e0;
+    --hover-color: #f5f5f5;
+}
+
+/* Accent theme */
+[data-theme="accent"] {
+    --bg-color: #0a1f0a;
+    --card-bg: #142814;
+    --text-primary: #e0ffe0;
+    --text-secondary: #a0d0a0;
+    --accent-color: #2ecc71;
+    --border-color: #1a3a1a;
+    --hover-color: #1a3a1a;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    overflow: auto;
+}
+
+html ::-webkit-scrollbar {
+    display: none;
+}
+
+/* 覆盖 libraries.css 的 body 布局（settings 页需要可滚动，不是 flex 列） */
+html body[data-page="settings"] {
+    font-family: var(--player-font, system-ui), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    font-size: var(--base-font-size);
+    min-height: 100vh;
+    height: auto;
+    padding-top: 36px;
+    overflow: auto;
+    display: block;
+    flex-direction: initial;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+img {
+    -webkit-user-drag: none;
+    user-drag: none;
+}
+
+html body[data-page="settings"] ::-webkit-scrollbar {
+    display: none;
+}
+

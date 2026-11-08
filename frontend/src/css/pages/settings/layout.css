@@ -1,0 +1,36 @@
+﻿/* 有迷你播放器时，main 再加 72px 底部留白避免被遮挡 */
+body[data-page="settings"].has-mini-player main {
+    padding-bottom: 252px;
+}
+
+body[data-page="settings"] .settings-section {
+    margin-bottom: 40px;
+    animation: sectionFadeIn 0.4s var(--ease-out-expo) both;
+    animation-delay: calc(var(--sec-i, 0) * 0.06s);
+}
+
+@keyframes sectionFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.settings-section h2 {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.setting-item {
+    margin-bottom: 24px;
+}
+
+.setting-item label {
+    display: block;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+

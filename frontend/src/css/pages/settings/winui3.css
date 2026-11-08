@@ -1,0 +1,1064 @@
+﻿/* ============================================================
+   WinUI 3 风格新 UI（仅设置界面生效，data-new-ui="true" + settings 页限定）
+   参考 WinUI 3 / Fluent Design：
+   - Mica 材质背景（半透明 + 深浅层叠）
+   - 卡片化分组（CardExpander 风格：无边框圆角卡片，细微分层色）
+   - 按钮强调色填充 + hover 浅层叠加
+   - 滑块/开关/选择器全部统一为 Fluent 控件外观
+   - 排版更紧凑，间距更规律，层次靠背景色深浅区分而非阴影
+   ============================================================ */
+
+/* --- WinUI3 局部变量 --- */
+body[data-new-ui="true"] {
+    /* Mica 材质：极浅的半透明层叠 */
+    --w3-layer-0: transparent;                    /* 画布层（body 本身） */
+    --w3-layer-1: rgba(255, 255, 255, 0.022);     /* 卡片背景 */
+    --w3-layer-1-hover: rgba(255, 255, 255, 0.045); /* 卡片 hover */
+    --w3-layer-2: rgba(255, 255, 255, 0.06);      /* 悬浮元素 / 下拉 */
+    --w3-stroke: rgba(255, 255, 255, 0.06);       /* 1px 细描边 */
+    --w3-stroke-strong: rgba(255, 255, 255, 0.12); /* hover/focus 描边 */
+    --w3-accent: var(--accent-color);
+    --w3-accent-hover: var(--accent-hover, #1a9e47);
+    --w3-accent-pressed: color-mix(in srgb, var(--accent-color) 85%, transparent);
+    --w3-accent-soft: color-mix(in srgb, var(--accent-color) 10%, transparent); /* 选中态淡色底 */
+    --w3-accent-glow: color-mix(in srgb, var(--accent-color) 35%, transparent);  /* 辉光/阴影统一派生 */
+    --w3-text-secondary: rgba(255, 255, 255, 0.55);
+    --w3-radius: 4px;                              /* WinUI3 圆角偏小 */
+    --w3-radius-lg: 8px;
+    --w3-control-height: 32px;                    /* Fluent 控件标准高度 */
+    --w3-transition: 150ms cubic-bezier(0.33, 0, 0.67, 1); /* WinUI3 标准缓动 */
+}
+body[data-new-ui="true"][data-theme="light"] {
+    --w3-layer-1: rgba(0, 0, 0, 0.018);
+    --w3-layer-1-hover: rgba(0, 0, 0, 0.035);
+    --w3-layer-2: rgba(0, 0, 0, 0.05);
+    --w3-stroke: rgba(0, 0, 0, 0.06);
+    --w3-stroke-strong: rgba(0, 0, 0, 0.12);
+    --w3-accent-soft: color-mix(in srgb, var(--accent-color) 6%, transparent);
+    --w3-text-secondary: rgba(0, 0, 0, 0.50);
+}
+/* 仅设置页生效：设计器不会匹配此选择器 */
+body[data-new-ui="true"] {
+    background: var(--bg-color);
+}
+
+/* --- 设置区块：WinUI3 卡片 --- */
+body[data-new-ui="true"] .settings-section {
+    background: var(--w3-layer-1);
+    border: 1px solid var(--w3-stroke);
+    border-radius: var(--w3-radius-lg);
+    padding: 20px 24px;
+    margin-bottom: 4px;
+    transition: background var(--w3-transition), border-color var(--w3-transition);
+}
+body[data-new-ui="true"] .settings-section:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-new-ui="true"] .settings-section h2 {
+    border-bottom: 1px solid var(--w3-stroke);
+    padding-bottom: 10px;
+    margin-bottom: 18px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* --- 设置项 --- */
+body[data-new-ui="true"] .setting-item {
+    margin-bottom: 20px;
+}
+body[data-new-ui="true"] .setting-item label {
+    font-size: 0.875rem;
+    font-weight: 400;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+body[data-new-ui="true"] .toggle-desc {
+    font-size: 0.78rem;
+    color: var(--w3-text-secondary);
+    margin-top: 4px;
+}
+
+/* --- 主题选择按钮 --- */
+body[data-new-ui="true"] .theme-selector {
+    gap: 8px;
+}
+body[data-new-ui="true"] .theme-btn {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+    padding: 12px 8px;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .theme-btn:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-new-ui="true"] .theme-btn.active {
+    background: var(--w3-accent-soft);
+    border-color: var(--w3-accent);
+}
+
+/* --- Fluent 按钮 --- */
+body[data-new-ui="true"] .btn {
+    border-radius: var(--w3-radius);
+    min-height: var(--w3-control-height);
+    padding: 5px 16px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .btn-primary {
+    background: var(--w3-accent);
+    color: #fff;
+    border: 1px solid var(--w3-accent);
+}
+body[data-new-ui="true"] .btn-primary:hover {
+    background: var(--w3-accent-hover);
+}
+body[data-new-ui="true"] .btn-primary:active {
+    background: var(--w3-accent-pressed);
+    transform: scale(0.98);
+}
+body[data-new-ui="true"] .btn-secondary {
+    background: var(--w3-layer-1);
+    border: 1px solid var(--w3-stroke);
+    color: var(--text-primary);
+}
+body[data-new-ui="true"] .btn-secondary:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-new-ui="true"] .btn-danger {
+    background: #c42b1c;
+    color: #fff;
+    border: 1px solid #c42b1c;
+}
+body[data-new-ui="true"] .btn-danger:hover {
+    background: #b32719;
+}
+
+/* --- 动画级别 / 音量模式 / 新UI 按钮组 --- */
+body[data-new-ui="true"] .anim-level-btn {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+    min-height: var(--w3-control-height);
+    padding: 4px 14px;
+    font-size: 0.825rem;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .anim-level-btn:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-new-ui="true"] .anim-level-btn.active {
+    background: var(--w3-accent-soft);
+    border-color: var(--w3-accent);
+    color: var(--w3-accent);
+}
+
+/* --- 下拉选择框 --- */
+body[data-new-ui="true"] .font-select {
+    background: var(--w3-layer-1);
+    border: 1px solid var(--w3-stroke);
+    border-radius: var(--w3-radius);
+    min-height: var(--w3-control-height);
+    padding: 5px 10px;
+    font-size: 0.875rem;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .font-select:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-new-ui="true"] .font-select:focus {
+    border-color: var(--w3-accent);
+    outline: none;
+}
+
+/* --- 文本输入框 --- */
+body[data-new-ui="true"] .text-input {
+    background: var(--w3-layer-1);
+    border: 1px solid var(--w3-stroke);
+    border-radius: var(--w3-radius);
+    min-height: var(--w3-control-height);
+    padding: 5px 10px;
+    font-size: 0.875rem;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .text-input:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-new-ui="true"] .text-input:focus {
+    border-color: var(--w3-accent);
+    outline: none;
+    border-bottom: 2px solid var(--w3-accent);  /* WinUI3 下划线焦点指示 */
+}
+
+/* --- 滑块 --- */
+body[data-new-ui="true"] .setting-slider {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--w3-layer-2);
+}
+body[data-new-ui="true"] .setting-slider::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--w3-accent);
+    border: 2px solid #fff;
+    box-shadow: none;
+    transition: transform var(--w3-transition);
+}
+body[data-new-ui="true"] .setting-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+body[data-new-ui="true"] .setting-slider::-webkit-slider-thumb:active {
+    transform: scale(0.9);
+}
+
+/* --- 开关 --- */
+body[data-new-ui="true"] .toggle-switch {
+    width: 40px;
+    height: 20px;
+    border-radius: 10px;
+    border: none;
+    background: var(--w3-layer-2);
+    transition: background var(--w3-transition);
+}
+body[data-new-ui="true"] .toggle-switch .toggle-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform var(--w3-transition);
+}
+body[data-new-ui="true"] .toggle-switch[aria-checked="true"] {
+    background: var(--w3-accent);
+    border-color: var(--w3-accent);
+}
+body[data-new-ui="true"] .toggle-switch[aria-checked="true"] .toggle-thumb {
+    transform: translateX(20px);
+}
+
+/* --- 颜色选择器 --- */
+body[data-new-ui="true"] .color-picker {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+}
+body[data-new-ui="true"] .color-text {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+}
+body[data-new-ui="true"] .preset-color {
+    border-radius: 50%;
+    border: 2px solid var(--w3-stroke);
+    transition: border-color var(--w3-transition);
+}
+body[data-new-ui="true"] .preset-color.active {
+    border-color: var(--w3-accent);
+}
+
+/* --- 快捷键项 --- */
+body[data-new-ui="true"] .hotkey-item {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+    padding: 8px 12px;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .hotkey-item:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-new-ui="true"] .hotkey-toggle {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+}
+body[data-new-ui="true"] .hotkey-toggle[aria-checked="true"] {
+    background: var(--w3-accent);
+    border-color: var(--w3-accent);
+}
+body[data-new-ui="true"] .hotkey-key-btn {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+    min-height: var(--w3-control-height);
+    font-size: 0.825rem;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .hotkey-key-btn:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-new-ui="true"] .hotkey-key-btn.listening {
+    border-color: var(--w3-accent);
+    background: var(--w3-accent-soft);
+}
+body[data-new-ui="true"] .hotkey-clear-btn {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    min-height: var(--w3-control-height);
+    font-size: 0.78rem;
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"] .hotkey-clear-btn:hover {
+    background: rgba(196, 43, 28, 0.08);
+    border-color: #c42b1c;
+    color: #c42b1c;
+}
+
+/* --- 弹窗 --- */
+body[data-new-ui="true"] .modal {
+    border-radius: var(--w3-radius-lg);
+    background: var(--card-bg);
+    border: 1px solid var(--w3-stroke-strong);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+}
+body[data-new-ui="true"] .modal-confirm {
+    padding: 24px;
+    max-width: 400px;
+}
+body[data-new-ui="true"] .modal-buttons {
+    gap: 8px;
+}
+
+/* --- 保存栏 --- */
+body[data-new-ui="true"] .save-bar {
+    background: var(--w3-accent);
+    color: #fff;
+    padding: 12px 40px;
+    border: none;
+}
+body[data-new-ui="true"] .save-bar .btn-primary {
+    background: rgba(0, 0, 0, 0.15);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+body[data-new-ui="true"] .save-bar .btn-primary:hover {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+/* --- 标题栏 --- */
+body[data-new-ui="true"] .titlebar {
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--w3-stroke);
+    height: 32px;
+}
+body[data-new-ui="true"] .titlebar-title {
+    font-size: 0.78rem;
+    color: var(--w3-text-secondary);
+}
+body[data-new-ui="true"] .titlebar-btn {
+    border-radius: var(--w3-radius);
+    transition: background var(--w3-transition);
+}
+body[data-new-ui="true"] .titlebar-btn:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-new-ui="true"] .titlebar-close:hover {
+    background: #c42b1c;
+    border-radius: var(--w3-radius);
+}
+
+/* --- header --- */
+body[data-new-ui="true"] header {
+    padding: 0 40px;
+}
+body[data-new-ui="true"] header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+/* --- 返回按钮 --- */
+body[data-new-ui="true"] .btn-back {
+    background: transparent;
+    border: none;
+    border-radius: var(--w3-radius);
+    padding: 6px;
+    transition: background var(--w3-transition);
+}
+body[data-new-ui="true"] .btn-back:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-new-ui="true"] .btn-back:active {
+    background: var(--w3-layer-2);
+    transform: scale(0.95);
+}
+
+/* --- 字体预览 --- */
+body[data-new-ui="true"] .font-preview {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+    padding: 8px 12px;
+}
+
+/* --- 关于信息 --- */
+body[data-new-ui="true"] .about-info {
+    padding: 12px 0;
+}
+
+body[data-new-ui="true"] .about-info p {
+    margin-bottom: 4px;
+    font-size: 0.875rem;
+}
+body[data-new-ui="true"] .text-muted {
+    color: var(--w3-text-secondary);
+    font-size: 0.825rem;
+}
+
+/* --- Toast 通知 --- */
+body[data-new-ui="true"] .toast {
+    border-radius: var(--w3-radius-lg);
+    border: 1px solid var(--w3-stroke-strong);
+    background: var(--card-bg);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* --- main 布局间距微调 --- */
+body[data-new-ui="true"] main {
+    padding: 0 40px 180px;
+    gap: 8px;
+}
+body[data-new-ui="true"].has-mini-player main {
+    padding-bottom: 120px;
+}
+
+/* --- 选项卡栏（tabs 布局 + WinUI3 风格） --- */
+body[data-new-ui="true"][data-settings-layout="tabs"] .settings-tabs {
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--w3-stroke);
+    padding: 0 40px;
+    gap: 2px;
+}
+body[data-new-ui="true"][data-settings-layout="tabs"] .settings-tab {
+    padding: 8px 16px;
+    font-size: 0.825rem;
+    border-bottom: 2px solid transparent;
+    color: var(--w3-text-secondary);
+    transition: all var(--w3-transition);
+}
+body[data-new-ui="true"][data-settings-layout="tabs"] .settings-tab:hover {
+    color: var(--text-primary);
+    background: var(--w3-layer-1-hover);
+    border-radius: var(--w3-radius) var(--w3-radius) 0 0;
+}
+body[data-new-ui="true"][data-settings-layout="tabs"] .settings-tab.active {
+    color: var(--w3-accent);
+    border-bottom-color: var(--w3-accent);
+    font-weight: 600;
+}
+
+/* --- 多栏布局 + WinUI3 风格 --- */
+body[data-new-ui="true"][data-settings-layout="columns"] .settings-section {
+    border-radius: var(--w3-radius-lg);
+    padding: 20px;
+}
+
+/* ============================================================
+   WinUI3 NavigationView 布局（新UI专属布局）
+   左侧固定导航栏 + 右侧滚动内容区
+   ============================================================ */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] {
+    display: flex;
+    overflow: hidden;
+    padding-top: 32px; /* titlebar */
+    /* 锁定视口高度：padding-top 计入高度，main 在剩余空间内滚动。
+       不锁高度时 body 会被超高内容撑开，导致 sticky 左侧栏整体下移。 */
+    height: 100vh;
+    min-height: 0;
+    box-sizing: border-box;
+}
+
+/* 导航栏 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav {
+    flex-shrink: 0;
+    width: 256px;
+    height: calc(100vh - 32px);
+    overflow-y: auto;
+    background: var(--bg-color);
+    border-right: 1px solid var(--w3-stroke);
+    padding: 16px 8px;
+    position: sticky;
+    top: 32px;
+}
+
+/* 导航头部 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-header {
+    padding: 8px 12px 16px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-back {
+    background: transparent;
+    border: none;
+    border-radius: var(--w3-radius);
+    padding: 6px;
+    cursor: pointer;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--w3-transition);
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-back:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-back:active {
+    background: var(--w3-layer-2);
+    transform: scale(0.95);
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-back svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* 导航列表 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* 导航项 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    border-radius: var(--w3-radius);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--w3-transition);
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-item:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-item:active {
+    background: var(--w3-layer-2);
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-item.active {
+    background: var(--w3-accent-soft);
+    color: var(--w3-accent);
+    font-weight: 600;
+}
+
+/* 导航图标 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* 导航标签文字 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 内容区 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] main {
+    flex: 1;
+    min-width: 0;
+    min-height: 0; /* 允许在锁定的 body 高度内滚动，不被内容撑开 */
+    overflow-y: auto;
+    padding: 16px 40px 180px;
+    margin: 0;
+    max-width: none;
+    display: block;
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"].has-mini-player main {
+    padding-bottom: 120px;
+}
+
+/* WinUI3 布局下：所有 section 默认隐藏，只有 .active 显示 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .settings-section {
+    display: none;
+    margin-bottom: 16px;
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .settings-section.active {
+    display: block;
+    animation: sectionFadeIn 0.2s var(--ease-smooth) both;
+}
+
+/* WinUI3 布局下：header 隐藏（导航栏已包含标题） */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] header {
+    display: none;
+}
+
+/* WinUI3 布局下：导航栏滚动条样式 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav::-webkit-scrollbar {
+    width: 4px;
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav::-webkit-scrollbar-thumb {
+    background: var(--w3-stroke-strong);
+    border-radius: 2px;
+}
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* WinUI3 布局下：保存栏宽度限制在内容区 */
+body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .save-bar {
+    left: 256px;
+}
+
+/* 响应式：窄屏时导航栏收窄为图标栏 */
+@media (max-width: 700px) {
+    body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav {
+        width: 48px;
+        padding: 16px 4px;
+    }
+    body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-title,
+    body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-label {
+        display: none;
+    }
+    body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .winui3-nav-item {
+        justify-content: center;
+        padding: 10px 8px;
+    }
+    body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] .save-bar {
+        left: 48px;
+    }
+    body[data-page="settings"][data-new-ui="true"][data-settings-layout="winui3"] main {
+        padding: 16px 20px 180px;
+    }
+}
+
+/* ============================================================
+   WinUI3 全页面布局 —— 音乐库页面（data-page="libraries"）
+   左侧 NavigationView 导航栏 + 右侧内容区（命令栏 + 网格）
+   ============================================================ */
+body[data-page="libraries"][data-new-ui="true"] {
+    flex-direction: row;
+    padding-top: 32px;
+    overflow: hidden;
+}
+
+/* 左侧导航栏 */
+body[data-page="libraries"][data-new-ui="true"] .winui3-page-nav {
+    flex-shrink: 0;
+    width: 256px;
+    height: calc(100vh - 32px);
+    overflow-y: auto;
+    background: var(--bg-color);
+    border-right: 1px solid var(--w3-stroke);
+    padding: 12px 8px;
+    position: sticky;
+    top: 32px;
+}
+
+/* 导航头部 */
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-header {
+    padding: 8px 12px 16px;
+    margin-bottom: 4px;
+}
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* 导航列表 */
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* 导航项 */
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    border-radius: var(--w3-radius);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-item:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-item:active {
+    background: var(--w3-layer-2);
+}
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-item.active {
+    background: var(--w3-accent-soft);
+    color: var(--w3-accent);
+    font-weight: 600;
+}
+
+/* 导航图标 */
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-icon svg {
+    width: 18px;
+    height: 18px;
+}
+body[data-page="libraries"][data-new-ui="true"] .winui3-nav-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 内容包裹区 */
+body[data-page="libraries"][data-new-ui="true"] .winui3-content-wrapper {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 32px);
+    overflow: hidden;
+}
+
+/* 命令栏（原 header 变为顶部命令栏） */
+body[data-page="libraries"][data-new-ui="true"] header {
+    padding: 8px 24px;
+    border-bottom: 1px solid var(--w3-stroke);
+    background: var(--bg-color);
+    flex-shrink: 0;
+    animation: none;
+}
+body[data-page="libraries"][data-new-ui="true"] header h1 {
+    display: none; /* WinUI3 布局不显示大标题，导航栏已有标题 */
+}
+body[data-page="libraries"][data-new-ui="true"] .header-actions {
+    gap: 8px;
+}
+
+/* 主内容区 */
+body[data-page="libraries"][data-new-ui="true"] main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px 100px;
+}
+
+/* 搜索框 WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .search-box {
+    height: 32px;
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+}
+body[data-page="libraries"][data-new-ui="true"] .search-input {
+    width: 180px;
+    font-size: 0.825rem;
+}
+
+/* 按钮组 WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .btn-open,
+body[data-page="libraries"][data-new-ui="true"] .btn-stats {
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+    min-height: var(--w3-control-height);
+    transition: all var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .btn-open:hover,
+body[data-page="libraries"][data-new-ui="true"] .btn-stats:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+
+/* 新 UI 下隐藏与侧栏导航重复的旧 header 按钮（设置/设计器/队列） */
+body[data-page="libraries"][data-new-ui="true"] .btn-designer,
+body[data-page="libraries"][data-new-ui="true"] .btn-queue-toggle,
+body[data-page="libraries"][data-new-ui="true"] .btn-settings {
+    display: none !important;
+}
+
+/* 媒体卡片 WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .media-card {
+    background: var(--w3-layer-1);
+    border: 1px solid var(--w3-stroke);
+    border-radius: var(--w3-radius-lg);
+    transition: all var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .media-card:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* 列表项 WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .media-list-item {
+    border-radius: var(--w3-radius);
+    background: var(--w3-layer-1);
+    border: 1px solid var(--w3-stroke);
+    transition: background var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .media-list-item:hover {
+    background: var(--w3-layer-1-hover);
+}
+
+/* 迷你播放器 WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .mini-player {
+    left: 256px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    /* 改用主题变量派生，而非硬编码 rgba —— 让 Aero 覆盖与深浅色主题都自然生效 */
+    background: color-mix(in srgb, var(--card-bg, #1e1e1e) 90%, rgba(255,255,255,0.02));
+    border-top: 1px solid var(--w3-stroke);
+}
+body[data-page="libraries"][data-new-ui="true"][data-theme="light"] .mini-player {
+    background: color-mix(in srgb, var(--card-bg, #ffffff) 90%, rgba(0,0,0,0.02));
+}
+body[data-page="libraries"][data-new-ui="true"][data-theme="accent"] .mini-player {
+    background: color-mix(in srgb, var(--card-bg, #142814) 88%, rgba(255,255,255,0.03));
+}
+
+/* 队列侧栏 WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .lib-queue-sidebar {
+    top: 32px;
+    border-left: 1px solid var(--w3-stroke);
+    background: var(--bg-color);
+}
+
+/* 标题栏 WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .titlebar {
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--w3-stroke);
+    height: 32px;
+}
+
+/* tracks-header WinUI3 风格 */
+body[data-page="libraries"][data-new-ui="true"] .tracks-header {
+    margin-bottom: 16px;
+}
+body[data-page="libraries"][data-new-ui="true"] .tracks-header h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* ===== Pane 切换：音乐库 vs 队列 Section ===== */
+body[data-page="libraries"][data-new-ui="true"] .w3-pane {
+    width: 100%;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-pane--queue {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 0 16px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--w3-stroke);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-title-group {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-badge {
+    background: var(--w3-accent);
+    color: #fff;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-actions {
+    display: flex;
+    gap: 8px;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--w3-radius);
+    border: 1px solid var(--w3-stroke);
+    background: var(--w3-layer-1);
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: all var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-action:hover {
+    background: var(--w3-layer-1-hover);
+    border-color: var(--w3-stroke-strong);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-action:active {
+    background: var(--w3-layer-2);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px;
+    border: 1px dashed transparent;
+    border-radius: var(--w3-radius);
+    transition: border-color var(--w3-transition), background var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone.drag-over {
+    border-color: var(--w3-accent);
+    background: var(--w3-accent-soft);
+}
+
+/* Queue 项：WinUI3 ListItem 风格（内嵌队列 Section） */
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item {
+    display: grid;
+    grid-template-columns: 16px 48px 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: var(--w3-radius);
+    background: transparent;
+    transition: background var(--w3-transition);
+    margin-bottom: 2px;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item:hover {
+    background: var(--w3-layer-1-hover);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item.is-current {
+    background: var(--w3-accent-soft);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item.drag-over {
+    outline: 2px solid var(--w3-accent);
+    outline-offset: -2px;
+    border-radius: var(--w3-radius);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-cover {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--w3-radius);
+    overflow: hidden;
+    background: var(--w3-layer-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-cover svg {
+    width: 24px;
+    height: 24px;
+    color: var(--text-secondary);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-artist {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-drag {
+    color: var(--text-secondary);
+    opacity: 0.6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-drag:active {
+    cursor: grabbing;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-remove {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    width: 28px;
+    height: 28px;
+    border-radius: var(--w3-radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--w3-transition);
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-item-remove:hover {
+    background: rgba(255, 74, 74, 0.12);
+    color: #ff4a4a;
+}
+body[data-page="libraries"][data-new-ui="true"] .w3-queue-dropzone .queue-empty {
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 48px 16px;
+    font-size: 0.875rem;
+}
+
+/* 响应式：窄屏导航栏收窄 */
+@media (max-width: 700px) {
+    body[data-page="libraries"][data-new-ui="true"] .winui3-page-nav {
+        width: 48px;
+        padding: 12px 4px;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .winui3-nav-title,
+    body[data-page="libraries"][data-new-ui="true"] .winui3-nav-label {
+        display: none;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .winui3-nav-item {
+        justify-content: center;
+        padding: 10px 8px;
+    }
+    body[data-page="libraries"][data-new-ui="true"] .mini-player {
+        left: 48px;
+    }
+}
+

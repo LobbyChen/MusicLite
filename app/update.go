@@ -5,19 +5,14 @@ package app
 // 流程：
 //   1. CheckForUpdate() 拉取 GitHub Releases API（latest），解析 tag_name / assets / body
 //   2. 平台分派：
-//      - Windows: 找便携包（MusicLite_B*_amd64.exe），PerformUpdate() 下载到 %TEMP%，
-//                 生成 .cmd 文件在主进程退出后替换自己并启动新 exe
+//      - Windows: 找便携包，PerformUpdate() 下载后自替换
 //      - 其他平台: 仅返回 UpdateInfo，由前端引导用户打开 Release 页面手动下载
-//
-// 注意：版本号格式由 scripts/version.mjs 生成：
-//   - 正式发布：0.7.1
-//   - 开发构建：0.7.1-dev.5.gabc1234
-//   - 未打 tag：0.0.0-dev.N.gSHA
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -26,96 +21,100 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"MusicLite/internal/platform"
 )
 
-// GitHubAPIBase GitHub API 基础路径
+// GitHubAPIBase GitHub API 基础路径。
 const GitHubAPIBase = "https://api.github.com/repos/LobbyChen/MusicLite"
 
-// githubReleaseAsset 对应 GitHub Releases API 中的 asset 子对象
+// githubReleaseAsset 对应 GitHub Releases API 中的 asset 子对象。
 type githubReleaseAsset struct {
 	Name               string `json:"name"`
 	BrowserDownloadURL string `json:"browser_download_url"`
 	Size               int64  `json:"size"`
 }
 
-// githubRelease 对应 GitHub Releases API 的精简响应
+// githubRelease 对应 GitHub Releases API 的精简响应。
 type githubRelease struct {
 	TagName     string               `json:"tag_name"`
 	Name        string               `json:"name"`
-	Body        string               `json:"body"`     // Release notes（markdown）
-	HTMLURL     string               `json:"html_url"` // Release 网页地址
+	Body        string               `json:"body"`
+	HTMLURL     string               `json:"html_url"`
 	Prerelease  bool                 `json:"prerelease"`
 	PublishedAt time.Time            `json:"published_at"`
 	Assets      []githubReleaseAsset `json:"assets"`
 }
 
-// UpdateInfo 检查更新返回结构
+// UpdateInfo 检查更新返回结构。
 type UpdateInfo struct {
-	HasUpdate    bool   `json:"hasUpdate"`    // 是否有新版本
-	CurrentVer   string `json:"currentVer"`   // 当前版本（已剥离 -dev 后缀）
-	LatestVer    string `json:"latestVer"`    // 最新版本
-	LatestTag    string `json:"latestTag"`    // 最新版本 tag（如 Beta0.7.1）
-	ReleaseTitle string `json:"releaseTitle"` // Release 标题
-	ReleaseNotes string `json:"releaseNotes"` // Release notes（markdown 原文）
-	ReleaseURL   string `json:"releaseURL"`   // Release 网页地址
-	DownloadURL  string `json:"downloadURL"`  // 当前平台的便携包下载地址（无则空）
-	DownloadName string `json:"downloadName"` // 下载文件名（展示用）
-	DownloadSize int64  `json:"downloadSize"` // 下载字节数
-	PublishedAt  string `json:"publishedAt"`  // 发布时间 RFC3339
-	Platform     string `json:"platform"`     // 当前平台（windows/darwin/linux）
+	HasUpdate    bool   `json:"hasUpdate"`
+	CurrentVer   string `json:"currentVer"`
+	LatestVer    string `json:"latestVer"`
+	LatestTag    string `json:"latestTag"`
+	ReleaseTitle string `json:"releaseTitle"`
+	ReleaseNotes string `json:"releaseNotes"`
+	ReleaseURL   string `json:"releaseURL"`
+	DownloadURL  string `json:"downloadURL"`
+	DownloadName string `json:"downloadName"`
+	DownloadSize int64  `json:"downloadSize"`
+	PublishedAt  string `json:"publishedAt"`
+	Platform     string `json:"platform"`
 	IsPrerelease bool   `json:"isPrerelease"`
-	Error        string `json:"error"` // 检查失败时的错误信息
+	Error        string `json:"error"`
 }
 
-// applyGhProxy 根据设置判断是否对 GitHub 下载 URL 应用 gh-proxy 前缀
-// DownloadURL 使用官方直连时原样返回；ghproxy 模式下拼为：GhProxyURL + rawURL
-// 仅对 `https://github.com/` 与 `https://objects.githubusercontent.com/` 等真实 GitHub
-// 下载地址做处理，避免对非 GitHub（如自定义镜像）误改写。
-func (a *MusicService) applyGhProxy(rawURL string) string {
+// applyGhProxy 根据设置决定是否对 GitHub 下载 URL 应用 gh-proxy 前缀。
+func (s *MusicService) applyGhProxy(rawURL string) string {
 	if rawURL == "" {
 		return rawURL
 	}
-	s := a.LoadSettings()
-	if s.UpdateProxyMode != "ghproxy" {
+	cfg := s.LoadSettings()
+	if cfg.UpdateProxyMode != "ghproxy" {
 		return rawURL
 	}
-	prefix := strings.TrimRight(s.GhProxyURL, "/") + "/"
-	// GitHub 资产 URL 常见前缀：
-	//   https://github.com/<user>/<repo>/releases/download/... (BrowserDownloadURL 形式)
-	//   https://objects.githubusercontent.com/...              (LFS/大文件重定向后)
-	//   https://github-releases.githubusercontent.com/...     (旧 API)
+	prefix := strings.TrimRight(cfg.GhProxyURL, "/") + "/"
 	lower := strings.ToLower(rawURL)
 	if strings.HasPrefix(lower, "https://github.com/") ||
 		strings.HasPrefix(lower, "https://objects.githubusercontent.com/") ||
 		strings.HasPrefix(lower, "https://github-releases.githubusercontent.com/") ||
-		strings.HasPrefix(lower, "https://") && strings.Contains(lower, ".githubusercontent.com/") {
+		(strings.HasPrefix(lower, "https://") && strings.Contains(lower, ".githubusercontent.com/")) {
 		return prefix + rawURL
 	}
 	return rawURL
 }
 
-// CheckForUpdate 拉取 GitHub 最新 Release 并与当前版本比较
-// 不抛出错误，错误信息放在 UpdateInfo.Error 中（前端可直接显示）
-func (a *MusicService) CheckForUpdate() UpdateInfo {
+// CheckForUpdate 拉取 GitHub 最新 Release 并与当前版本比较。
+// 不抛出错误，错误信息放在 UpdateInfo.Error 中。
+func (s *MusicService) CheckForUpdate() UpdateInfo {
 	info := UpdateInfo{
-		CurrentVer: stripDevSuffix(Version),
+		CurrentVer: stripDevSuffix(platform.Version),
 		Platform:   runtime.GOOS,
 	}
 
-	// HTTP 客户端（带超时）
 	client := &http.Client{Timeout: 20 * time.Second}
-	req, err := http.NewRequest("GET", GitHubAPIBase+"/releases/latest", nil)
+	// 检查更新与下载共用更新代理配置：ghproxy 模式下 API 也走代理，
+	// 避免部分网络环境下 api.github.com 直连超时导致按钮长时间无响应。
+	apiURL := GitHubAPIBase + "/releases/latest"
+	cfg := s.LoadSettings()
+	if cfg.UpdateProxyMode == "ghproxy" {
+		if prefix := strings.TrimSpace(cfg.GhProxyURL); prefix != "" {
+			apiURL = strings.TrimRight(prefix, "/") + "/" + apiURL
+		}
+	}
+	logUpdateEvent("check", "GET "+apiURL)
+	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		info.Error = fmt.Sprintf("构建请求失败: %v", err)
 		return info
 	}
-	// 加 User-Agent（GitHub API 要求）
-	req.Header.Set("User-Agent", "MusicLite/"+Version)
+	req.Header.Set("User-Agent", "MusicLite/"+platform.Version)
 	req.Header.Set("Accept", "application/vnd.github+json")
 
 	resp, err := client.Do(req)
 	if err != nil {
 		info.Error = fmt.Sprintf("网络请求失败: %v", err)
+		logUpdateEvent("check", "失败: "+info.Error)
 		return info
 	}
 	defer resp.Body.Close()
@@ -123,6 +122,7 @@ func (a *MusicService) CheckForUpdate() UpdateInfo {
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		info.Error = fmt.Sprintf("GitHub API 返回 %d: %s", resp.StatusCode, truncate(string(body), 200))
+		logUpdateEvent("check", "失败: "+info.Error)
 		return info
 	}
 
@@ -132,7 +132,6 @@ func (a *MusicService) CheckForUpdate() UpdateInfo {
 		return info
 	}
 
-	// 解析 tag_name 中的版本号（如 "Beta0.7.1" → "0.7.1"）
 	info.LatestTag = rel.TagName
 	info.LatestVer = parseVersionFromTag(rel.TagName)
 	info.ReleaseTitle = rel.Name
@@ -143,14 +142,11 @@ func (a *MusicService) CheckForUpdate() UpdateInfo {
 		info.PublishedAt = rel.PublishedAt.Format(time.RFC3339)
 	}
 
-	// 选取当前平台的便携包资源
 	info.DownloadURL, info.DownloadName, info.DownloadSize = pickPlatformAsset(rel.Assets, runtime.GOOS)
-	// 根据设置在返回给前端前改写下载 URL（official 原样，ghproxy 拼接代理）
-	info.DownloadURL = a.applyGhProxy(info.DownloadURL)
+	info.DownloadURL = s.applyGhProxy(info.DownloadURL)
 
-	// 版本比较：dev 版本（含 -dev. 后缀）默认不提示更新
-	// dev 构建是开发分支产物，版本号可能领先于正式 release，不应触发自动更新
-	if isDevVersion(Version) {
+	// dev 版本默认不提示更新
+	if isDevVersion(platform.Version) {
 		info.HasUpdate = false
 	} else {
 		info.HasUpdate = compareVersion(info.LatestVer, info.CurrentVer) > 0
@@ -159,13 +155,12 @@ func (a *MusicService) CheckForUpdate() UpdateInfo {
 	return info
 }
 
-// isDevVersion 判断是否为开发版本（含 -dev. 后缀）
-// 例如 0.7.1-dev.5.gabc1234 是 dev 版本，0.7.1 不是
+// isDevVersion 判断是否为开发版本（含 -dev. 后缀）。
 func isDevVersion(v string) bool {
 	return strings.Contains(v, "-dev.")
 }
 
-// stripDevSuffix 去掉开发版本后缀：0.7.1-dev.5.gabc1234 → 0.7.1
+// stripDevSuffix 去掉开发版本后缀。
 func stripDevSuffix(v string) string {
 	if i := strings.Index(v, "-dev."); i >= 0 {
 		return v[:i]
@@ -173,17 +168,11 @@ func stripDevSuffix(v string) string {
 	return v
 }
 
-// parseVersionFromTag 从 tag 名中提取版本号
-//
-//	"Beta0.7.1"  → "0.7.1"
-//	"B0.7.0"     → "0.7.0"
-//	"v0.7.1"     → "0.7.1"
-//	"0.7.1"      → "0.7.1"
+// parseVersionFromTag 从 tag 名中提取版本号。
 func parseVersionFromTag(tag string) string {
 	if tag == "" {
 		return ""
 	}
-	// 匹配开头非数字前缀 + 数字版本号（x.y.z 或 x.y.z.w）
 	re := regexp.MustCompile(`^[A-Za-zvV]*([0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?)`)
 	m := re.FindStringSubmatch(tag)
 	if len(m) >= 2 {
@@ -192,10 +181,7 @@ func parseVersionFromTag(tag string) string {
 	return tag
 }
 
-// compareVersion 比较两个语义化版本号
-//
-//	返回 -1 / 0 / 1 表示 a<b / a==b / a>b
-//	忽略无法解析的部分（按 0 处理）
+// compareVersion 比较两个语义化版本号，返回 -1 / 0 / 1。
 func compareVersion(a, b string) int {
 	pa := splitVersionParts(a)
 	pb := splitVersionParts(b)
@@ -221,9 +207,8 @@ func compareVersion(a, b string) int {
 	return 0
 }
 
-// splitVersionParts 拆分版本号字符串，过滤掉非数字段（如 -dev 后缀）
+// splitVersionParts 拆分版本号字符串，过滤掉非数字段。
 func splitVersionParts(v string) []string {
-	// 先剥离 -dev. 后缀
 	v = stripDevSuffix(v)
 	parts := strings.Split(v, ".")
 	out := make([]string, 0, len(parts))
@@ -232,7 +217,6 @@ func splitVersionParts(v string) []string {
 		if p == "" {
 			continue
 		}
-		// 仅保留纯数字段
 		if _, err := strconv.Atoi(p); err == nil {
 			out = append(out, p)
 		}
@@ -240,24 +224,13 @@ func splitVersionParts(v string) []string {
 	return out
 }
 
-// pickPlatformAsset 为指定平台选取合适的便携包资源
-//
-//	Windows: 优先匹配便携 .exe（排除 Setup 安装包），其次便携 .zip
-//	macOS:   匹配 "*darwin*" / "*macos*" / "*.dmg" / "*macOS*.zip"
-//	Linux:   匹配 "*.deb" / "*.rpm" / "*linux*.tar.gz"
-//
-// 实际 release 资产名（CI 上传）：
-//
-//	MusicLite-Windows-x64-Portable.zip   便携包（zip）
-//	MusicLite-Windows-x64-Setup.exe       NSIS 安装程序
-//	MusicLite-macOS-arm64.app.zip
-//	musiclite.deb / musiclite.rpm
+// pickPlatformAsset 为指定平台选取合适的便携包资源。
 func pickPlatformAsset(assets []githubReleaseAsset, goos string) (url, name string, size int64) {
 	var patterns []string
 	switch goos {
 	case "windows":
 		patterns = []string{
-			`(?i)^MusicLite.*Portable.*\.(exe|zip)$`, // 便携包（exe 或 zip）
+			`(?i)^MusicLite.*Portable.*\.(exe|zip)$`,
 			`(?i)^MusicLite.*portable.*\.(exe|zip)$`,
 			`(?i)^MusicLite.*x64.*Portable.*\.(exe|zip)$`,
 		}
@@ -293,8 +266,13 @@ func truncate(s string, n int) string {
 	return s[:n] + "..."
 }
 
-// CleanupOldExeBackups 清理上次更新遗留的 .exe~ 文件
-// 在程序启动时调用，删除 exe 所在目录下所有 .exe~ 结尾的文件
+// logUpdateEvent 记录更新流程日志。
+func logUpdateEvent(stage, info string) {
+	log.Printf("[update:%s] %s", stage, info)
+}
+
+// CleanupOldExeBackups 清理上次更新遗留的 .exe~ 文件。
+// 在程序启动时调用，删除 exe 所在目录下所有 .exe~ 结尾的文件。
 func CleanupOldExeBackups() {
 	exePath, err := os.Executable()
 	if err != nil {
@@ -306,10 +284,9 @@ func CleanupOldExeBackups() {
 	if err != nil {
 		return
 	}
-
 	for _, entry := range entries {
 		if strings.HasSuffix(strings.ToLower(entry.Name()), ".exe~") {
-			os.Remove(filepath.Join(exeDir, entry.Name()))
+			_ = os.Remove(filepath.Join(exeDir, entry.Name()))
 		}
 	}
 }

@@ -3,24 +3,25 @@
 #
 # The lines below are called `modelines`. See `:help modeline`
 
-name: "musiclite"
+name: "MusicLite"
 arch: ${GOARCH}
 platform: "linux"
 version: "0.1.0"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "MusicLite"
+description: "MusicLite music player"
 vendor: "LobbyChen"
-homepage: "https://wails.io"
+homepage: "https://github.com/LobbyChen/MusicLite"
 license: "MIT"
 release: "1"
 
 contents:
   - src: "./bin/musiclite"
     dst: "/usr/local/bin/musiclite"
+  # 使用 pixmaps 目录避免把 1024px 图标放进 128x128 的 hicolor 尺寸目录
   - src: "./build/appicon.png"
-    dst: "/usr/share/icons/hicolor/128x128/apps/musiclite.png"
+    dst: "/usr/share/pixmaps/musiclite.png"
   - src: "./build/linux/musiclite.desktop"
     dst: "/usr/share/applications/musiclite.desktop"
 

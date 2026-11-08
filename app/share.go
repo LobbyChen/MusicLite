@@ -5,8 +5,8 @@ package app
 // 用户右键点击"打包分享"后：
 // 0. 在 %TEMP%/<歌曲名称>_LiteShare.mp3 创建新文件
 // 1. 读取原文件音频写入新文件
-// 2. 将 Cover 图片和 LRC 歌词写入新文件的 ID3v2.4 标签（见 app/share 包）
-// 3. 将新文件路径写入系统剪贴板（各平台实现见 share_windows.go / share_notwindows.go）
+// 2. 将 Cover 图片和 LRC 歌词写入新文件的 ID3v2.4 标签
+// 3. 将新文件路径写入系统剪贴板（平台实现见 share_windows.go / share_notwindows.go）
 // 4. 前端显示"已生成分享并复制到剪贴板"提示
 
 import (
@@ -16,16 +16,12 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"MusicLite/app/share"
+	"MusicLite/internal/share"
 )
 
-// PackShare 打包分享：读取曲目音频，写入封面和歌词标签，复制到剪贴板
-// 剪贴板写入逻辑按平台分派：
-//   - Windows:   CF_HDROP (share_windows.go)
-//   - macOS:     AppleScript + NSPasteboard (share_notwindows.go)
-//   - Linux:     xclip / wl-copy (share_notwindows.go)
-func (a *MusicService) PackShare(id int64) error {
-	rec, err := a.database.GetTrackByID(id)
+// PackShare 打包分享：读取曲目音频，写入封面和歌词标签，复制到剪贴板。
+func (s *MusicService) PackShare(id int64) error {
+	rec, err := s.db.GetTrackByID(id)
 	if err != nil {
 		return fmt.Errorf("获取曲目失败: %w", err)
 	}
@@ -35,7 +31,7 @@ func (a *MusicService) PackShare(id int64) error {
 		return fmt.Errorf("读取音频文件失败: %w", err)
 	}
 
-	coverData, coverMIME, _ := a.database.GetTrackCover(strconv.FormatInt(id, 10))
+	coverData, coverMIME, _ := s.db.GetTrackCover(strconv.FormatInt(id, 10))
 	lyrics := rec.Lyrics
 
 	audioData := share.StripID3v2(origData)
@@ -52,7 +48,7 @@ func (a *MusicService) PackShare(id int64) error {
 	}
 	outPath := filepath.Join(tempDir, safeTitle+"_LiteShare.mp3")
 
-	if err := os.WriteFile(outPath, output, 0644); err != nil {
+	if err := os.WriteFile(outPath, output, 0o644); err != nil {
 		return fmt.Errorf("写入分享文件失败: %w", err)
 	}
 
@@ -61,6 +57,5 @@ func (a *MusicService) PackShare(id int64) error {
 	if err := setClipboardFilesGo(outPath); err != nil {
 		return fmt.Errorf("文件已生成但剪贴板写入失败: %w", err)
 	}
-
 	return nil
 }

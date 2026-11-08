@@ -1,0 +1,150 @@
+﻿/* Header */
+header {
+    padding: 20px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: headerSlideIn 0.4s var(--ease-out-expo) both;
+}
+
+@keyframes headerSlideIn {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    flex-shrink: 0;       /* 队列侧栏压缩 header 时不被挤压，避免标题文字竖排 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-shrink: 0;       /* 队列侧栏压缩 header 时按钮不被挤压 */
+    flex-wrap: wrap;      /* 窄屏时换行而非拉长 */
+    justify-content: flex-end;
+}
+
+/* ============ 搜索框 ============ */
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--design-radius-lg);
+    padding: 0 12px;
+    height: 40px;
+    flex-shrink: 0;       /* 队列侧栏压缩 header 时不被挤压，避免占位文字竖排 */
+    transition: border-color var(--dur-normal) var(--ease-smooth),
+                background-color var(--dur-normal) var(--ease-smooth);
+}
+
+.search-box:focus-within {
+    border-color: var(--accent-color);
+    background: var(--hover-color);
+}
+
+.search-icon {
+    flex-shrink: 0;
+    fill: var(--text-secondary);
+    transition: fill var(--dur-fast);
+}
+
+.search-box:focus-within .search-icon {
+    fill: var(--accent-color);
+}
+
+.search-input {
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-family: inherit;
+    outline: none;
+    width: 200px;
+    min-width: 0;
+}
+
+.search-input::placeholder {
+    color: var(--text-secondary);
+}
+
+.search-clear {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--dur-fast), color var(--dur-fast);
+    padding: 0;
+}
+
+.search-clear:hover {
+    background: var(--hover-color);
+    color: var(--text-primary);
+}
+
+.search-clear svg {
+    fill: currentColor;
+}
+
+.btn-open {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px 20px;
+    border-radius: var(--design-radius-lg);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;       /* 队列侧栏压缩 header 时不被挤压，避免按钮文字竖排 */
+    white-space: nowrap;  /* "导入文件" 文本不换行 */
+    transition: background var(--dur-normal), border-color var(--dur-normal), transform var(--dur-fast);
+}
+
+.btn-open:hover {
+    background-color: var(--hover-color);
+    border-color: var(--accent-color);
+    transform: translateY(-1px);
+}
+
+.btn-open:active {
+    transform: scale(0.97);
+}
+
+/* Main Content */
+main {
+    flex: 1;
+    padding: 0 40px 40px 40px;
+    overflow-y: auto;
+    animation: mainFadeIn 0.5s var(--ease-out-expo) both;
+    animation-delay: 0.1s;
+}
+
+@keyframes mainFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+main::-webkit-scrollbar {
+    display: none;
+}
+
+h2 {
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+    color: var(--text-primary);
+}
+

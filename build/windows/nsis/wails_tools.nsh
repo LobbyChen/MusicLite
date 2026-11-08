@@ -5,19 +5,19 @@
 !include "FileFunc.nsh"
 
 !ifndef INFO_PROJECTNAME
-    !define INFO_PROJECTNAME "musiclite"
+    !define INFO_PROJECTNAME "MusicLite"
 !endif
 !ifndef INFO_COMPANYNAME
-    !define INFO_COMPANYNAME "LobbyChen"
+    !define INFO_COMPANYNAME "My Company"
 !endif
 !ifndef INFO_PRODUCTNAME
-    !define INFO_PRODUCTNAME "MusicLite Cuckoo"
+    !define INFO_PRODUCTNAME "MusicLite"
 !endif
 !ifndef INFO_PRODUCTVERSION
     !define INFO_PRODUCTVERSION "0.1.0"
 !endif
 !ifndef INFO_COPYRIGHT
-    !define INFO_COPYRIGHT "(c) 2026, LobbyChen"
+    !define INFO_COPYRIGHT "© 2026, LobbyChen"
 !endif
 !ifndef PRODUCT_EXECUTABLE
     !define PRODUCT_EXECUTABLE "${INFO_PROJECTNAME}.exe"

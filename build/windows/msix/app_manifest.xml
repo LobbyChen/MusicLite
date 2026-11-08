@@ -8,15 +8,15 @@
   IgnorableNamespaces="uap3">
   
   <Identity 
-    Name="com.example.musiclitetemplate"
+    Name="com.example.musiclite"
     Publisher="CN=My Company"
     Version="0.1.0.0" 
     ProcessorArchitecture="x64" />
   
   <Properties>
-    <DisplayName>My Product</DisplayName>
+    <DisplayName>MusicLite</DisplayName>
     <PublisherDisplayName>My Company</PublisherDisplayName>
-    <Description>A MusicLiteTemplate application</Description>
+    <Description>MusicLite music player</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
   
@@ -29,10 +29,10 @@
   </Resources>
   
   <Applications>
-    <Application Id="com.example.musiclitetemplate" Executable="musiclitetemplate.exe" EntryPoint="Windows.FullTrustApplication">
+    <Application Id="com.example.musiclite" Executable="musiclite.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="My Product"
-        Description="A MusicLiteTemplate application"
+        DisplayName="MusicLite"
+        Description="MusicLite music player"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
@@ -41,7 +41,7 @@
       </uap:VisualElements>
       
       <Extensions>
-        <desktop:Extension Category="windows.fullTrustProcess" Executable="musiclitetemplate.exe" />
+        <desktop:Extension Category="windows.fullTrustProcess" Executable="musiclite.exe" />
         
         
       </Extensions>

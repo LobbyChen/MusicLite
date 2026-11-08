@@ -6,7 +6,7 @@ package app
 //   - 左键单击：切换主窗口显示/隐藏（保留此经典行为）
 //   - 左键双击：显示主窗口并聚焦
 //   - 右键单击：显示前端自绘"托盘菜单窗口"（traypopup WebViewWindow）
-//     窗口内容由 frontend/src/html/tray-menu.html 渲染；
+//     窗口内容由 frontend/src/pages/tray-menu.html 渲染；
 //     位置在 Windows 下用 Win32 API 手动计算（按任务栏方向 DIP 换算 + 边界裁剪），
 //     非 Windows 下 fallback 到 tray.ShowWindow() 自动定位。
 //
@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"sync/atomic"
 	"time"
+
+	"MusicLite/internal/platform"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -43,7 +45,7 @@ func (s *MusicService) initTray() {
 		trayPopup = s.app.Window.NewWithOptions(application.WebviewWindowOptions{
 			Name:          trayPopupWindowName,
 			Title:         "Tray Menu",
-			URL:           "/src/html/tray-menu.html",
+			URL:           "/index.html#/tray",
 			Width:         280,
 			Height:        260,
 			Hidden:        true,
@@ -75,8 +77,8 @@ func (s *MusicService) initTray() {
 
 	// ---------- 2) 创建 SystemTray 图标 ----------
 	tray := s.app.SystemTray.New()
-	if len(TrayIconData) > 0 {
-		tray.SetIcon(TrayIconData)
+	if len(platform.TrayIconData) > 0 {
+		tray.SetIcon(platform.TrayIconData)
 	}
 	tray.SetLabel("MusicLite")
 	tray.SetTooltip(strs.TrayTooltip)
@@ -206,7 +208,7 @@ func (s *MusicService) RestartApp() error {
 // TogglePlayPause 暴露给前端：自定义托盘菜单中切换播放/暂停
 func (s *MusicService) TogglePlayPause() {
 	if s.player != nil {
-		s.player.toggle()
+		s.player.Toggle()
 	}
 }
 
@@ -224,12 +226,12 @@ func (s *MusicService) GetTrayState() TrayState {
 	if s.player == nil {
 		return state
 	}
-	snap := s.player.snapshot()
+	snap := s.player.State()
 	state.IsPlaying = snap.IsPlaying
 	if snap.Track != nil {
 		state.TrackName = snap.Track.Name
 		state.ArtistName = snap.Track.Author
-		coverData, mime, _ := s.database.GetTrackCover(fmt.Sprintf("%d", snap.Track.ID))
+		coverData, mime, _ := s.db.GetTrackCover(fmt.Sprintf("%d", snap.Track.ID))
 		state.CoverBase64 = encodeCoverBase64(coverData, mime)
 	}
 	return state
@@ -282,7 +284,7 @@ func (s *MusicService) ensureSettingsWindow() application.Window {
 		win = s.app.Window.NewWithOptions(application.WebviewWindowOptions{
 			Name:        traySettingsWindowName,
 			Title:       "MusicLite Settings",
-			URL:         "/src/html/settings.html",
+			URL:         "/index.html#/settings",
 			Width:       760,
 			Height:      560,
 			MinWidth:    640,

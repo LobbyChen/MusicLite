@@ -1,0 +1,88 @@
+﻿/* ============ 自定义标题栏（无边框窗口） ============ */
+.titlebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 36px;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 0 14px;
+    --wails-draggable: drag;
+    /* WebView2 原生 NonClientRegion 模式（Windows NonClientRegionSupport 开启时生效） */
+    app-region: drag;
+    -webkit-app-region: drag;
+    user-select: none;
+    z-index: 1000;
+}
+
+.titlebar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.titlebar-icon {
+    width: 16px;
+    height: 16px;
+    fill: var(--accent-color);
+}
+
+.titlebar-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+}
+
+.titlebar-controls {
+    display: flex;
+    gap: 2px;
+    --wails-draggable: no-drag;
+    app-region: no-drag;
+    -webkit-app-region: no-drag;
+}
+
+/* titlebar 内所有交互控件也明确排除拖动区，避免误判 */
+.titlebar .titlebar-btn,
+.titlebar button,
+.titlebar input,
+.titlebar select,
+.titlebar textarea,
+.titlebar a {
+    --wails-draggable: no-drag;
+    app-region: no-drag;
+    -webkit-app-region: no-drag;
+}
+
+.titlebar-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: var(--design-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+}
+
+.titlebar-btn:hover {
+    background: var(--hover-color);
+    color: var(--text-primary);
+}
+
+.titlebar-btn svg {
+    fill: currentColor;
+}
+
+.titlebar-close:hover {
+    background: #e74c3c;
+    color: white;
+}
+

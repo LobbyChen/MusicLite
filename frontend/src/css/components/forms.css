@@ -1,0 +1,184 @@
+/* Form Styles */
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--design-radius-sm);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 140px;
+    font-family: var(--lyrics-font);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.form-file {
+    width: 100%;
+    padding: 8px;
+    background: var(--bg-color);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--design-radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.form-file::-webkit-file-upload-button {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: var(--design-radius-sm);
+    cursor: pointer;
+    margin-right: 8px;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--design-radius-lg);
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform 0.12s var(--ease-smooth), background-color 0.2s var(--ease-smooth), box-shadow 0.2s var(--ease-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn:active {
+    transform: scale(0.95);
+}
+
+.btn-primary {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-hover);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-color) 40%, transparent);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    border: 1px solid var(--text-secondary);
+    color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.btn-danger {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+    box-shadow: 0 4px 14px rgba(231, 76, 60, 0.4);
+}
+
+.btn-cancel {
+    background-color: #333;
+    color: white;
+}
+
+.btn-settings {
+    background-color: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    flex-shrink: 0;       /* 防止被压缩拉长 */
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-settings:hover {
+    background-color: var(--hover-color);
+    color: var(--text-primary);
+}
+
+.btn-stats {
+    background-color: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-stats:hover {
+    background-color: var(--hover-color);
+    color: var(--text-primary);
+}
+
+.btn-designer {
+    background-color: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    transition: background-color var(--dur-fast), color var(--dur-fast);
+}
+
+.btn-designer:hover {
+    background-color: var(--hover-color);
+    color: var(--accent-color);
+}
+

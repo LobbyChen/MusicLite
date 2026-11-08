@@ -1,0 +1,200 @@
+﻿/* Modal Styles */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+    opacity: 0;
+    transition: opacity 0.2s var(--ease-smooth);
+}
+
+.modal-backdrop.active {
+    display: flex;
+    opacity: 1;
+}
+
+.modal-backdrop.closing {
+    opacity: 0;
+}
+
+.modal {
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: var(--design-radius);
+    width: 400px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    animation: modalIn 0.25s var(--ease-out-expo) both;
+}
+
+.modal-backdrop.closing .modal {
+    animation: modalOut 0.18s var(--ease-smooth) both;
+}
+
+.modal-large {
+    width: 520px;
+    max-height: 85vh;
+    overflow-y: auto;
+    text-align: left;
+}
+.modal-large::-webkit-scrollbar{
+    display: none;
+}
+
+/* 编辑信息弹窗：左侧封面 + 右侧字段 */
+.edit-modal-body {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 8px;
+}
+
+.edit-cover-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.edit-cover-preview {
+    width: 120px;
+    height: 120px;
+    border-radius: var(--design-radius);
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    color: var(--text-secondary);
+}
+
+.edit-cover-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.edit-cover-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.edit-fields-section {
+    flex: 1;
+    min-width: 0;
+}
+
+.edit-fields-section .form-group {
+    margin-bottom: 14px;
+}
+
+.edit-lyrics-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+/* 拖放提示 */
+.edit-drop-hint {
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+/* 拖放高亮：编辑模态框内拖入文件时 */
+#modal-edit.drag-active .modal {
+    border: 2px dashed var(--accent-color);
+    box-shadow: 0 0 24px var(--accent-glow);
+}
+#modal-edit.drag-active .edit-drop-hint {
+    opacity: 1;
+    color: var(--accent-color);
+}
+
+/* 小按钮 — label 与 button 统一表现 */
+.btn-sm {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    border-radius: var(--design-radius-lg);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    font-weight: 600;
+    font-family: inherit;
+    line-height: 1;
+    text-align: center;
+    transition: transform 0.12s ease, background-color 0.2s ease;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.btn-sm:hover {
+    transform: translateY(-1px);
+}
+
+/* 模态框入场/退场动画 */
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.92) translateY(10px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes modalOut {
+    from { opacity: 1; transform: scale(1) translateY(0); }
+    to   { opacity: 0; transform: scale(0.92) translateY(10px); }
+}
+
+/* 右键菜单入场/退场 */
+@keyframes ctxMenuIn {
+    from { opacity: 0; transform: scale(0.85) translateY(-4px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes ctxMenuOut {
+    from { opacity: 1; transform: scale(1); }
+    to   { opacity: 0; transform: scale(0.9); }
+}
+
+@keyframes ctxItemIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+/* 迷你播放器滑入 */
+@keyframes miniSlideIn {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+/* Toast 弹性入场 */
+@keyframes toastInSpring {
+    0%   { opacity: 0; transform: translateX(100%) scale(0.8); }
+    60%  { opacity: 1; transform: translateX(-8px) scale(1.02); }
+    100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.modal h3 {
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+    text-align: center;
+}
+
+.modal p {
+    color: var(--text-secondary);
+}
+

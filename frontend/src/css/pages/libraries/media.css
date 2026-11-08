@@ -1,0 +1,501 @@
+/* Media Grid (卡片模式，默认) */
+.media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 24px;
+}
+
+/* "全部曲目" 标题行 + 视图开关 */
+.tracks-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.tracks-header h2 {
+    margin-bottom: 0;
+}
+
+/* 标题 + 播放全部按钮 组合 */
+.tracks-title-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+/* 播放全部按钮：小型强调按钮 */
+.btn-play-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-color);
+    color: var(--bg-color);
+    border: none;
+    padding: 6px 14px;
+    border-radius: var(--design-radius-lg);
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform var(--dur-fast) var(--ease-smooth),
+                box-shadow var(--dur-normal) var(--ease-smooth),
+                background-color var(--dur-normal) var(--ease-smooth);
+}
+
+.btn-play-all:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-color) 40%, transparent);
+}
+
+.btn-play-all:active {
+    transform: scale(0.96);
+}
+
+.btn-play-all svg {
+    fill: currentColor;
+}
+
+/* 控件容器：排序 + 视图开关 */
+.tracks-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+/* 排序控件：分段按钮组 */
+.sort-control {
+    display: inline-flex;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--design-radius-lg);
+    padding: 3px;
+    gap: 2px;
+}
+
+.sort-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 5px 12px;
+    border-radius: var(--design-radius);
+    font-size: 0.78rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: color var(--dur-fast) var(--ease-smooth),
+                background-color var(--dur-fast) var(--ease-smooth);
+    white-space: nowrap;
+}
+
+.sort-btn:hover {
+    color: var(--text-primary);
+}
+
+.sort-btn.active {
+    background: var(--accent-color);
+    color: var(--bg-color);
+    font-weight: 600;
+}
+
+/* ============ 正在播放指示器（纯 CSS 动态条，无 emoji） ============
+ * 3 根竖条，仅当容器带 .audio-playing 且曲目项带 .is-playing 时才动画。
+ * 暂停时显示为 3 根等高静止竖条，提供"已加载但暂停"的视觉提示。
+ */
+.np-bars {
+    display: none;
+    align-items: flex-end;
+    gap: 2px;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+.np-bars i {
+    display: block;
+    width: 3px;
+    height: 100%;
+    background: var(--accent-color);
+    border-radius: 1px;
+    transform-origin: bottom;
+    /* 暂停态：等高静止，透明度略降 */
+    opacity: 0.55;
+    transform: scaleY(0.5);
+    transition: opacity var(--dur-normal) var(--ease-smooth);
+}
+
+/* 仅当前正在播放的曲目显示指示器 */
+.is-playing .np-bars {
+    display: inline-flex;
+}
+
+/* 播放中：竖条透明度提升 */
+.audio-playing .is-playing .np-bars i {
+    opacity: 1;
+    animation: npBarsAnim 1s ease-in-out infinite;
+}
+
+.audio-playing .is-playing .np-bars i:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.audio-playing .is-playing .np-bars i:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes npBarsAnim {
+    0%, 100% { transform: scaleY(0.4); }
+    50%      { transform: scaleY(1); }
+}
+
+/* 正在播放的卡片/列表项：标题着色为主题强调色 */
+.media-card.is-playing .card-title,
+.media-list-item.is-playing .list-item-title {
+    color: var(--accent-color);
+}
+
+/* 卡片模式下指示器悬浮于封面左上角 */
+.media-card .np-bars {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 2;
+    width: 16px;
+    height: 16px;
+    padding: 3px;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: var(--design-radius-sm);
+    backdrop-filter: blur(4px);
+}
+
+.media-card .np-bars i {
+    background: #fff;
+}
+
+/* 列表模式下指示器内嵌于标题前 */
+.media-list-item .list-item-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.media-list-item .np-bars {
+    width: 12px;
+    height: 12px;
+}
+
+/* 无搜索结果空态 */
+.empty-state.no-results {
+    display: none;
+}
+
+.empty-state.no-results.display {
+    display: flex;
+}
+
+/* 卡片/列表 视图开关 */
+.view-toggle {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 56px;
+    height: 26px;
+    padding: 0;
+    border-radius: var(--design-radius);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    outline: none;
+}
+
+.view-toggle:hover {
+    background: var(--hover-color);
+}
+
+.view-toggle:focus-visible {
+    border-color: var(--accent-color);
+}
+
+/* 滑块拇指：图标放在内部，用 flex 居中，图标永远相对于 thumb 圆心居中 */
+.view-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.view-toggle-icon {
+    width: 14px;
+    height: 14px;
+    fill: #ffffff;
+    position: absolute;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+/* card 模式：显示卡片图标，隐藏列表图标 */
+.view-toggle[data-mode="card"] .view-toggle-icon-list {
+    opacity: 0;
+    transform: scale(0.4);
+}
+.view-toggle[data-mode="card"] .view-toggle-icon-card {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* list 模式：显示列表图标，隐藏卡片图标 */
+.view-toggle[data-mode="list"] .view-toggle-icon-card {
+    opacity: 0;
+    transform: scale(0.4);
+}
+.view-toggle[data-mode="list"] .view-toggle-icon-list {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* list 模式：拇指滑到右侧 */
+.view-toggle[data-mode="list"] .view-toggle-thumb {
+    transform: translateX(30px);
+}
+
+.media-card {
+    background-color: var(--card-bg);
+    padding: 16px;
+    border-radius: var(--design-radius);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    /* 入场动画 + hover 过渡 */
+    animation: cardFadeIn 0.35s var(--ease-out-expo) both;
+    transition: background-color var(--dur-normal) var(--ease-smooth), transform var(--dur-normal) var(--ease-out-expo), box-shadow var(--dur-normal) var(--ease-smooth), border-color var(--dur-normal) var(--ease-smooth);
+    border: 1px solid transparent;
+}
+
+.media-card:hover {
+    background-color: var(--hover-color);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+    border-color: var(--border-color);
+}
+
+.media-card:hover .card-cover {
+    transform: scale(1.04);
+}
+
+.media-card:hover .card-actions {
+    opacity: 1;
+}
+
+.card-cover {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: var(--design-radius-sm);
+    margin-bottom: 10px;
+    background-color: color-mix(in srgb, var(--card-bg, #1e1e1e) 88%, #000 12%);
+    transition: transform 0.3s var(--ease-out-expo);
+}
+
+/* Media List (列表模式) */
+.media-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.media-list-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px;
+    border-radius: var(--design-radius-sm);
+    cursor: pointer;
+    background-color: transparent;
+    animation: cardFadeIn 0.25s var(--ease-out-expo) both;
+    transition: background-color 0.18s var(--ease-smooth), transform 0.18s var(--ease-out-expo);
+}
+
+.media-list-item:hover {
+    background-color: var(--hover-color);
+    transform: translateX(4px);
+}
+
+.media-list-item:hover .list-item-actions {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.media-list-item .list-item-cover {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--design-radius-sm);
+    overflow: hidden;
+    flex-shrink: 0;
+    background: color-mix(in srgb, var(--card-bg, #1e1e1e) 88%, #000 12%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+}
+
+.media-list-item .list-item-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.media-list-item .list-item-cover svg {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+}
+
+.media-list-item .list-item-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.media-list-item .list-item-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.media-list-item .list-item-artist {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.media-list-item .list-item-album {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.media-list-item .list-item-actions {
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+    flex-shrink: 0;
+}
+
+/* 卡片逐个入场动画 */
+@keyframes cardFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card-icon {
+    width: 100%;
+    aspect-ratio: 1;
+    background-color: color-mix(in srgb, var(--card-bg, #1e1e1e) 88%, #000 12%);
+    border-radius: var(--design-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    color: var(--text-secondary);
+}
+
+.card-icon svg {
+    width: 48px;
+    height: 48px;
+    fill: currentColor;
+}
+
+.card-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    display: -webkit-box;
+
+    -webkit-line-clamp: 2;
+        line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.card-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.card-album {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* Card Actions (hover buttons) */
+.card-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.card-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.card-btn:hover {
+    background: rgba(0, 0, 0, 0.9);
+}
+
+.card-btn svg {
+    fill: currentColor;
+}
+
+.card-btn.delete-btn:hover {
+    background: #e74c3c;
+}
+

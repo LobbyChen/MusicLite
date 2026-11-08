@@ -39,8 +39,8 @@ type _MONITORINFO struct {
 }
 
 var (
-	_user32dll    = syscall.NewLazyDLL("user32.dll")
-	_shcoredll    = syscall.NewLazyDLL("shcore.dll")
+	_user32dll            = syscall.NewLazyDLL("user32.dll")
+	_shcoredll            = syscall.NewLazyDLL("shcore.dll")
 	_procGetCursorPos     = _user32dll.NewProc("GetCursorPos")
 	_procMonitorFromPoint = _user32dll.NewProc("MonitorFromPoint")
 	_procGetMonitorInfoW  = _user32dll.NewProc("GetMonitorInfoW")

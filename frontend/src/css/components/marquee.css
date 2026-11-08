@@ -1,0 +1,12 @@
+﻿/* 容器内的文本节点统一包裹为 .scroll-text */
+.mini-title > .scroll-text,
+.track-name > .scroll-text,
+.fullscreen-track-name > .scroll-text {
+    display: inline-block;
+    padding-right: 40px;
+    white-space: nowrap;
+    will-change: transform;
+}
+
+/* 仅当容器带 .marquee 类时，由 JS 用 Web Animations API 驱动 translateX 动画 */
+

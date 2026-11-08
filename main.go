@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"MusicLite/app"
+	"MusicLite/internal/platform"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -16,45 +17,30 @@ import (
 var assets embed.FS
 
 func main() {
-	// 初始化日志输出到 log.txt（最早调用）
-	app.InitLogger()
+	platform.InitLogger()
+	platform.EnsureSingleInstance()
 
-	// 单实例控制：若有旧实例运行则通知其退出
-	app.EnsureSingleInstance()
+	file := platform.GetFileInArgs()
 
-	// 清理上次更新遗留的 .exe~ 文件
-	// 放在 EnsureSingleInstance 之后：此时旧实例已退出，.exe~ 文件已解锁
-	app.CleanupOldExeBackups()
+	var svc *app.MusicService
 
-	file := app.GetFileInArgs()
-
-	// 确保 i18n.json 已解压到用户数据目录（首次启动）
-	app.EnsureI18nFile()
-
-	// 音频/封面处理器引用，在创建服务后赋值（供 AssetServer 中间件使用）
-	var audioHandler *app.AudioHandler
-
-	// 创建 v3 应用实例
 	wailsApp := application.New(application.Options{
 		Name:        "MusicLite",
 		Description: "MusicLite 离线音乐播放器",
-		Icon:        app.TrayIconData,
+		Icon:        platform.TrayIconData,
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
-			// 中间件：拦截 /audio/ 和 /cover/ 请求交给 AudioHandler，
-			// 其余请求走默认文件服务器（嵌入的前端资源）
 			Middleware: func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if audioHandler != nil &&
+					if svc != nil &&
 						(strings.HasPrefix(r.URL.Path, "/audio/") || strings.HasPrefix(r.URL.Path, "/cover/")) {
-						audioHandler.ServeHTTP(w, r)
+						svc.ServeMedia(w, r)
 						return
 					}
 					next.ServeHTTP(w, r)
 				})
 			},
 		},
-		// 阻止最后一个窗口关闭时自动退出（最小化到托盘场景需要）
 		Windows: application.WindowsOptions{
 			DisableQuitOnLastWindowClosed: true,
 		},
@@ -63,50 +49,37 @@ func main() {
 		},
 	})
 
-	// 创建主服务并连接数据库
-	svc, err := app.NewMusicService(wailsApp, app.DBFile, file)
+	var err error
+	svc, err = app.NewMusicService(wailsApp, platform.DBPath(), file)
 	if err != nil {
 		panic(err)
 	}
-
-	// 创建音频/封面请求处理器（生产模式用，通过 AssetServer 中间件路由）
-	audioHandler = app.NewAudioHandler(svc.GetDatabase())
-
-	// 注册服务（v3 Service 模式，替代 v2 的 Bind）
+	svc.EnsureI18nFile()
 	wailsApp.RegisterService(application.NewService(svc))
 
-	// 创建主窗口
 	mainWindow := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:           "main",
 		Title:          "MusicLite",
 		Width:          1024,
 		Height:         580,
-		Frameless:      true, // 无原生边框：前端自绘标题栏
-		EnableFileDrop: true, // 启用文件拖放
-		// BackgroundTypeTransparent：Wails v3 官方透明背景开关
-		//   - 仅 BackgroundColour.Alpha=0 在 Solid 模式下无效（默认 BackgroundType=Solid）
-		//   - 必须显式设为 BackgroundTypeTransparent，Windows 才会走分层窗口 + WebView2 透明合成
-		//   - 配合 BackgroundColour={R:0,G:0,B:0,A:0} 让窗口底色完全透明，真实视觉由 CSS 提供
+		Frameless:      true,
+		EnableFileDrop: true,
 		BackgroundType: application.BackgroundTypeTransparent,
 		BackgroundColour: application.RGBA{
 			Red: 0, Green: 0, Blue: 0, Alpha: 0,
 		},
 		Windows: application.WindowsWindow{
-			// 开启 WebView2 原生 NonClientRegion 支持，让 CSS 的 app-region: drag 生效
-			// （配合 --wails-draggable 做双保险）
-			NonClientRegionSupport: true,
+			NonClientRegionSupport:            true,
+			BackdropType:                      application.None,
+			DisableFramelessWindowDecorations: true,
 		},
 	})
 
-	// 窗口关闭钩子：非托盘退出时最小化到托盘而非关闭
-	// 单向模式（OnlyMode）会话例外：以系统链接方式打开的音乐播完即关，
-	// 关闭窗口应直接退出应用，而非最小化到托盘。
 	mainWindow.OnWindowEvent(events.Common.WindowClosing, func(event *application.WindowEvent) {
 		if svc.IsTrayQuitting() {
 			return
 		}
 		if svc.IsOnlyModeSession() {
-			// 直接退出（设置 trayQuitting 以便后续窗口关闭钩子放行）
 			go svc.QuitApp()
 			return
 		}
@@ -114,9 +87,7 @@ func main() {
 		mainWindow.Hide()
 	})
 
-	// 启动应用
-	err = wailsApp.Run()
-	if err != nil {
+	if err := wailsApp.Run(); err != nil {
 		panic(fmt.Sprintf("Error: %s", err.Error()))
 	}
 }

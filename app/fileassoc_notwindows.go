@@ -11,10 +11,10 @@ import (
 	"strings"
 )
 
-// supportedExts 支持关联的音频扩展名（与 Windows 一致，供 mimeapps/UTI 使用）
+// supportedExts 支持关联的音频扩展名（供 mimeapps/UTI 使用）。
 var supportedExts = []string{".mp3", ".wav", ".flac", ".m4a", ".ogg", ".wma", ".aac", ".opus", ".ape", ".alac"}
 
-// extToMIME 将扩展名映射为 MIME 类型（Linux xdg-mime 使用）
+// extToMIME 将扩展名映射为 MIME 类型（Linux xdg-mime 使用）。
 var extToMIME = map[string]string{
 	".mp3":  "audio/mpeg",
 	".wav":  "audio/wav",
@@ -28,15 +28,11 @@ var extToMIME = map[string]string{
 	".alac": "audio/alac",
 }
 
-// SetAsDefaultPlayer 将 MusicLite 设为默认播放器（非 Windows 实现）
-// - macOS: 最佳实践由打包时的 Info.plist + CFBundleDocumentTypes 声明，此处提示用户
-// - Linux: 使用 xdg-mime default（需 MusicLite.desktop 已安装）
-func (a *MusicService) SetAsDefaultPlayer() error {
+// SetAsDefaultPlayer 将 MusicLite 设为默认播放器（非 Windows 实现）。
+func (s *MusicService) SetAsDefaultPlayer() error {
 	switch runtime.GOOS {
 	case "darwin":
-		// macOS 下修改默认应用需要用户授权，官方无公开 API
-		// 应用打包时应在 Info.plist 中声明 CFBundleDocumentTypes（UTI）
-		// 此处尝试调用 lsregister 让 LaunchServices 重新扫描 bundle
+		// macOS 修改默认应用需要用户授权，官方无公开 API；尝试刷新 LaunchServices。
 		lsregister := "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 		if _, err := os.Stat(lsregister); err == nil {
 			if bundle := findAppBundlePath(); bundle != "" {
@@ -66,7 +62,7 @@ func (a *MusicService) SetAsDefaultPlayer() error {
 			return fmt.Errorf("没有可注册的 MIME 类型")
 		}
 		if failed == total {
-			return fmt.Errorf("xdg-mime 设置全部失败，请确认 %s 已安装到 ~/.local/share/applications 或 /usr/share/applications", desktopFile)
+			return fmt.Errorf("xdg-mime 设置全部失败，请确认 %s 已安装到应用目录", desktopFile)
 		}
 		if failed > 0 {
 			return fmt.Errorf("xdg-mime 部分成功：%d/%d 失败", failed, total)
@@ -75,11 +71,10 @@ func (a *MusicService) SetAsDefaultPlayer() error {
 	}
 }
 
-// IsDefaultPlayer 检查 MusicLite 是否为默认播放器
-func (a *MusicService) IsDefaultPlayer() (bool, error) {
+// IsDefaultPlayer 检查 MusicLite 是否为默认播放器（非 Windows 实现）。
+func (s *MusicService) IsDefaultPlayer() (bool, error) {
 	switch runtime.GOOS {
 	case "darwin":
-		// macOS: 尝试用 duti（非系统自带），若无则返回 false
 		if duti, err := exec.LookPath("duti"); err == nil {
 			if out, err := exec.Command(duti, "-x", "audio/mpeg").Output(); err == nil {
 				return strings.Contains(string(out), "MusicLite"), nil
@@ -99,7 +94,7 @@ func (a *MusicService) IsDefaultPlayer() (bool, error) {
 	}
 }
 
-// findAppBundlePath 尝试查找当前可执行文件所属的 .app bundle
+// findAppBundlePath 尝试查找当前可执行文件所属的 .app bundle。
 func findAppBundlePath() string {
 	exe, err := os.Executable()
 	if err != nil {

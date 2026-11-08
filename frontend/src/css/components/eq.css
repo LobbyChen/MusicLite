@@ -1,0 +1,206 @@
+/* ============================================================ */
+/* ============ 均衡器面板（EQ Panel） ========================== */
+/* ============================================================ */
+.player-overlay .btn-eq,
+.player-overlay .btn-queue {
+    position: relative;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: var(--design-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color var(--dur-fast) ease,
+                background var(--dur-fast) ease,
+                transform var(--dur-fast) ease;
+}
+.player-overlay .btn-eq:hover,
+.player-overlay .btn-queue:hover {
+    color: var(--text-primary);
+    background: var(--overlay-ctrl-btn-bg, rgba(255, 255, 255, 0.06));
+    transform: scale(1.06);
+}
+.player-overlay .btn-eq.active,
+.player-overlay .btn-queue.active {
+    color: var(--accent-color);
+}
+/* 队列角标 */
+.queue-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: var(--design-radius);
+    background: var(--accent-color);
+    color: #fff;
+    font-size: 10px;
+    line-height: 16px;
+    text-align: center;
+    font-weight: 600;
+    box-shadow: var(--design-glow);
+}
+
+/* EQ 面板容器 */
+.eq-panel {
+    position: absolute;
+    bottom: 132px;
+    left: 50%;
+    transform: translateX(-50%) translateY(12px);
+    width: min(680px, 92%);
+    max-height: 70vh;
+    background: var(--overlay-card-bg, rgba(30, 30, 30, 0.92));
+    backdrop-filter: blur(var(--design-blur));
+    -webkit-backdrop-filter: blur(var(--design-blur));
+    border: var(--design-border-glass);
+    border-radius: var(--design-radius-lg);
+    box-shadow: var(--design-shadow-strong);
+    padding: 18px 22px 14px;
+    z-index: 30;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity var(--dur-normal) var(--ease-out-expo),
+                transform var(--dur-normal) var(--ease-out-expo),
+                visibility 0s linear var(--dur-normal);
+}
+.eq-panel.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+    transition: opacity var(--dur-normal) var(--ease-out-expo),
+                transform var(--dur-normal) var(--ease-out-expo),
+                visibility 0s;
+}
+.eq-panel.eq-disabled .eq-band-slider {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* EQ 头部 */
+.eq-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+.eq-panel-header h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.3px;
+}
+.eq-panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* EQ 开关（自定义 switch） */
+.eq-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    cursor: pointer;
+}
+.eq-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.eq-switch-track {
+    position: absolute;
+    inset: 0;
+    background: rgba(128, 128, 128, 0.4);
+    border-radius: 11px;
+    transition: background var(--dur-fast) ease;
+}
+.eq-switch-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform var(--dur-fast) var(--ease-spring);
+}
+.eq-switch input:checked + .eq-switch-track {
+    background: var(--accent-color);
+}
+.eq-switch input:checked + .eq-switch-track .eq-switch-thumb {
+    transform: translateX(18px);
+}
+
+/* EQ 重置按钮 */
+.eq-reset-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--design-radius-sm);
+    display: flex;
+    transition: color var(--dur-fast) ease, transform var(--dur-fast) ease;
+}
+.eq-reset-btn:hover {
+    color: var(--text-primary);
+    transform: rotate(-90deg);
+}
+
+/* EQ 频段滑块组 */
+.eq-bands {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 10px 4px 4px;
+}
+.eq-band {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+.eq-band-val {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    height: 14px;
+    line-height: 14px;
+}
+.eq-band-slider {
+    /* 现代 Chromium（WebView2）竖向 range：writing-mode + direction */
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: 24px;
+    height: 130px;
+    background: transparent;
+    cursor: pointer;
+    touch-action: none;
+    accent-color: var(--accent-color);
+}
+.eq-band-freq {
+    font-size: 10px;
+    color: var(--text-secondary);
+    opacity: 0.7;
+    letter-spacing: 0.2px;
+}
+
+/* EQ 提示文字 */
+.eq-hint {
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    text-align: center;
+}
+
