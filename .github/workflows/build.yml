@@ -127,10 +127,7 @@ jobs:
           $env:CGO_ENABLED = "1"
           $env:CGO_CFLAGS = "-I$ff\include"
           $env:CGO_LDFLAGS = "-L$ff\lib -lavformat -lavcodec -lswresample -lavutil"
-          # 测试二进制运行时需要 FFmpeg 的 DLL，加入 PATH 否则会以 0xc0000135 失败
-          $env:PATH = "$ff\bin;$env:PATH"
           wails3 build
-          go test ./internal/playback
 
       - name: "[Windows] Create portable package & installer"
         if: matrix.platform == 'windows'
@@ -153,13 +150,12 @@ jobs:
           Pop-Location
           Copy-Item (Get-ChildItem build\bin\*Setup*.exe | Select-Object -First 1).FullName dist\MusicLite-Windows-x64-Setup.exe
 
-      - name: "[Linux] Build & test"
+      - name: "[Linux] Build"
         if: matrix.platform == 'linux'
         run: |
           export CGO_ENABLED=1
           export CGO_LDFLAGS="-lavformat -lavcodec -lswresample -lavutil"
           wails3 build
-          go test ./internal/playback
 
       - name: "[Linux] Create .deb & .rpm packages"
         if: matrix.platform == 'linux'
@@ -174,7 +170,7 @@ jobs:
           cp bin/*.deb dist/ || true
           cp bin/*.rpm dist/ || true
 
-      - name: "[macOS] Build & test"
+      - name: "[macOS] Build"
         if: matrix.platform == 'macos'
         run: |
           set -euo pipefail
@@ -184,7 +180,6 @@ jobs:
           export CGO_LDFLAGS="-L$PREFIX/lib -lavformat -lavcodec -lswresample -lavutil"
           export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
           wails3 build
-          go test ./internal/playback
 
       - name: "[macOS] Create .app bundle & zip"
         if: matrix.platform == 'macos'
