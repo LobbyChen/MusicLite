@@ -16,7 +16,12 @@ build/android/gen/
 internal/platform/version.txt
 
 # ===== Build Outputs =====
-build/
+# 忽略 build/ 下的生成物，但 Info.plist 是 macOS 打包模板，必须纳入版本库
+build/*
+!build/darwin/
+build/darwin/*
+!build/darwin/Info.plist
+!build/darwin/Info.dev.plist
 *.exe
 *.AppImage
 *.dmg
