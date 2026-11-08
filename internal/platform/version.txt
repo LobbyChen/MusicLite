@@ -1,3 +1,0 @@
-0.7.9-4-g40fafcb-dirty
-40fafcb
-4
