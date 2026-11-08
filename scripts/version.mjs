@@ -39,16 +39,21 @@ function git(args) {
 function computeVersion() {
     const describe = git('describe --tags --always --dirty --match "v[0-9]*"');
     if (describe) {
-        const v = describe.replace(/^v/, '');
-        const m = v.match(/^(\d+\.\d+\.\d+(?:\.\d+)?)(?:-(\d+)-g([0-9a-f]+?)(?:-dirty)?)?$/);
+        // 可能形态：v0.8.0 / v0.8.0-dirty / v0.7.9-4-gabc1234 / v0.7.9-4-gabc1234-dirty
+        // 注意：CI 在构建前会修改版本模板文件（sed），工作区必然为 dirty，
+        // 因此 tag 命中 HEAD 时必须忽略 -dirty，否则会退化成 0.0.0-dev 版本号。
+        const dirty = describe.endsWith('-dirty');
+        const clean = describe.replace(/-dirty$/, '');
+        const v = clean.replace(/^v/, '');
+        const m = v.match(/^(\d+\.\d+\.\d+(?:\.\d+)?)(?:-(\d+)-g([0-9a-f]+))?$/);
         if (m) {
             const baseTag = m[1];
             const count = m[2] || '0';
-            let sha = m[3] || '';
-            if (!sha) {
-                sha = git('rev-parse --short HEAD') || 'unknown';
-            }
-            return { version: v, baseTag, count, sha };
+            const sha = m[3] || git('rev-parse --short HEAD') || 'unknown';
+            const version = count === '0'
+                ? baseTag
+                : `${baseTag}-dev.${count}.g${sha}${dirty ? '-dirty' : ''}`;
+            return { version, baseTag, count, sha };
         }
     }
     const count = git('rev-list --count HEAD') || '0';
