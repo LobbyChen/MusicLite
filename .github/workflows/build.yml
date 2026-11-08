@@ -127,6 +127,8 @@ jobs:
           $env:CGO_ENABLED = "1"
           $env:CGO_CFLAGS = "-I$ff\include"
           $env:CGO_LDFLAGS = "-L$ff\lib -lavformat -lavcodec -lswresample -lavutil"
+          # 测试二进制运行时需要 FFmpeg 的 DLL，加入 PATH 否则会以 0xc0000135 失败
+          $env:PATH = "$ff\bin;$env:PATH"
           wails3 build
           go test ./internal/playback
 
